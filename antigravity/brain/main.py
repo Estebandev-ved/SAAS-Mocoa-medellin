@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -79,6 +80,12 @@ def get_negocio_config(negocio_id: int) -> dict:
         """, (negocio_id,))
         result = cursor.fetchone()
         
+        modulos_activos = []
+        if result:
+            cursor.execute("SELECT modulo_name FROM negocio_modulos WHERE negocio_id = %s AND activo = 1", (negocio_id,))
+            modulos_rows = cursor.fetchall()
+            modulos_activos = [m['modulo_name'] for m in modulos_rows] if modulos_rows else []
+        
         cursor.close()
         conn.close()
         
@@ -114,7 +121,8 @@ def get_negocio_config(negocio_id: int) -> dict:
             'productos': productos,
             'plan': result.get('plan', 'starter'),
             'whatsapp_conectado': result.get('whatsapp_conectado', False),
-            'tiempo_entrega': 30
+            'tiempo_entrega': 30,
+            'modulos_activos': modulos_activos
         }
         
     except Exception as e:
@@ -138,7 +146,8 @@ def _default_config():
         'productos': [],
         'plan': 'starter',
         'whatsapp_conectado': False,
-        'tiempo_entrega': 30
+        'tiempo_entrega': 30,
+        'modulos_activos': []
     }
 
 def guardar_log_agente(negocio_id: int, cliente_id: int, intencion: str, agente: str, 
@@ -246,12 +255,12 @@ async def verificar_pago(request: VerificarPagoRequest):
                         {
                             "type": "text",
                             "text": """Analiza esta imagen de un comprobante de pago colombiano (Nequi, Bancolombia, Bold, Daviplata). Extrae:
-1. ¿Es un comprobante real?
-2. ¿Cuál es el monto mostrado?
-3. ¿Qué banco o app es?
-4. ¿Qué fecha tiene?
+1. Es un comprobante real?
+2. Cual es el monto mostrado?
+3. Que banco o app es?
+4. Que fecha tiene?
 
-Responde SOLO en JSON: {"es_valido": true/false, "monto": numero, "banco": "nombre", "fecha": "YYYY-MM-DD", "error": "razón si no es válido"}"""
+Responde SOLO en JSON: {"es_valido": true/false, "monto": numero, "banco": "nombre", "fecha": "YYYY-MM-DD", "error": "razon si no es valido"}"""
                         },
                         {
                             "type": "image_url",
@@ -300,7 +309,7 @@ async def generar_respuesta_custom(request: ProcesarRequest):
         negocio_config = get_negocio_config(request.negocio_id)
         
         system_prompt = f"""Eres {negocio_config.get('bot_nombre', 'Asistente')}, asistente virtual.
-El dueño del negocio está conversando manualmente. Sugiere una respuesta breve y útil."""
+El dueno del negocio esta conversando manualmente. Sugiere una respuesta breve y util."""
         
         messages = [{"role": "system", "content": system_prompt}]
         messages.append({"role": "user", "content": f"Cliente dice: {request.mensaje}"})
@@ -341,7 +350,7 @@ async def startup_event():
 
 @app.get("/agentes/stats")
 async def get_agentes_stats():
-    """Retorna estadísticas globales del sistema multi-agente."""
+    """Retorna estadisticas globales del sistema multi-agente."""
     from brain.orchestrator_async import get_maestro
     from brain.presupuesto import get_presupuesto
     from brain.monitor import MonitorCarga

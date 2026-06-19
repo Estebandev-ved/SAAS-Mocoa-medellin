@@ -139,6 +139,12 @@ router.post('/login', [
             [negocio.id]
         );
 
+        const [modulos] = await pool.query(
+            'SELECT modulo_name FROM negocio_modulos WHERE negocio_id = ? AND activo = true',
+            [negocio.id]
+        );
+        const modulosActivos = modulos.map(m => m.modulo_name);
+
         const token = jwt.sign(
             { negocio_id: negocio.id, email: negocio.email_dueno, plan: negocio.plan, nombre: negocio.nombre, rol: negocio.rol || 'negocio' },
             JWT_SECRET,
@@ -157,7 +163,8 @@ router.post('/login', [
                 logo_url: negocio.logo_url,
                 onboarding_completado: Boolean(negocio.onboarding_completado),
                 trial_hasta: negocio.trial_hasta,
-                suscripcion_activa: Boolean(negocio.suscripcion_activa)
+                suscripcion_activa: Boolean(negocio.suscripcion_activa),
+                modulos_activos: modulosActivos
             }
         });
 
@@ -207,6 +214,13 @@ router.get('/verify', checkBlacklist, async (req, res) => {
         }
 
         const negocio = negocios[0];
+
+        const [modulos] = await pool.query(
+            'SELECT modulo_name FROM negocio_modulos WHERE negocio_id = ? AND activo = true',
+            [negocio.id]
+        );
+        const modulosActivos = modulos.map(m => m.modulo_name);
+
         res.json({
             negocio: {
                 id: negocio.id,
@@ -218,7 +232,8 @@ router.get('/verify', checkBlacklist, async (req, res) => {
                 logo_url: negocio.logo_url,
                 onboarding_completado: Boolean(negocio.onboarding_completado),
                 trial_hasta: negocio.trial_hasta,
-                suscripcion_activa: Boolean(negocio.suscripcion_activa)
+                suscripcion_activa: Boolean(negocio.suscripcion_activa),
+                modulos_activos: modulosActivos
             }
         });
     } catch (error) {

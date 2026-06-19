@@ -90,6 +90,12 @@ class Supervisor:
         intencion = await self._clasificar_intencion(mensaje)
         tipo_worker = self._mapear_intencion_worker(intencion)
         
+        # Validar si el modulo requerido para este worker esta activo
+        if not self._verificar_modulo_activo(tipo_worker):
+            logger.info(f"[Supervisor {self.negocio_id}] Modulo para {tipo_worker.value} inactivo. Re-enrutando a GENERIC.")
+            tipo_worker = TipoWorker.GENERIC
+            intencion = 'conversacion'
+        
         worker = self._obtener_worker(tipo_worker)
         if worker:
             return await worker.procesar(mensaje, contexto, self.config, tipo_worker)
@@ -119,6 +125,34 @@ class Supervisor:
             'conversacion': TipoWorker.GENERIC
         }
         return mapeo.get(intencion, TipoWorker.GENERIC)
+
+    def _verificar_modulo_activo(self, tipo_worker: TipoWorker) -> bool:
+        """Verifica si el modulo correspondiente al TipoWorker esta activo."""
+        if not self.config:
+            return True
+            
+        modulos = self.config.get('modulos_activos', [])
+        
+        # Si no hay modulos configurados (ej: inicializacion/demo), se asume todo activo por compatibilidad
+        if not modulos:
+            return True
+            
+        mapeo_modulo = {
+            TipoWorker.VENTAS: 'catalogo',
+            TipoWorker.PEDIDOS: 'catalogo',
+            TipoWorker.PAGOS: 'pagos',
+            TipoWorker.FAQ: 'catalogo',
+            TipoWorker.RECLAMOS: 'crm',
+            TipoWorker.RETENCION: 'crm',
+            TipoWorker.SEGUIMIENTO: 'crm',
+            TipoWorker.CAMPANAS: 'reportes'
+        }
+        
+        modulo_requerido = mapeo_modulo.get(tipo_worker)
+        if not modulo_requerido:
+            return True # Modulos no mapeados o genericos se permiten
+            
+        return modulo_requerido in modulos
     
     def _obtener_worker(self, tipo: TipoWorker) -> Optional[WorkerInstance]:
         """Obtiene un worker libre o crea uno nuevo."""

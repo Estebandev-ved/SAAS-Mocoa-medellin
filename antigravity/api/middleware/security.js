@@ -301,6 +301,39 @@ async function checkBlacklist(req, res, next) {
   }
 }
 
+/**
+ * Middleware para verificar si un módulo específico está activo para el negocio
+ * @param {string} moduleName - Nombre del módulo a validar
+ */
+function checkModuleActive(moduleName) {
+  return async (req, res, next) => {
+    const negocioId = req.negocioId;
+    if (!negocioId) {
+      return res.status(401).json({ error: 'No autorizado' });
+    }
+
+    try {
+      const db = require('../../db/config');
+      const [rows] = await db.execute(
+        'SELECT activo FROM negocio_modulos WHERE negocio_id = ? AND modulo_name = ?',
+        [negocioId, moduleName]
+      );
+      
+      if (!rows.length || !rows[0].activo) {
+        return res.status(403).json({ 
+          error: `El módulo '${moduleName}' no está activo para este negocio.`,
+          codigo: 'MODULO_INACTIVO'
+        });
+      }
+      
+      next();
+    } catch (error) {
+      console.error(`[Security] Error checking module active (${moduleName}):`, error);
+      return res.status(500).json({ error: 'Error interno de validación' });
+    }
+  };
+}
+
 module.exports = {
   helmetConfig,
   loginRateLimit,
@@ -313,4 +346,5 @@ module.exports = {
   blacklistToken,
   isTokenBlacklisted,
   checkBlacklist,
+  checkModuleActive,
 };

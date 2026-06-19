@@ -9,11 +9,11 @@ import './Sidebar.css';
 const navItems = [
   { path: '/dashboard', icon: 'home', label: 'Resumen', exact: true },
   { path: '/dashboard/whatsapp', icon: 'whatsapp', label: 'WhatsApp', highlight: true },
-  { path: '/dashboard/pedidos', icon: 'box', label: 'Pedidos' },
-  { path: '/dashboard/conversaciones', icon: 'chat', label: 'Conversaciones' },
-  { path: '/dashboard/productos', icon: 'tag', label: 'Productos' },
-  { path: '/dashboard/analytics', icon: 'chart', label: 'Analytics', plans: ['professional', 'enterprise'] },
-  { path: '/dashboard/automatizaciones', icon: 'zap', label: 'Automatizaciones', plans: ['professional', 'enterprise'] },
+  { path: '/dashboard/pedidos', icon: 'box', label: 'Pedidos', modulo: 'catalogo' },
+  { path: '/dashboard/conversaciones', icon: 'chat', label: 'Conversaciones', modulo: 'crm' },
+  { path: '/dashboard/productos', icon: 'tag', label: 'Productos', modulo: 'catalogo' },
+  { path: '/dashboard/analytics', icon: 'chart', label: 'Analytics', plans: ['professional', 'enterprise'], modulo: 'reportes' },
+  { path: '/dashboard/automatizaciones', icon: 'zap', label: 'Automatizaciones', plans: ['professional', 'enterprise'], modulo: 'crm' },
   { path: '/dashboard/personalizar', icon: 'palette', label: 'Configurar Bot' },
   { path: '/dashboard/ajustes', icon: 'gear', label: 'Ajustes' },
   { path: '/admin/resumen', icon: 'shield', label: 'Panel Admin', role: 'admin' }
@@ -81,7 +81,16 @@ export default function Sidebar({ expanded, onToggle }) {
         )}
 
         <nav className="sidebar-nav">
-          {navItems.filter(item => !item.role || item.role === user?.rol).map(item => (
+          {navItems
+            .filter(item => !item.role || item.role === user?.rol)
+            .filter(item => {
+              if (!item.modulo) return true;
+              if (user?.rol === 'admin' || user?.rol === 'superadmin') return true;
+              const modulosActivos = user?.modulos_activos || [];
+              if (user && !user.modulos_activos) return true; // Fallback para no ocultar por error si no cargan
+              return modulosActivos.includes(item.modulo);
+            })
+            .map(item => (
             <div key={item.path} className={`nav-item-wrapper ${isLocked(item) ? 'locked' : ''}`}>
               <NavLink
                 to={item.path}
