@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
 const { injectTenantId, checkProductLimit } = require('../middleware/tenant');
+const { isTokenBlacklisted } = require('../middleware/security');
 
 const pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
@@ -15,13 +16,19 @@ const pool = mysql.createPool({
 
 const JWT_SECRET = process.env.JWT_SECRET || 'antigravity_secret_key';
 
-function verificarAuth(req, res, next) {
+async function verificarAuth(req, res, next) {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({ error: 'Token requerido' });
         }
         const token = authHeader.substring(7);
+
+        // Verificar si el token está en la lista negra
+        if (await isTokenBlacklisted(token)) {
+            return res.status(401).json({ error: 'Token revocado (sesión cerrada)' });
+        }
+
         const decoded = jwt.verify(token, JWT_SECRET);
         req.negocio = decoded;
         req.negocioId = decoded.negocio_id;

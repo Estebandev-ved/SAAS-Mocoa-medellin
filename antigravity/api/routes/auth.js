@@ -16,19 +16,25 @@ const pool = mysql.createPool({
 
 const JWT_SECRET = process.env.JWT_SECRET || 'antigravity_secret_key';
 
-const { loginRateLimit, sanitizeLog } = require('../middleware/security');
+const { body, validationResult } = require('express-validator');
+const { loginRateLimit, sanitizeLog, blacklistToken, checkBlacklist } = require('../middleware/security');
 
 function getClientIP(req) {
     return req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
 }
 
-router.post('/registro', async (req, res) => {
+router.post('/registro', [
+    body('email_dueno').isEmail().withMessage('Debe ser un correo electrónico válido').normalizeEmail(),
+    body('password').isLength({ min: 6 }).withMessage('La contraseña debe tener al menos 6 caracteres'),
+    body('nombre').trim().notEmpty().withMessage('El nombre es requerido'),
+    body('whatsapp').optional({ checkFalsy: true }).trim().isLength({ min: 7, max: 20 }).withMessage('El número de WhatsApp debe tener entre 7 y 20 caracteres')
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
     try {
         const { email_dueno, password, nombre, whatsapp, terminos_aceptados } = req.body;
-
-        if (!email_dueno || !password || !nombre) {
-            return res.status(400).json({ error: 'Faltan campos requeridos' });
-        }
 
         const [existente] = await pool.query(
             'SELECT id FROM negocios WHERE email_dueno = ?',
@@ -75,13 +81,17 @@ router.post('/registro', async (req, res) => {
     }
 });
 
-router.post('/login', loginRateLimit, async (req, res) => {
+router.post('/login', [
+    loginRateLimit,
+    body('email').isEmail().withMessage('Debe ser un correo electrónico válido').normalizeEmail(),
+    body('password').notEmpty().withMessage('La contraseña es requerida')
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
     try {
         const { email, password } = req.body;
-
-        if (!email || !password) {
-            return res.status(400).json({ error: 'Email y contraseña requeridos' });
-        }
 
         const [negocios] = await pool.query(
             'SELECT * FROM negocios WHERE email_dueno = ?',
@@ -159,13 +169,25 @@ router.post('/login', loginRateLimit, async (req, res) => {
 
 router.post('/logout', async (req, res) => {
     try {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            try {
+                const decoded = jwt.decode(token);
+                if (decoded && decoded.exp) {
+                    await blacklistToken(token, decoded.exp);
+                }
+            } catch (err) {
+                console.error('[Auth] Error al decodificar token para blacklist:', err);
+            }
+        }
         res.json({ mensaje: 'Sesión cerrada' });
     } catch (error) {
         res.status(500).json({ error: 'Error al cerrar sesión' });
     }
 });
 
-router.get('/verify', async (req, res) => {
+router.get('/verify', checkBlacklist, async (req, res) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {

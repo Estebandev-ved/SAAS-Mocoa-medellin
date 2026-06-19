@@ -1,6 +1,8 @@
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const xss = require('xss');
+const Redis = require('ioredis');
+const crypto = require('crypto');
 
 const helmetConfig = helmet({
   contentSecurityPolicy: {
@@ -179,6 +181,126 @@ function secureErrorHandler(err, req, res, next) {
   });
 }
 
+// Fallback en memoria para la lista negra de JWTs
+const memoryBlacklist = new Map();
+
+// Inicializar cliente de Redis con reintentos controlados para evitar bloqueos
+let redisClient = null;
+const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
+const REDIS_PORT = process.env.REDIS_PORT || 6379;
+
+try {
+  redisClient = new Redis({
+    host: REDIS_HOST,
+    port: parseInt(REDIS_PORT),
+    maxRetriesPerRequest: 1,
+    retryStrategy: () => null // Evita bucle infinito de reconexión si no hay Redis levantado
+  });
+  
+  redisClient.on('error', (err) => {
+    // Loguear una sola vez o de forma silenciosa para evitar inundar la consola en local
+    if (!global.redisErrorLogged) {
+      console.warn('[Security] Redis no está disponible en este entorno. Usando fallback de caché en memoria para JWT Blacklist.');
+      global.redisErrorLogged = true;
+    }
+  });
+} catch (e) {
+  console.warn('[Security] Error inicializando Redis, usando fallback en memoria:', e.message);
+}
+
+// Función para hashear los tokens y no almacenarlos en texto plano en Redis o memoria
+function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+/**
+ * Añade un token a la lista negra.
+ * @param {string} token - El token JWT completo
+ * @param {number} expTimestamp - Timestamp de expiración (en segundos)
+ */
+async function blacklistToken(token, expTimestamp) {
+  if (!token) return;
+  const tokenHash = hashToken(token);
+  const now = Math.floor(Date.now() / 1000);
+  const ttl = expTimestamp - now;
+  
+  if (ttl <= 0) return; // El token ya ha expirado, no es necesario agregarlo
+
+  console.log(`[Security] Token agregado a la lista negra (Expira en: ${ttl}s)`);
+
+  if (redisClient && redisClient.status === 'ready') {
+    try {
+      await redisClient.set(`blacklist:${tokenHash}`, '1', 'EX', ttl);
+      return;
+    } catch (err) {
+      console.error('[Security] Error guardando token en Redis blacklist:', err);
+    }
+  }
+
+  // Fallback en memoria
+  memoryBlacklist.set(tokenHash, expTimestamp);
+  
+  // Limpieza diferida
+  setTimeout(() => {
+    memoryBlacklist.delete(tokenHash);
+  }, ttl * 1000);
+}
+
+/**
+ * Verifica si un token está en la lista negra.
+ * @param {string} token - El token JWT completo
+ * @returns {Promise<boolean>}
+ */
+async function isTokenBlacklisted(token) {
+  if (!token) return false;
+  const tokenHash = hashToken(token);
+  
+  if (redisClient && redisClient.status === 'ready') {
+    try {
+      const exists = await redisClient.get(`blacklist:${tokenHash}`);
+      if (exists) return true;
+    } catch (err) {
+      console.error('[Security] Error consultando Redis blacklist:', err);
+    }
+  }
+
+  // Validar contra caché en memoria
+  const expTimestamp = memoryBlacklist.get(tokenHash);
+  if (expTimestamp) {
+    const now = Math.floor(Date.now() / 1000);
+    if (expTimestamp > now) {
+      return true;
+    } else {
+      memoryBlacklist.delete(tokenHash); // Limpieza bajo demanda si ya venció
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Middleware para denegar acceso a tokens en la lista negra
+ */
+async function checkBlacklist(req, res, next) {
+  try {
+    let token = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+    
+    if (token && await isTokenBlacklisted(token)) {
+      console.warn('[Security] Intento de acceso denegado con token en lista negra (usuario deslogueado).');
+      return res.status(401).json({ error: 'Token revocado (sesión cerrada)' });
+    }
+    
+    next();
+  } catch (error) {
+    console.error('[Security] Error en checkBlacklist:', error);
+    next(); // Proceder de todos modos para evitar caídas catastróficas por error de middleware
+  }
+}
+
 module.exports = {
   helmetConfig,
   loginRateLimit,
@@ -188,4 +310,7 @@ module.exports = {
   guardPromptInjection,
   verifyOwnership,
   secureErrorHandler,
+  blacklistToken,
+  isTokenBlacklisted,
+  checkBlacklist,
 };

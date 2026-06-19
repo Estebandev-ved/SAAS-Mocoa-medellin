@@ -1,4 +1,0 @@
-.env
-__pycache__/
-*.pyc
-database/crear_base_datos.sql
