@@ -240,10 +240,10 @@ async def verificar_pago(request: VerificarPagoRequest):
         from brain.azure_client import get_azure_client, get_azure_model
         client = get_azure_client()
         
-        if not os.getenv('OPENAI_API_KEY'):
+        if not os.getenv('AZURE_OPENAI_API_KEY') and not os.getenv('OPENAI_API_KEY'):
             return {
                 "valido": False,
-                "error": "API key de OpenAI no configurada"
+                "error": "API key de OpenAI o Azure no configurada"
             }
         
         respuesta = client.chat.completions.create(
