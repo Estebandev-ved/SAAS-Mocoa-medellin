@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Panel {{ nombre_empresa }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        :root {
+            --color-principal: {{ color_principal }};
+            --color-fondo: {{ color_fondo }};
+        }
+    </style>
+</head>
+<body style="background: var(--color-fondo);">
+    <div class="login-container">
+        <div style="text-align:center; margin-bottom:18px;">
+            <img src="{{ logo_url }}" alt="Logo {{ nombre_empresa }}" style="max-width:120px; border-radius:12px;">
+        </div>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <h2>Acceso a {{ nombre_empresa }}</h2>
+            {% if error %}<div class="error">{{ error }}</div>{% endif %}
+            <input type="text" name="username" placeholder="Usuario" required autofocus>
+            <input type="password" name="password" placeholder="Contraseña" required>
+            <button type="submit" class="btn-login">Ingresar</button>
+        </form>
+    </div>
+</body>
+</html>

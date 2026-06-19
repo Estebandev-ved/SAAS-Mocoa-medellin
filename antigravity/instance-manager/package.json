@@ -1,0 +1,14 @@
+{
+  "name": "instance-manager",
+  "version": "1.0.0",
+  "description": "Instance Manager for ANTIGRAVITY WhatsApp Bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "baileys": "^6.0.0",
+    "@hapi/boom": "^10.0.1",
+    "dotenv": "^16.3.1"
+  }
+}

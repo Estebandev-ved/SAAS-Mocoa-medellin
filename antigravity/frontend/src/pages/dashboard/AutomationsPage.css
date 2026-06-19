@@ -1,0 +1,101 @@
+.automations-page {
+  animation: fadeUp 0.4s ease;
+}
+
+.automations-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.automation-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.automation-card:hover {
+  border-color: var(--accent-primary);
+}
+
+.automation-card.active {
+  border-color: var(--accent-primary);
+  background: var(--accent-glow);
+}
+
+.automation-icon {
+  font-size: 32px;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-hover);
+  border-radius: 12px;
+}
+
+.automation-info {
+  flex: 1;
+}
+
+.automation-info h3 {
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.automation-info p {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.automation-plan {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--accent-primary);
+  background: var(--accent-glow);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-top: 8px;
+  text-transform: uppercase;
+}
+
+.toggle-btn {
+  width: 48px;
+  height: 28px;
+  background: var(--surface-hover);
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.toggle-btn.on {
+  background: var(--accent-primary);
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.toggle-btn.on .toggle-knob {
+  transform: translateX(20px);
+}
+
+@media (max-width: 768px) {
+  .automations-grid {
+    grid-template-columns: 1fr;
+  }
+}

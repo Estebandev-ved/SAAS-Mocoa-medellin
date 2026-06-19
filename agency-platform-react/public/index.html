@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antigravity — Tu negocio en piloto automático</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+  <!-- ─── NAV ─── -->
+  <nav>
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+        </svg>
+      </div>
+      ANTIGRAVITY
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">Características</a></li>
+      <li><a href="#process">¿Cómo funciona?</a></li>
+      <li><a href="#interactive">Demo</a></li>
+      <li><a href="#pricing">Precios</a></li>
+      <li><a href="#customize">Personalizar</a></li>
+    </ul>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div class="nav-dot">
+        <div class="pulse"></div> SISTEMA ACTIVO
+      </div>
+      <button class="nav-cta" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">CONTACTAR
+        →</button>
+    </div>
+  </nav>
+
+  <!-- ─── HERO ─── -->
+  <section id="hero">
+    <div class="hero-grid"></div>
+    <div class="hero-glow"></div>
+    <div style="position:relative;z-index:1">
+      <div class="hero-badge animate delay-1">
+        <div class="pulse"></div>
+        <span>Automatización con IA</span> · WhatsApp · Pedidos · Análisis
+      </div>
+      <h1 class="hero-title animate delay-2">
+        Tu negocio,<br>
+        <span class="accent">en piloto<br>automático</span>
+      </h1>
+      <p class="hero-sub animate delay-3">
+        Transformamos cualquier negocio con bots inteligentes, gestión de pedidos automatizada y análisis en tiempo
+        real. Cada solución, con tu logo y colores.
+      </p>
+      <div class="hero-btns animate delay-4">
+        <button class="btn-primary"
+          onclick="document.getElementById('interactive').scrollIntoView({behavior:'smooth'})">
+          ▶ Ver Demo en Vivo
+        </button>
+        <button class="btn-outline" onclick="document.getElementById('pricing').scrollIntoView({behavior:'smooth'})">
+          Ver Planes & Precios
+        </button>
+      </div>
+      <div class="hero-stats animate delay-5">
+        <div class="hero-stat">
+          <span class="num" data-target="300" data-suffix="%">0%</span>
+          <span class="lbl">MÁS VENTAS PROMEDIO</span>
+        </div>
+        <div class="hero-stat">
+          <span class="num">24/7</span>
+          <span class="lbl">DISPONIBILIDAD</span>
+        </div>
+        <div class="hero-stat">
+          <span class="num" data-target="48" data-suffix="hrs">0hrs</span>
+          <span class="lbl">SETUP INCLUIDO</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── TICKER ─── -->
+  <div class="ticker-wrap">
+    <div class="ticker-track" id="ticker">
+      <div class="ticker-item"> Inmobiliarias</div>
+      <div class="ticker-item">Restaurantes</div>
+      <div class="ticker-item"> Tiendas Saludables</div>
+      <div class="ticker-item"> Spas & Bienestar</div>
+      <div class="ticker-item"> Ropa & Moda</div>
+      <div class="ticker-item"> Gimnasios</div>
+      <div class="ticker-item"> Floristerías</div>
+      <div class="ticker-item"> Domicilios</div>
+      <div class="ticker-item"> Cuidado Personal</div>
+      <div class="ticker-item"> Reposterías</div>
+      <div class="ticker-item"> Inmobiliarias</div>
+      <div class="ticker-item"> Restaurantes</div>
+      <div class="ticker-item"> Tiendas Saludables</div>
+      <div class="ticker-item"> Spas & Bienestar</div>
+      <div class="ticker-item"> Ropa & Moda</div>
+      <div class="ticker-item"> Gimnasios</div>
+      <div class="ticker-item"> Floristerías</div>
+      <div class="ticker-item"> Domicilios</div>
+      <div class="ticker-item"> Cuidado Personal</div>
+      <div class="ticker-item"> Reposterías</div>
+    </div>
+  </div>
+
+  <!-- ─── FEATURES ─── -->
+  <section id="features">
+    <div class="text-center" style="margin-bottom:0">
+      <div class="section-label">CARACTERÍSTICAS</div>
+      <h2 class="section-title">Todo lo que tu negocio necesita,<br><span class="accent">ya automatizado</span></h2>
+      <p class="section-sub mx-auto" style="margin:0 auto">Desde el primer mensaje de WhatsApp hasta el reporte de
+        ventas del mes, lo gestionamos todo.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feat-card">
+        <span class="feat-icon">💬</span>
+        <h3>Bot de WhatsApp con IA</h3>
+        <p>Responde automáticamente a clientes, detecta pedidos, gestiona el flujo de pago y confirma entregas.
+          Disponible 24/7, nunca se cansa.</p>
+        <div class="feat-tags">
+          <span class="tag">Baileys</span>
+          <span class="tag">OpenAI GPT</span>
+          <span class="tag">Multi-idioma</span>
+        </div>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">📦</span>
+        <h3>Gestión de Pedidos</h3>
+        <p>Panel web con todos los pedidos en tiempo real. Filtra, busca, exporta a CSV y marca entregas con un clic.
+        </p>
+        <div class="feat-tags">
+          <span class="tag">MySQL</span>
+          <span class="tag">Node.js</span>
+          <span class="tag">Tiempo Real</span>
+        </div>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">🔔</span>
+        <h3>Notificaciones Automáticas</h3>
+        <p>Correos y alertas instantáneas al dueño del negocio cada vez que llega un pedido nuevo o se completa un pago.
+        </p>
+        <div class="feat-tags">
+          <span class="tag">SMTP</span>
+          <span class="tag">WebSockets</span>
+        </div>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">📊</span>
+        <h3>Análisis en Tiempo Real</h3>
+        <p>Dashboard con ventas por día, mes y producto. Gráficas interactivas para tomar decisiones rápidas.</p>
+        <div class="feat-tags">
+          <span class="tag">Charts.js</span>
+          <span class="tag">Analytics</span>
+          <span class="tag">Exportar CSV</span>
+        </div>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">🎨</span>
+        <h3>100% Personalizable</h3>
+        <p>Tu logo, tus colores, tu nombre de marca. El cliente verá una solución construida específicamente para él.
+        </p>
+        <div class="feat-tags">
+          <span class="tag">White-label</span>
+          <span class="tag">Branding</span>
+        </div>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">🔒</span>
+        <h3>Seguro & Escalable</h3>
+        <p>Infraestructura en Python + Node.js + MySQL con autenticación JWT, backups automáticos y arquitectura
+          preparada para crecer.</p>
+        <div class="feat-tags">
+          <span class="tag">Python</span>
+          <span class="tag">JWT</span>
+          <span class="tag">MySQL</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── BOT DEMO VISUAL ─── -->
+  <section id="demo-visual">
+    <div class="text-center">
+      <div class="section-label">EL BOT EN ACCIÓN</div>
+      <h2 class="section-title">Ve cómo el bot<br><span class="accent">vende por ti</span></h2>
+      <p class="section-sub mx-auto" style="margin:0 auto">Cada conversación detectada, cada pedido registrado
+        automáticamente.</p>
+    </div>
+    <div class="demo-split">
+      <div class="demo-chat">
+        <div class="demo-chat-header">
+          <div class="demo-dots"><span></span><span></span><span></span></div>
+          <span class="demo-chat-title">🤖 Chat Demo — Bot de WhatsApp</span>
+          <div class="live-badge" style="margin-left:auto">
+            <div class="pulse"></div> LIVE
+          </div>
+        </div>
+        <div class="demo-chat-body">
+          <div class="msg msg-user">Hola, ¿cuánto vale el yogur grande?</div>
+          <div class="msg msg-bot">¡Hola! 😊 El yogur grande (500g) cuesta $18.000. ¿Te envío uno?</div>
+          <div class="msg msg-user">Sí, 2 por favor. Pago por Nequi.</div>
+          <div class="msg msg-bot">
+            <div class="typing"><span></span><span></span><span></span></div>
+          </div>
+          <div class="msg-detect">✅ Pedido detectado — $36.000 · 2x Yogur Grande · Nequi</div>
+        </div>
+      </div>
+      <div class="demo-panel-cards">
+        <div class="demo-panel-card">
+          <div class="demo-panel-label">📦 NUEVO PEDIDO</div>
+          <div class="demo-panel-val">$36.000</div>
+          <div style="color:var(--muted);font-size:12px;margin-top:6px">2x Yogur Grande · hace 2 seg</div>
+        </div>
+        <div class="demo-panel-card">
+          <div class="demo-panel-label">📈 VENTAS HOY</div>
+          <div class="demo-panel-val">$245.000</div>
+          <div style="color:var(--accent);font-size:12px;margin-top:6px">↑ +23% vs ayer</div>
+        </div>
+        <div class="demo-panel-card">
+          <div class="demo-panel-label">🤖 TASA DE RESPUESTA IA</div>
+          <div class="demo-panel-val">98.3%</div>
+          <div style="color:var(--muted);font-size:12px;margin-top:6px">Sin intervención humana</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── PROCESS ─── -->
+  <section id="process">
+    <div class="text-center">
+      <div class="section-label">EL PROCESO</div>
+      <h2 class="section-title">De idea a negocio<br><span class="accent">automatizado en 48 horas</span></h2>
+    </div>
+    <div class="process-steps">
+      <div class="process-step">
+        <div class="step-num">01</div>
+        <div class="step-title">Análisis del negocio</div>
+        <p class="step-desc">Estudiamos tus productos, flujos de venta, métodos de pago y canales de comunicación
+          actuales.</p>
+      </div>
+      <div class="process-step">
+        <div class="step-num">02</div>
+        <div class="step-title">Configuración personalizada</div>
+        <p class="step-desc">Programamos el bot con tu catálogo, precios, tonos de marca y adaptamos el panel a tus
+          colores.</p>
+      </div>
+      <div class="process-step">
+        <div class="step-num">03</div>
+        <div class="step-title">Integración y pruebas</div>
+        <p class="step-desc">Conectamos todo: WhatsApp, base de datos, correos. Pruebas exhaustivas de seguridad y
+          flujo.</p>
+      </div>
+      <div class="process-step">
+        <div class="step-num">04</div>
+        <div class="step-title">¡Lanzamiento!</div>
+        <p class="step-desc">Tu negocio empieza a vender solo. Te damos soporte posconfiguration y actualizaciones
+          continuas.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── INTERACTIVE DEMO ─── -->
+  <section id="interactive">
+    <div class="text-center">
+      <div class="section-label">DEMO INTERACTIVA</div>
+      <h2 class="section-title">Pruébalo tú mismo,<br><span class="accent">ahora mismo</span></h2>
+      <p class="section-sub mx-auto" style="margin:0 auto">Escríbele al bot como si fueras un cliente. Mira cómo detecta
+        el pedido automáticamente.</p>
+    </div>
+    <div class="interactive-wrap">
+      <div class="chat-window">
+        <div class="chat-header">
+          <div class="chat-header-left">
+            <div class="bot-avatar">🤖</div>
+            <div>
+              <div class="bot-name">Bot Activo — Antigravity</div>
+              <div class="bot-status">Respondiendo pedidos</div>
+            </div>
+          </div>
+          <div class="live-badge">
+            <div class="pulse"></div> LIVE
+          </div>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="msg msg-bot">¡Hola! 👋 Soy el asistente de <strong>Antigravity</strong>. ¿En qué te puedo ayudar
+            hoy? Puedes preguntarme por precios, hacer un pedido o consultar métodos de pago.</div>
+        </div>
+        <div class="chat-input-wrap">
+          <input class="chat-input" id="chatInput" placeholder="Escribe un mensaje..."
+            onkeypress="if(event.key==='Enter')sendMessage()">
+          <button class="chat-send" onclick="sendMessage()">ENVIAR</button>
+        </div>
+      </div>
+      <div class="orders-panel">
+        <div class="orders-header">
+          <span style="font-size:16px">📦</span>
+          <span class="orders-header-title">PANEL DE PEDIDOS EN VIVO</span>
+        </div>
+        <div class="orders-stats">
+          <div class="order-stat">
+            <div class="val" id="statsRevenue">$245K</div>
+            <div class="lbl">Ventas Hoy</div>
+          </div>
+          <div class="order-stat">
+            <div class="val" id="statsOrders">12</div>
+            <div class="lbl">Pedidos</div>
+          </div>
+          <div class="order-stat">
+            <div class="val" id="statsPending">3</div>
+            <div class="lbl">Pendientes</div>
+          </div>
+        </div>
+        <div class="orders-list" id="ordersList">
+          <div class="order-row">
+            <div>
+              <div class="order-name">Carlos M.</div>
+              <div class="order-detail">2x Grande · Nequi</div>
+            </div>
+            <div class="order-price">$36.000</div>
+            <div class="status-badge s-pending">Pendiente</div>
+          </div>
+          <div class="order-row">
+            <div>
+              <div class="order-name">Luisa P.</div>
+              <div class="order-detail">3x Normal · Efectivo</div>
+            </div>
+            <div class="order-price">$27.000</div>
+            <div class="status-badge s-done">Entregado</div>
+          </div>
+          <div class="order-row">
+            <div>
+              <div class="order-name">Mariana C.</div>
+              <div class="order-detail">1x Grande · Nequi</div>
+            </div>
+            <div class="order-price">$18.000</div>
+            <div class="status-badge s-done">Entregado</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── CUSTOMIZATION ─── -->
+  <section id="customize">
+    <div class="text-center">
+      <div class="section-label">PERSONALIZACIÓN</div>
+      <h2 class="section-title">Hazlo tuyo,<br><span class="accent">para cada cliente</span></h2>
+      <p class="section-sub mx-auto" style="margin:0 auto">Cambia el nombre y colores aquí mismo y mira cómo se
+        transforma la plataforma en tiempo real.</p>
+    </div>
+    <div class="customize-grid">
+      <div class="customize-controls">
+        <div>
+          <div class="ctrl-label">Nombre del Negocio</div>
+          <input class="ctrl-input" id="brandName" value="Antigravity" oninput="updatePreview()"
+            placeholder="Nombre del negocio">
+        </div>
+        <div>
+          <div class="ctrl-label">Color Principal</div>
+          <div class="color-row">
+            <input type="color" class="color-box" id="primaryColor" value="#00FFD1" oninput="updatePreview()">
+            <span class="color-hex" id="primaryHex">#00FFD1</span>
+          </div>
+          <div class="color-swatches">
+            <div class="swatch active" style="background:#00FFD1" onclick="setColor('#00FFD1')"></div>
+            <div class="swatch" style="background:#7C3AED" onclick="setColor('#7C3AED')"></div>
+            <div class="swatch" style="background:#3B82F6" onclick="setColor('#3B82F6')"></div>
+            <div class="swatch" style="background:#10B981" onclick="setColor('#10B981')"></div>
+            <div class="swatch" style="background:#EF4444" onclick="setColor('#EF4444')"></div>
+            <div class="swatch" style="background:#F59E0B" onclick="setColor('#F59E0B')"></div>
+            <div class="swatch" style="background:#EC4899" onclick="setColor('#EC4899')"></div>
+            <div class="swatch" style="background:#10B981" onclick="setColor('#10B981')"></div>
+          </div>
+        </div>
+        <div>
+          <div class="ctrl-label">Color Secundario / Acento</div>
+          <div class="color-row">
+            <input type="color" class="color-box" id="accentColor" value="#00C4A0" oninput="updatePreview()">
+            <span class="color-hex" id="accentHex">#00C4A0</span>
+          </div>
+        </div>
+        <div style="padding:20px;background:var(--bg2);border:1px solid var(--border);border-radius:12px">
+          <div class="ctrl-label" style="margin-bottom:12px">Modo de Tema</div>
+          <div style="display:flex;gap:12px">
+            <button onclick="setTheme('dark')" id="btnDark"
+              style="flex:1;padding:10px;background:var(--accent);color:var(--bg);border:none;border-radius:8px;font-family:var(--font-mono);font-size:11px;cursor:pointer;font-weight:700">◉
+              OSCURO</button>
+            <button onclick="setTheme('light')" id="btnLight"
+              style="flex:1;padding:10px;background:var(--bg3);color:var(--muted);border:1px solid var(--border);border-radius:8px;font-family:var(--font-mono);font-size:11px;cursor:pointer">○
+              CLARO</button>
+          </div>
+        </div>
+      </div>
+      <div class="preview-panel" id="previewPanel">
+        <div class="preview-header">
+          <div class="preview-logo-circle" id="previewLogoCircle" style="background:var(--accent)">⚡</div>
+          <span class="preview-brand-name" id="previewBrandName">Antigravity</span>
+          <div class="preview-nav-links">
+            <span>Pedidos</span><span>Clientes</span><span>Stats</span>
+          </div>
+        </div>
+        <div class="preview-body">
+          <div class="preview-welcome">Bienvenido a</div>
+          <div class="preview-title" id="previewTitle" style="color:var(--accent)">Antigravity</div>
+          <button class="preview-btn" id="previewBtn" style="background:var(--accent);color:var(--bg)">Ver Pedidos
+            →</button>
+          <div class="preview-stats">
+            <div class="preview-stat">
+              <div class="v" id="prevStatColor" style="color:var(--accent)">$245K</div>
+              <div class="l">Ventas</div>
+            </div>
+            <div class="preview-stat">
+              <div class="v" style="color:var(--accent)">32</div>
+              <div class="l">Pedidos</div>
+            </div>
+            <div class="preview-stat">
+              <div class="v" style="color:var(--accent)">97%</div>
+              <div class="l">Satisfacción</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── PRICING ─── -->
+  <section id="pricing">
+    <div class="text-center">
+      <div class="section-label">PLANES</div>
+      <h2 class="section-title">Inversión inteligente,<br><span class="accent">retorno garantizado</span></h2>
+      <p class="section-sub mx-auto" style="margin:0 auto">Sin permanencia. Setup en 48 horas. Primeros 7 días
+        gratuitos.</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="price-card">
+        <div class="plan-tier">Esencial</div>
+        <div class="plan-price"><span class="curr">$</span>299<span class="per">/mes</span></div>
+        <p class="plan-desc">Perfecto para pequeños negocios que quieren empezar a automatizar.</p>
+        <div class="plan-divider"></div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> Bot de WhatsApp con IA</li>
+          <li><span class="check">✓</span> Panel de pedidos web</li>
+          <li><span class="check">✓</span> Notificaciones por correo</li>
+          <li><span class="check">✓</span> Branding personalizado</li>
+          <li><span class="check">✓</span> Soporte 5 días</li>
+          <li class="disabled"><span class="cross">✕</span> Dashboard de análisis</li>
+          <li class="disabled"><span class="cross">✕</span> OCR comprobantes</li>
+        </ul>
+        <button class="plan-btn"
+          onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">EMPEZAR →</button>
+      </div>
+      <div class="price-card featured" style="position:relative">
+        <div class="price-badge">⭐ MÁS POPULAR</div>
+        <div class="plan-tier">Profesional</div>
+        <div class="plan-price" style="color:var(--accent)"><span class="curr">$</span>599<span class="per">/mes</span>
+        </div>
+        <p class="plan-desc">Para negocios en crecimiento con alto volumen de pedidos.</p>
+        <div class="plan-divider"></div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> Bot de WhatsApp con IA</li>
+          <li><span class="check">✓</span> Panel completo + exportación</li>
+          <li><span class="check">✓</span> Dashboard de ventas avanzado</li>
+          <li><span class="check">✓</span> Notificaciones multi-canal</li>
+          <li><span class="check">✓</span> Branding + dominio propio</li>
+          <li><span class="check">✓</span> Soporte 7 días</li>
+          <li class="disabled"><span class="cross">✕</span> OCR comprobantes</li>
+        </ul>
+        <button class="plan-btn"
+          onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">EMPEZAR →</button>
+      </div>
+      <div class="price-card">
+        <div class="plan-tier">Enterprise</div>
+        <div class="plan-price"><span class="curr">$</span>1.200<span class="per">/mes</span></div>
+        <p class="plan-desc">Solución completa para negocios que necesitan lo mejor de la automatización.</p>
+        <div class="plan-divider"></div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> Todo del plan Profesional</li>
+          <li><span class="check">✓</span> OCR verificación de pagos</li>
+          <li><span class="check">✓</span> Múltiples canales (IG, FB)</li>
+          <li><span class="check">✓</span> CRM integrado</li>
+          <li><span class="check">✓</span> API personalizada</li>
+          <li><span class="check">✓</span> Soporte 24/7 prioritario</li>
+          <li><span class="check">✓</span> SLA garantizado</li>
+        </ul>
+        <button class="plan-btn"
+          onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">EMPEZAR →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── CONTACT ─── -->
+  <section id="contact">
+    <div class="contact-grid">
+      <div class="contact-left">
+        <div class="section-label">¿LISTO PARA EMPEZAR?</div>
+        <h2>Automaticemos tu <span class="accent">negocio hoy</span></h2>
+        <p>Cuéntanos sobre tu negocio y en menos de 24 horas te enviamos una propuesta personalizada con demostración
+          incluida.</p>
+        <div class="contact-checks">
+          <div class="contact-check"><span class="ck">✓</span> Sin permanencia</div>
+          <div class="contact-check"><span class="ck">✓</span> Setup en 48 horas</div>
+          <div class="contact-check"><span class="ck">✓</span> Demo gratuita</div>
+          <div class="contact-check"><span class="ck">✓</span> Soporte post-lanzamiento</div>
+        </div>
+      </div>
+      <div class="contact-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nombre</label>
+            <input class="form-input" placeholder="Tu nombre">
+          </div>
+          <div class="form-group">
+            <label class="form-label">WhatsApp</label>
+            <input class="form-input" placeholder="+57 300 0000000">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo de negocio</label>
+          <select class="form-select">
+            <option value="">Selecciona...</option>
+            <option>Restaurante / Comida</option>
+            <option>Tienda / Retail</option>
+            <option>Servicios</option>
+            <option>Salud & Bienestar</option>
+            <option>Inmobiliaria</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cuéntanos de tu negocio</label>
+          <textarea class="form-textarea"
+            placeholder="¿Qué vendes? ¿Cuántos pedidos recibes al día? ¿Qué te gustaría automatizar?"></textarea>
+        </div>
+        <button class="form-submit" onclick="submitForm(this)">ENVIAR & AGENDAR DEMO →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ─── -->
+  <footer>
+    <div class="footer-grid">
+      <div>
+        <div class="nav-logo" style="display:inline-flex;margin-bottom:16px">
+          <div class="nav-logo-icon" style="width:28px;height:28px">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:var(--bg)">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+            </svg>
+          </div>
+          <span style="font-size:13px">ANTIGRAVITY</span>
+        </div>
+        <p class="footer-brand-desc">Automatización inteligente por WhatsApp. Vende más, trabaja menos. Tecnología IA de
+          vanguardia para negocios colombianos.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Producto</h4>
+        <ul>
+          <li><a href="#features">Características</a></li>
+          <li><a href="#process">¿Cómo funciona?</a></li>
+          <li><a href="#interactive">Demo en Vivo</a></li>
+          <li><a href="#pricing">Precios</a></li>
+          <li><a href="#customize">Personalizar</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Empresa</h4>
+        <ul>
+          <li><a href="#">Sobre nosotros</a></li>
+          <li><a href="#">Casos de éxito</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#contact">Contacto</a></li>
+          <li><a href="#">Términos & Privacidad</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 ANTIGRAVITY · Medellín, Colombia</p>
+      <p>Hecho con IA · Python · Node.js · MySQL</p>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+
+</html>

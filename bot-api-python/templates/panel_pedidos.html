@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel de Pedidos NOMÁ</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!--
+    ADVERTENCIA: Si abres este archivo HTML directamente desde el explorador, verás errores de sintaxis en las líneas de JavaScript.
+    Esos errores NO aparecen cuando la plantilla es renderizada por Flask, porque las variables Jinja2 se reemplazan por datos válidos.
+    Accede siempre a la web desde http://127.0.0.1:5000/pedidos
+    -->
+    <script>
+        window.ventasFechas = {{ fechas|tojson|safe }};
+        window.ventasPorDia = {{ ventas_por_dia|tojson|safe }};
+    </script>
+    <script src="/static/js/graficas.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Panel de Pedidos NOMÁ</h1>
+        <div style="text-align:right; margin-bottom:10px;">
+            <span>Usuario: {{ usuario }} | Rol: {{ rol }}</span>
+            <a href="/logout"><button style="margin-left:10px;">Salir</button></a>
+            {% if rol == 'admin' %}
+            <a href="/usuarios"><button style="margin-left:10px;">Gestionar usuarios</button></a>
+            {% endif %}
+        </div>
+        <div class="stats">
+            <p><b>Total ventas:</b> ${{ total_ventas | string | replace(',', '.') }}</p>
+            <canvas id="ventasChart" width="400" height="150"></canvas>
+        </div>
+        <h2>Pedidos realizados</h2>
+        <table>
+            <tr><th>ID</th><th>Cliente</th><th>Cantidad</th><th>Sabor</th><th>Total</th><th>Fecha</th><th>Estado</th></tr>
+            {% for p in pedidos %}
+            <tr>
+                <td>{{p[0]}}</td><td>{{p[1]}}</td><td>{{p[2]}}</td><td>{{p[3]}}</td><td>${{ '{:,.2f}'.format(p[4]) }}</td><td>{{p[5]}}</td>
+                <td>
+                    {% if p[6] == 'pendiente' %}
+                    <form method="post" action="/cambiar_estado/{{p[0]}}" style="display:inline;">
+                        <button type="submit" style="background:#4caf50;color:#fff;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;">Marcar como realizado</button>
+                    </form>
+                    {% else %}
+                    <span style="color:#4caf50;font-weight:bold;">realizado</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    <!-- El JS de la gráfica está en static/js/graficas.js -->
+</body>
+</html>

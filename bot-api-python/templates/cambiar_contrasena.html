@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Cambiar Contraseña - NOMÁ</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .cambiar-container {
+            max-width: 400px;
+            margin: 80px auto;
+            background: rgba(255,255,255,0.97);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(54,162,235,0.08);
+            padding: 38px 32px 28px 32px;
+        }
+        .cambiar-container h2 {
+            text-align: center;
+            margin-bottom: 24px;
+            color: #2d3e50;
+        }
+        .cambiar-container input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 18px;
+            border-radius: 7px;
+            border: 1px solid #eaf6fb;
+            font-size: 1rem;
+        }
+        .cambiar-container button {
+            width: 100%;
+        }
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .exito {
+            color: #27ae60;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="cambiar-container">
+        <form method="POST">
+            {{ csrf_token() }}
+            <h2>Cambiar Contraseña</h2>
+            {% if error %}<div class="error">{{ error }}</div>{% endif %}
+            {% if exito %}<div class="exito">{{ exito }}</div>{% endif %}
+            <input type="password" name="actual" placeholder="Contraseña actual" required>
+            <input type="password" name="nueva" placeholder="Nueva contraseña" required>
+            <button type="submit">Cambiar</button>
+        </form>
+        <a href="/pedidos"><button>Volver</button></a>
+    </div>
+</body>
+</html>

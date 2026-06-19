@@ -1,0 +1,249 @@
+.admin-negocios {
+  padding: 24px;
+}
+
+.admin-negocios .admin-header {
+  margin-bottom: 24px;
+}
+
+.admin-negocios .admin-header h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #E8F0F7;
+  margin: 0 0 8px 0;
+}
+
+.admin-negocios .admin-header p {
+  color: #8892A0;
+  margin: 0;
+}
+
+.filtros-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filtros-bar .search-input {
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 0 16px;
+}
+
+.filtros-bar .search-input svg {
+  color: #8892A0;
+}
+
+.filtros-bar .search-input input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 12px 0;
+  color: #E8F0F7;
+  font-size: 14px;
+}
+
+.filtros-bar .search-input input::placeholder {
+  color: #8892A0;
+}
+
+.filtros-bar select {
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #E8F0F7;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.filtros-bar select:focus {
+  outline: none;
+  border-color: #00FFD1;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: none;
+  color: #8892A0;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-ghost:hover {
+  color: #E8F0F7;
+}
+
+.results-info {
+  font-size: 13px;
+  color: #8892A0;
+  margin-bottom: 16px;
+}
+
+.negocios-table {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(0, 255, 209, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.negocios-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.negocios-table th,
+.negocios-table td {
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.negocios-table th {
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 12px;
+  font-weight: 600;
+  color: #8892A0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.negocios-table td {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  color: #E8F0F7;
+}
+
+.negocios-table .clickable-row {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.negocios-table .clickable-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.email-cell {
+  color: #8892A0;
+  font-size: 13px;
+}
+
+.number-cell {
+  font-family: 'JetBrains Mono', monospace;
+  text-align: right;
+}
+
+.negocios-table select.plan-badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.action-buttons .btn-action {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-suspend {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: #EF4444 !important;
+}
+
+.btn-suspend:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.btn-activate {
+  border-color: rgba(34, 197, 94, 0.3) !important;
+  color: #22C55E !important;
+}
+
+.btn-activate:hover {
+  background: rgba(34, 197, 94, 0.1) !important;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #E8F0F7;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-btn:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pagination-numbers {
+  display: flex;
+  gap: 4px;
+}
+
+.pagination-num {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #8892A0;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.pagination-num.active {
+  background: rgba(0, 255, 209, 0.1);
+  border-color: #00FFD1;
+  color: #00FFD1;
+}
+
+.pagination-num:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pagination-ellipsis {
+  color: #8892A0;
+  padding: 0 8px;
+}
+
+.loading-cell {
+  text-align: center;
+  padding: 40px !important;
+}
+
+.empty-row {
+  text-align: center;
+  color: #8892A0;
+  padding: 40px !important;
+}

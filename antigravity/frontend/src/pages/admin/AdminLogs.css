@@ -1,0 +1,217 @@
+.admin-logs {
+  padding: 24px;
+}
+
+.admin-logs .admin-header {
+  margin-bottom: 24px;
+}
+
+.admin-logs .admin-header h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #E8F0F7;
+  margin: 0 0 8px 0;
+}
+
+.admin-logs .admin-header p {
+  color: #8892A0;
+  margin: 0;
+}
+
+.logs-controls {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(0, 255, 209, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.filtros-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.filtros-row select,
+.filtros-row input {
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #E8F0F7;
+  font-size: 13px;
+}
+
+.filtros-row select:focus,
+.filtros-row input:focus {
+  outline: none;
+  border-color: #00FFD1;
+}
+
+.filtros-row input[type="date"] {
+  max-width: 150px;
+}
+
+.logs-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.auto-scroll-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #8892A0;
+  cursor: pointer;
+}
+
+.auto-scroll-toggle input {
+  accent-color: #00FFD1;
+}
+
+.logs-table-container {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(0, 255, 209, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.logs-table th,
+.logs-table td {
+  padding: 12px 16px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.logs-table th {
+  background: rgba(0, 0, 0, 0.3);
+  font-size: 11px;
+  font-weight: 600;
+  color: #8892A0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.logs-table td {
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  color: #E8F0F7;
+}
+
+.log-row {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.log-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.log-row.error {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.log-row.warning {
+  background: rgba(255, 184, 64, 0.05);
+}
+
+.timestamp-cell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #8892A0;
+  width: 150px;
+}
+
+.nivel-badge {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.nivel-badge.error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #EF4444;
+}
+
+.nivel-badge.warning {
+  background: rgba(255, 184, 64, 0.15);
+  color: #FFB840;
+}
+
+.nivel-badge.info {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3B82F6;
+}
+
+.nivel-badge.debug {
+  background: rgba(107, 114, 128, 0.15);
+  color: #9CA3AF;
+}
+
+.negocio-cell {
+  color: #8892A0;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tipo-badge {
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  font-size: 11px;
+  color: #8892A0;
+}
+
+.mensaje-cell {
+  max-width: 400px;
+}
+
+.mensaje-preview {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-detalles {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+}
+
+.log-detalles pre {
+  margin: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #A855F7;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.loading-cell {
+  text-align: center;
+  padding: 40px !important;
+}
+
+.empty-row {
+  text-align: center;
+  color: #8892A0;
+  padding: 40px !important;
+}

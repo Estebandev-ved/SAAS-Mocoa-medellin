@@ -1,0 +1,73 @@
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.size-sm {
+  font-size: 10px;
+  padding: 2px 8px;
+}
+
+.size-md {
+  font-size: 11px;
+  padding: 4px 10px;
+}
+
+.variant-pill {
+  border-radius: 100px;
+}
+
+.variant-dot {
+  font-size: 12px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-success {
+  background: rgba(0, 230, 118, 0.15);
+  color: var(--success);
+}
+
+.status-warning {
+  background: rgba(255, 179, 0, 0.15);
+  color: var(--warning);
+}
+
+.status-error {
+  background: rgba(255, 82, 82, 0.15);
+  color: var(--error);
+}
+
+.status-info {
+  background: rgba(41, 182, 246, 0.15);
+  color: var(--info);
+}
+
+.status-accent {
+  background: var(--accent-glow);
+  color: var(--accent-primary);
+}
+
+.status-purple {
+  background: rgba(167, 139, 250, 0.15);
+  color: #A78BFA;
+}
+
+.status-default {
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+.status-warning .status-dot {
+  animation: pulse 1.5s ease-in-out infinite;
+}

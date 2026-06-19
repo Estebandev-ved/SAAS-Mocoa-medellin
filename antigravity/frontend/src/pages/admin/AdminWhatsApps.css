@@ -1,0 +1,236 @@
+.admin-whatsapps {
+  padding: 24px;
+}
+
+.admin-whatsapps .admin-header {
+  margin-bottom: 24px;
+}
+
+.admin-whatsapps .admin-header h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #E8F0F7;
+  margin: 0 0 8px 0;
+}
+
+.admin-whatsapps .admin-header p {
+  color: #8892A0;
+  margin: 0;
+}
+
+.wa-overview {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(0, 255, 209, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.wa-counter {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.wa-counter .wa-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 56px;
+  font-weight: 700;
+  color: #00FFD1;
+}
+
+.wa-counter .wa-divider {
+  font-size: 24px;
+  color: #8892A0;
+}
+
+.wa-counter .wa-total {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 56px;
+  font-weight: 700;
+  color: #E8F0F7;
+}
+
+.wa-counter .wa-label {
+  font-size: 18px;
+  color: #8892A0;
+  margin-left: 12px;
+}
+
+.wa-progress-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.wa-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00FFD1, #22C55E);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.whatsapp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.whatsapp-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(0, 255, 209, 0.1);
+  border-radius: 16px;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.whatsapp-card.connected {
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.whatsapp-card.offline {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.whatsapp-card.reconnecting {
+  border-color: rgba(255, 184, 64, 0.3);
+  animation: borderPulse 2s infinite;
+}
+
+@keyframes borderPulse {
+  0%, 100% { border-color: rgba(255, 184, 64, 0.3); }
+  50% { border-color: rgba(255, 184, 64, 0.6); }
+}
+
+.wa-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.wa-business {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wa-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #00FFD1, #A855F7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #0A0F14;
+  font-size: 18px;
+}
+
+.wa-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.wa-name {
+  font-weight: 600;
+  color: #E8F0F7;
+}
+
+.wa-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: #8892A0;
+}
+
+.wa-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.wa-status.connected {
+  color: #22C55E;
+}
+
+.wa-status.disconnected {
+  color: #EF4444;
+}
+
+.wa-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.wa-status.connected .wa-status-dot {
+  background: #22C55E;
+  animation: pulse 2s infinite;
+}
+
+.wa-status.disconnected .wa-status-dot {
+  background: #EF4444;
+}
+
+.wa-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.wa-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.wa-detail-label {
+  font-size: 13px;
+  color: #8892A0;
+}
+
+.wa-detail-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: #E8F0F7;
+}
+
+.wa-card-footer {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #8892A0;
+}
+
+.empty-state svg {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
