@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('baileys');
 const { Boom } = require('@hapi/boom');
 const fs = require('fs');
 const path = require('path');
@@ -19,8 +19,18 @@ async function iniciarBot() {
 
         const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
 
+        let version = [2, 3000, 1017531287]; // Fallback version
+        try {
+            const latest = await fetchLatestBaileysVersion();
+            version = latest.version;
+            console.log(`[WhatsApp] Versión de WhatsApp Web obtenida: ${version.join('.')}`);
+        } catch (err) {
+            console.warn('[WhatsApp] No se pudo obtener la última versión, usando fallback:', version.join('.'));
+        }
+
         sock = makeWASocket({
             auth: state,
+            version,
             logger: pino({ level: 'silent' }),
             browser: ['ANTIGRAVITY Bot', 'Chrome', '120.0.0'],
             connectTimeoutMs: 60000,
