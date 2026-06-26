@@ -55,6 +55,17 @@ class BotInstance {
 
       this.sock.ev.on('creds.update', saveCreds);
 
+      const { handleMessage } = require('./handlers/messageHandler');
+      this.sock.ev.on('messages.upsert', async ({ messages, type }) => {
+        for (const msg of messages) {
+          try {
+            await handleMessage(this.sock, msg, this.negocioId);
+          } catch (err) {
+            console.error(`[Bot-${this.negocioId}] Error en handleMessage:`, err.message);
+          }
+        }
+      });
+
       this.sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
 

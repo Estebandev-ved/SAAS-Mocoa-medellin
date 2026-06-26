@@ -57,6 +57,7 @@ const botConfigRoutes = require('./routes/bot-config');
 const conversacionesRoutes = require('./routes/conversaciones');
 const adminRoutes = require('./routes/admin');
 const agentesRoutes = require('./routes/agentes');
+const domiciliosRoutes = require('./routes/domicilios');
 
 app.use('/api', allRoutes);
 app.use('/api/auth', authRoutes);
@@ -67,6 +68,7 @@ app.use('/api/bot', botConfigRoutes);
 app.use('/api/conversaciones', conversacionesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/agentes', agentesRoutes);
+app.use('/api/domicilios', domiciliosRoutes);
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -86,13 +88,33 @@ const PORT = process.env.PORT_API || 3002;
 const JWT_SECRET = process.env.JWT_SECRET || 'antigravity_secret_key';
 const SOCKET_SECRET = process.env.SOCKET_SECRET || 'secreto_interno_antigravity';
 
-io.use((socket, next) => {
+io.use(async (socket, next) => {
     const { token, secret, tipo } = socket.handshake.auth;
+    const trackingToken = socket.handshake.query?.trackingToken;
     
     if (tipo === 'bot_interno' && secret === SOCKET_SECRET) {
         socket.isBotInterno = true;
         console.log('[Socket] Conexión de bot interno autorizada');
         return next();
+    }
+    
+    if (trackingToken) {
+        try {
+            const db = require('../db/config');
+            const [domicilios] = await db.execute(
+                'SELECT id FROM domicilios WHERE tracking_token = ?',
+                [trackingToken]
+            );
+            if (domicilios.length > 0) {
+                socket.trackingToken = trackingToken;
+                socket.join(`tracking_${trackingToken}`);
+                console.log(`[Socket] Cliente tracking conectado: tracking_${trackingToken}`);
+                return next();
+            }
+        } catch (err) {
+            console.log('[Socket] Error verificando tracking token:', err.message);
+        }
+        return next(new Error('Token de seguimiento inválido'));
     }
     
     if (token) {

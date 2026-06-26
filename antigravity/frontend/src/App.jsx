@@ -19,6 +19,9 @@ const AutomationsPage = lazy(() => import('./pages/dashboard/AutomationsPage'));
 const CustomizePage = lazy(() => import('./pages/dashboard/CustomizePage'));
 const SettingsPage = lazy(() => import('./pages/dashboard/SettingsPage'));
 const WhatsAppPage = lazy(() => import('./pages/dashboard/WhatsAppPage'));
+const DomiciliosPage = lazy(() => import('./pages/dashboard/DomiciliosPage'));
+const PortalDomiciliario = lazy(() => import('./pages/dashboard/PortalDomiciliario'));
+const TrackingCliente = lazy(() => import('./pages/dashboard/TrackingCliente'));
 
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
 const AdminResumen = lazy(() => import('./pages/admin/AdminResumen'));
@@ -190,7 +193,12 @@ export default function App() {
               <Route path="automatizaciones" element={<Suspense fallback={<DashboardLoadingScreen />}><AutomationsPage /></Suspense>} />
               <Route path="personalizar" element={<Suspense fallback={<DashboardLoadingScreen />}><CustomizePage /></Suspense>} />
               <Route path="ajustes" element={<Suspense fallback={<DashboardLoadingScreen />}><SettingsPage /></Suspense>} />
+              <Route path="domicilios" element={<Suspense fallback={<DashboardLoadingScreen />}><DomiciliosPage /></Suspense>} />
             </Route>
+
+            <Route path="/delivery/login" element={<Suspense fallback={<DashboardLoadingScreen />}><PortalDomiciliario /></Suspense>} />
+            <Route path="/delivery/portal" element={<Suspense fallback={<DashboardLoadingScreen />}><PortalDomiciliario /></Suspense>} />
+            <Route path="/delivery/track/:token" element={<Suspense fallback={<DashboardLoadingScreen />}><TrackingCliente /></Suspense>} />
             
             <Route path="/admin" element={
               <AdminRoute>

@@ -10,7 +10,7 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    if (token) {
+    if (token && !window.location.pathname.startsWith('/delivery')) {
       checkAuth();
     } else {
       setLoading(false);

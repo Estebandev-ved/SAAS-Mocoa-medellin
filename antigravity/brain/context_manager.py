@@ -1,17 +1,47 @@
 import redis
 import json
 import os
+import logging
+import socket
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
+
+def is_port_open(host: str, port: int) -> bool:
+    try:
+        s = socket.create_connection((host, port), timeout=0.5)
+        s.close()
+        return True
+    except Exception:
+        return False
 
 class ContextManager:
     def __init__(self):
-        self.redis_client = redis.Redis(
-            host=os.getenv('REDIS_HOST', 'localhost'),
-            port=int(os.getenv('REDIS_PORT', 6379)),
-            db=0,
-            decode_responses=True
-        )
+        self.redis_client = None
+        self.use_redis = False
+        
+        host = os.getenv('REDIS_HOST', 'localhost')
+        port = int(os.getenv('REDIS_PORT', 6379))
+        
+        if is_port_open(host, port):
+            try:
+                self.redis_client = redis.Redis(
+                    host=host,
+                    port=port,
+                    db=0,
+                    decode_responses=True
+                )
+                self.use_redis = True
+                logger.info("[ContextManager] Redis detectado y conectado correctamente.")
+            except Exception as e:
+                logger.warning(f"[ContextManager] Error al inicializar cliente de Redis: {e}")
+                self.use_redis = False
+        else:
+            logger.warning("[ContextManager] Redis no disponible (puerto cerrado). Usando fallback directo a base de datos.")
+            self.use_redis = False
+            
         self.ttl = 7200
+
 
     def _get_key(self, negocio_id, cliente_id):
         return f"context:{negocio_id}:{cliente_id}"
@@ -19,14 +49,21 @@ class ContextManager:
     def get_context(self, negocio_id, cliente_id):
         key = self._get_key(negocio_id, cliente_id)
         
-        cached = self.redis_client.get(key)
-        if cached:
-            return json.loads(cached)
+        if self.use_redis and self.redis_client:
+            try:
+                cached = self.redis_client.get(key)
+                if cached:
+                    return json.loads(cached)
+            except Exception as e:
+                logger.error(f"[ContextManager] Error leyendo de Redis: {e}")
         
         contexto = self._load_from_db(negocio_id, cliente_id)
         
-        if contexto:
-            self.redis_client.setex(key, self.ttl, json.dumps(contexto))
+        if contexto and self.use_redis and self.redis_client:
+            try:
+                self.redis_client.setex(key, self.ttl, json.dumps(contexto))
+            except Exception as e:
+                logger.error(f"[ContextManager] Error escribiendo en Redis: {e}")
         
         return contexto
 
@@ -56,7 +93,7 @@ class ContextManager:
             
             return []
         except Exception as e:
-            print(f"[ContextManager] Error loading from DB: {e}")
+            logger.error(f"[ContextManager] Error loading from DB: {e}")
             return []
 
     def save_message(self, negocio_id, cliente_id, rol, contenido):
@@ -76,7 +113,11 @@ class ContextManager:
         if len(contexto) > 20:
             contexto = contexto[-20:]
         
-        self.redis_client.setex(key, self.ttl, json.dumps(contexto))
+        if self.use_redis and self.redis_client:
+            try:
+                self.redis_client.setex(key, self.ttl, json.dumps(contexto))
+            except Exception as e:
+                logger.error(f"[ContextManager] Error guardando en Redis: {e}")
         
         self._save_to_db_async(negocio_id, cliente_id, mensaje)
 
@@ -114,16 +155,20 @@ class ContextManager:
                     cursor.close()
                     conn.close()
                 except Exception as e:
-                    print(f"[ContextManager] Async save error: {e}")
+                    logger.error(f"[ContextManager] Async save error: {e}")
             
             thread = threading.Thread(target=save)
             thread.start()
         except Exception as e:
-            print(f"[ContextManager] Error initiating async save: {e}")
+            logger.error(f"[ContextManager] Error initiating async save: {e}")
 
     def clear_context(self, negocio_id, cliente_id):
         key = self._get_key(negocio_id, cliente_id)
-        self.redis_client.delete(key)
-
+        if self.use_redis and self.redis_client:
+            try:
+                self.redis_client.delete(key)
+            except Exception as e:
+                logger.error(f"[ContextManager] Error limpiando Redis: {e}")
 
 context_manager = ContextManager()
+

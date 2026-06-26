@@ -69,9 +69,9 @@ async function iniciarBot() {
         });
 
         sock.ev.on('messages.upsert', async ({ messages, type }) => {
-            if (type !== 'notify') return;
-
+            console.log(`[Diagnostic] Recibido messages.upsert. Tipo: ${type}, Cantidad: ${messages.length}`);
             for (const msg of messages) {
+                console.log(`[Diagnostic] Detalle msg - JID: ${msg.key.remoteJid}, deMi: ${msg.key.fromMe}, tieneMsg: ${!!msg.message}`);
                 try {
                     await messageHandler.procesarMensaje(msg, sock);
                 } catch (error) {

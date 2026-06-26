@@ -1,8 +1,15 @@
 const db = require('../../db/config');
 const instanceManager = require('../InstanceManager');
 
+const crypto = require('crypto');
+
 const BRAIN_URL = process.env.BRAIN_URL || 'http://localhost:8000';
 const API_URL = process.env.API_URL || 'http://localhost:3002';
+const TRACKING_BASE_URL = process.env.TRACKING_BASE_URL || 'http://localhost:5177/delivery/track';
+
+function generarTrackingToken() {
+    return crypto.randomBytes(32).toString('hex');
+}
 
 const RESPUESTAS_FALLBACK = {
     'es': "Disculpa, no pude procesar tu mensaje. ¿Podrías intentarlo de nuevo?",
@@ -63,10 +70,16 @@ async function procesarMensaje(mensaje, negocioId, clienteId, contexto = []) {
 
         await ejecutarAccion(resultado.datos_accion, negocioId, clienteId);
 
-        await guardarLogAgente(negocioId, clienteId, resultado.intencion, resultado.agente_usado, mensaje, resultado.respuesta, resultado.tokens_usados || 0);
+        let respuestaTexto = resultado.respuesta;
+        if (resultado.datos_accion?.tipo === 'crear_pedido' && ultimoTrackingUrl) {
+            respuestaTexto += `\n\n📦 Puedes seguir tu pedido en tiempo real aquí:\n${ultimoTrackingUrl}`;
+            ultimoTrackingUrl = null;
+        }
+
+        await guardarLogAgente(negocioId, clienteId, resultado.intencion, resultado.agente_usado, mensaje, respuestaTexto, resultado.tokens_usados || 0);
 
         return {
-            respuesta: resultado.respuesta,
+            respuesta: respuestaTexto,
             intencion: resultado.intencion,
             agente_usado: resultado.agente_usado,
             datos_accion: resultado.datos_accion,
@@ -188,6 +201,8 @@ async function ejecutarAccion(datosAccion, negocioId, clienteId) {
     }
 }
 
+let ultimoTrackingUrl = null;
+
 async function crearPedido(negocioId, clienteId, datos) {
     if (!datos.productos || datos.productos.length === 0) return;
 
@@ -199,6 +214,7 @@ async function crearPedido(negocioId, clienteId, datos) {
 
         let total = 0;
         const items = [];
+        let direccionEntrega = datos.direccion_entrega || datos.direccion || null;
 
         for (const item of datos.productos) {
             const producto = productosDb.find(p => 
@@ -224,9 +240,9 @@ async function crearPedido(negocioId, clienteId, datos) {
         const numeroPedido = `AG-${String(negocioId).padStart(3, '0')}-${Date.now().toString().slice(-6)}`;
 
         const [result] = await db.execute(
-            `INSERT INTO pedidos (negocio_id, cliente_id, numero_pedido, estado, subtotal, total)
-             VALUES (?, ?, ?, 'pendiente_pago', ?, ?)`,
-            [negocioId, clienteId, numeroPedido, total, total]
+            `INSERT INTO pedidos (negocio_id, cliente_id, numero_pedido, estado, subtotal, total, direccion_entrega)
+             VALUES (?, ?, ?, 'pendiente_pago', ?, ?, ?)`,
+            [negocioId, clienteId, numeroPedido, total, total, direccionEntrega]
         );
 
         for (const item of items) {
@@ -241,6 +257,28 @@ async function crearPedido(negocioId, clienteId, datos) {
             'UPDATE clientes SET total_pedidos = total_pedidos + 1 WHERE id = ?',
             [clienteId]
         );
+
+        const [modulos] = await db.execute(
+            'SELECT activo, config FROM negocio_modulos WHERE negocio_id = ? AND modulo_name = ?',
+            [negocioId, 'domicilios']
+        );
+
+        const domiciliosActivo = modulos.length > 0 && modulos[0].activo;
+        ultimoTrackingUrl = null;
+
+        if (domiciliosActivo && direccionEntrega) {
+            const trackingToken = generarTrackingToken();
+            const tarifaEnvio = 5000;
+
+            await db.execute(
+                `INSERT INTO domicilios (negocio_id, pedido_id, estado, tarifa_envio, tracking_token)
+                 VALUES (?, ?, 'pendiente', ?, ?)`,
+                [negocioId, result.insertId, tarifaEnvio, trackingToken]
+            );
+
+            ultimoTrackingUrl = `${TRACKING_BASE_URL}/${trackingToken}`;
+            console.log(`[Orchestrator] Domicilio creado para pedido ${numeroPedido}: ${ultimoTrackingUrl}`);
+        }
 
         console.log(`[Orchestrator] Pedido ${numeroPedido} creado para cliente ${clienteId}`);
 

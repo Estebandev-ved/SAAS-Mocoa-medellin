@@ -109,6 +109,30 @@ export const onCampañaProgreso = (callback) => {
   }
 };
 
+export const onDriverLocation = (callback) => {
+  if (socket) {
+    socket.on('driver_location', callback);
+  }
+};
+
+export const onDriverStatus = (callback) => {
+  if (socket) {
+    socket.on('driver_status', callback);
+  }
+};
+
+export const onDomicilioAsignado = (callback) => {
+  if (socket) {
+    socket.on('domicilio_asignado', callback);
+  }
+};
+
+export const onDomicilioEntregado = (callback) => {
+  if (socket) {
+    socket.on('domicilio_entregado', callback);
+  }
+};
+
 export const removeAllListeners = () => {
   if (socket) {
     socket.removeAllListeners();

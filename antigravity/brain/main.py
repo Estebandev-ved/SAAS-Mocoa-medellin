@@ -33,13 +33,43 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+class SafeRedisClient:
+    def __init__(self):
+        self.client = None
+        self.use_redis = False
+        try:
+            self.client = redis.Redis(
+                host=os.getenv('REDIS_HOST', 'localhost'),
+                port=int(os.getenv('REDIS_PORT', 6379)),
+                db=0,
+                decode_responses=True,
+                socket_timeout=1.0,
+                socket_connect_timeout=1.0
+            )
+            self.client.ping()
+            self.use_redis = True
+            logger.info("[Brain] Redis conectado correctamente.")
+        except Exception as e:
+            logger.warning(f"[Brain] Redis no disponible. Usando bypass seguro para estadísticas y caché.")
+            self.use_redis = False
 
-redis_client = redis.Redis(
-    host=os.getenv('REDIS_HOST', 'localhost'),
-    port=int(os.getenv('REDIS_PORT', 6379)),
-    db=0,
-    decode_responses=True
-)
+    def incr(self, name, amount=1):
+        if self.use_redis and self.client:
+            try:
+                return self.client.incr(name, amount)
+            except Exception as e:
+                logger.error(f"[Brain] Error en redis.incr: {e}")
+        return None
+
+    def delete(self, *names):
+        if self.use_redis and self.client:
+            try:
+                return self.client.delete(*names)
+            except Exception as e:
+                logger.error(f"[Brain] Error en redis.delete: {e}")
+        return None
+
+redis_client = SafeRedisClient()
 
 class ProcesarRequest(BaseModel):
     mensaje: str

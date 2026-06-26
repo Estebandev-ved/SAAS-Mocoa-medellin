@@ -31,10 +31,10 @@ function limpiarJid(jid) {
 async function procesarMensaje(mensaje, sock) {
     try {
         const jid = mensaje.key.remoteJid;
-        const esGrupo = jid.includes('@g.us');
+        const esIndividual = jid.endsWith('@s.whatsapp.net') || jid.endsWith('@c.us') || jid.endsWith('@lid');
         
-        if (esGrupo) {
-            console.log('[MessageHandler] Ignorando mensaje de grupo:', jid);
+        if (!esIndividual) {
+            console.log('[MessageHandler] Ignorando mensaje no individual (grupo, broadcast, newsletter, etc.):', jid);
             return;
         }
 
@@ -148,7 +148,7 @@ async function procesarMensaje(mensaje, sock) {
                 cliente.id,
                 negocioId,
                 sock,
-                numero,
+                jid,
                 textoMensaje,
                 urlImagen
             );
@@ -156,14 +156,14 @@ async function procesarMensaje(mensaje, sock) {
         }
 
         if (intencion === 'pedido' && datosPedido) {
-            await procesarPedido(cliente, negocioId, datosPedido, sock, numero, db);
+            await procesarPedido(cliente, negocioId, datosPedido, sock, jid, db);
             return;
         }
 
-        if (intencion === 'saludo' || intencion === 'consulta' || intencion === 'otro' || intencion === 'consulta_precio' || intencion === 'consulta_producto') {
-            await whatsapp.enviarMensaje(sock, numero, respuestaTexto);
-        } else if (intencion === 'estado_pedido') {
-            await buscarYEnviarEstadoPedido(cliente.id, sock, numero, db);
+        if (intencion === 'estado_pedido') {
+            await buscarYEnviarEstadoPedido(cliente.id, sock, jid, db);
+        } else {
+            await whatsapp.enviarMensaje(sock, jid, respuestaTexto);
         }
 
         const nuevoMensaje = {

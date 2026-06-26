@@ -18,7 +18,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !window.location.pathname.startsWith('/delivery')) {
       localStorage.removeItem('ag_token');
       localStorage.removeItem('ag_user');
       window.location.href = '/login';
@@ -131,6 +131,33 @@ export const businessService = {
   },
   upgradePlan: async (nuevoPlan) => {
     const response = await api.post('/api/business/plan/upgrade', { nuevoPlan });
+    return response.data;
+  }
+};
+
+export const domiciliosService = {
+  getDrivers: async () => {
+    const response = await api.get('/api/domicilios/drivers');
+    return response.data;
+  },
+  createDriver: async (data) => {
+    const response = await api.post('/api/domicilios/drivers', data);
+    return response.data;
+  },
+  deleteDriver: async (id) => {
+    const response = await api.delete(`/api/domicilios/drivers/${id}`);
+    return response.data;
+  },
+  getActive: async () => {
+    const response = await api.get('/api/domicilios/active');
+    return response.data;
+  },
+  assign: async (domicilioId, domiciliarioId) => {
+    const response = await api.post('/api/domicilios/assign', { domicilio_id: domicilioId, domiciliario_id: domiciliarioId });
+    return response.data;
+  },
+  checkModule: async () => {
+    const response = await api.get('/api/domicilios/modulos/check');
     return response.data;
   }
 };

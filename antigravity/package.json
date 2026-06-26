@@ -5,10 +5,10 @@
   "main": "api/index.js",
   "scripts": {
     "start": "node api/index.js",
-    "bot": "node bot/index.js",
+    "bot": "node instance-manager/index.js",
     "brain": "node brain/index.js",
-    "dev": "concurrently \"npm run bot\" \"npm run start\"",
-    "dev:all": "concurrently \"npm run brain\" \"npm run bot\" \"npm run start\"",
+    "dev": "node instance-manager/index.js",
+    "dev:all": "concurrently \"npm run brain\" \"npm run dev\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

@@ -6,7 +6,10 @@ const paymentHandler = require('./paymentHandler');
 
 async function handleMessage(sock, msg, negocioId) {
     try {
-        if (!msg.message || msg.key.fromMe || msg.key.remoteJid?.includes('@g.us')) {
+        const jid = msg.key.remoteJid;
+        const esIndividual = jid?.endsWith('@s.whatsapp.net') || jid?.endsWith('@c.us') || jid?.endsWith('@lid');
+        
+        if (!msg.message || msg.key.fromMe || !esIndividual) {
             return;
         }
 

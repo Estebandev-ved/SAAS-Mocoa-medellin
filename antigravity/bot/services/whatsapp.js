@@ -1,8 +1,13 @@
 const axios = require('axios');
 
 function formatearJid(numero) {
+    if (!numero) return '';
+    if (numero.includes('@')) {
+        return numero;
+    }
     let limpio = numero.replace(/\D/g, '');
-    if (!limpio.startsWith('57')) {
+    // Si tiene exactamente 10 dígitos (celular colombiano típico) y no empieza por 57, agregamos 57
+    if (limpio.length === 10 && !limpio.startsWith('57')) {
         limpio = '57' + limpio;
     }
     return limpio + '@s.whatsapp.net';
