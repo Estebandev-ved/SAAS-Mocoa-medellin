@@ -50,7 +50,7 @@ export default function AdminWhatsApps() {
     
     try {
       for (const wa of offline) {
-        await apiService.post(`/admin/whatsapps/${wa.id}/reconectar`);
+        await apiService.post(`/api/admin/whatsapps/${wa.id}/reconectar`);
       }
       toast.success(`Reconexión iniciada para ${offline.length} WhatsApps`);
       setTimeout(loadWhatsApps, 3000);

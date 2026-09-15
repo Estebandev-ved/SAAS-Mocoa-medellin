@@ -110,6 +110,10 @@ export const conversationsService = {
   getAll: async () => {
     const response = await api.get('/api/chat/conversaciones');
     return response.data;
+  },
+  sendMessage: async (conversacionId, mensaje) => {
+    const response = await api.post(`/api/chat/conversaciones/${conversacionId}/mensaje`, { mensaje });
+    return response.data;
   }
 };
 
@@ -127,10 +131,43 @@ export const businessService = {
     return response.data;
   },
   saveOnboardingStep: async (step, data) => {
-    return { success: true };
+    // Antes esto no llamaba al backend (siempre devolvía { success: true }
+    // sin hacer nada) — todo lo que el usuario llena en el registro
+    // (tipo de negocio, dirección, métodos de pago, Nequi/Bancolombia...)
+    // se perdía apenas terminaba el wizard. El endpoint ya existía y
+    // funcionaba bien, solo nadie lo estaba llamando.
+    const response = await api.put(`/api/business/onboarding/${step}`, data);
+    return response.data;
+  },
+  aplicarPlantilla: async (tipoNegocio) => {
+    const response = await api.post('/api/business/plantilla', { tipo_negocio: tipoNegocio });
+    return response.data;
   },
   upgradePlan: async (nuevoPlan) => {
     const response = await api.post('/api/business/plan/upgrade', { nuevoPlan });
+    return response.data;
+  },
+  updatePassword: async (passwordActual, passwordNuevo) => {
+    const response = await api.put('/api/business/password', { passwordActual, passwordNuevo });
+    return response.data;
+  }
+};
+
+export const usuariosService = {
+  getAll: async () => {
+    const response = await api.get('/api/usuarios');
+    return response.data;
+  },
+  create: async (datos) => {
+    const response = await api.post('/api/usuarios', datos);
+    return response.data;
+  },
+  update: async (id, datos) => {
+    const response = await api.put(`/api/usuarios/${id}`, datos);
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`/api/usuarios/${id}`);
     return response.data;
   }
 };

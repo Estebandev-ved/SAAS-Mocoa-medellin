@@ -38,7 +38,7 @@ const Navbar = () => {
         >
           <motion.div 
             whileHover={{ scale: 1.05 }}
-            className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shadow-[0_0_20px_rgba(0,255,209,0.3)]"
+            className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shadow-[0_0_20px_rgba(229,57,53,0.3)]"
           >
             <Layers size={18} className="text-bg fill-bg" />
           </motion.div>
@@ -70,7 +70,7 @@ const Navbar = () => {
           
           {isAuthenticated ? (
             <motion.button
-                whileHover={{ y: -2, backgroundColor: 'rgba(0,255,209,0.1)' }}
+                whileHover={{ y: -2, backgroundColor: 'rgba(229,57,53,0.1)' }}
                 onClick={() => navigate('/dashboard')}
                 className="hidden sm:flex items-center gap-2 bg-transparent border border-accent/30 text-accent px-4 py-2 rounded-lg font-mono text-[11px] font-bold tracking-wider cursor-pointer transition-all duration-300"
             >
@@ -78,29 +78,29 @@ const Navbar = () => {
             </motion.button>
           ) : (
             <div className="hidden sm:flex items-center gap-4">
-                <a 
-                    href={`${import.meta.env.VITE_ANTIGRAVITY_URL || 'http://localhost:5174'}/login`}
+                <Link 
+                    to="/login"
                     className="no-underline"
                 >
                     <span className="text-[11px] font-mono font-bold tracking-wider text-muted hover:text-accent transition-colors">LOGIN</span>
-                </a>
-                <a 
-                    href={`${import.meta.env.VITE_ANTIGRAVITY_URL || 'http://localhost:5174'}/register`}
+                </Link>
+                <Link 
+                    to="/register"
                     className="no-underline"
                 >
                     <motion.span
-                        whileHover={{ y: -2, boxShadow: '0 8px 25px rgba(0,255,209,0.3)' }}
+                        whileHover={{ y: -2, boxShadow: '0 8px 25px rgba(229,57,53,0.3)' }}
                         whileTap={{ scale: 0.98 }}
                         className="bg-accent text-bg px-4 py-2 rounded-lg font-mono text-[11px] font-bold tracking-wider cursor-pointer inline-block"
                     >
                         CREAR CUENTA
                     </motion.span>
-                </a>
+                </Link>
             </div>
           )}
 
           <motion.button
-            whileHover={{ y: -2, boxShadow: '0 8px 25px rgba(0,255,209,0.3)' }}
+            whileHover={{ y: -2, boxShadow: '0 8px 25px rgba(229,57,53,0.3)' }}
             whileTap={{ scale: 0.98 }}
             className="hidden sm:flex bg-accent text-bg px-5 py-2 rounded-lg font-mono text-[11px] font-bold tracking-wider cursor-pointer border-none items-center gap-2"
             onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
@@ -149,20 +149,20 @@ const Navbar = () => {
                 </Link>
             ) : (
                 <div className="flex flex-col gap-3">
-                    <a 
-                        href={`${import.meta.env.VITE_ANTIGRAVITY_URL || 'http://localhost:5174'}/login`}
+                    <Link 
+                        to="/login"
                         className="text-text no-underline font-medium text-lg py-2"
                         onClick={() => setIsMobileMenuOpen(false)}
                     >
                         INICIAR SESIÓN
-                    </a>
-                    <a 
-                        href={`${import.meta.env.VITE_ANTIGRAVITY_URL || 'http://localhost:5174'}/register`}
+                    </Link>
+                    <Link 
+                        to="/register"
                         className="bg-accent text-bg text-center py-3 rounded-xl font-bold font-mono tracking-widest"
                         onClick={() => setIsMobileMenuOpen(false)}
                     >
                         CREAR CUENTA
-                    </a>
+                    </Link>
                 </div>
             )}
 

@@ -1,25 +1,42 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --bg-primary: #080C10;
-  --bg-secondary: #0A0F14;
-  --bg-tertiary: #0D1319;
-  --accent-primary: #00FFD1;
-  --accent-secondary: #00C4A0;
-  --accent-glow: rgba(0, 255, 209, 0.15);
-  --surface: rgba(255, 255, 255, 0.03);
-  --surface-hover: rgba(255, 255, 255, 0.06);
-  --border: rgba(0, 255, 209, 0.15);
-  --text-primary: #E8F0F7;
-  --text-secondary: #A0ACB8;
-  --text-muted: #5A7080;
-  --success: #00E676;
+  --bg-primary: #0A0A0A;
+  --bg-secondary: #111111;
+  --bg-tertiary: #1A1A1A;
+  --accent-primary: #E53935;
+  --accent-secondary: #C62828;
+  --accent-glow: rgba(229, 57, 53, 0.15);
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-hover: rgba(255, 255, 255, 0.08);
+  --border: rgba(229, 57, 53, 0.15);
+  --text-primary: #F5F5F5;
+  --text-secondary: #A0A0A0;
+  --text-muted: #666666;
+  --success: #4CAF50;
   --warning: #FFB300;
-  --error: #FF5252;
+  --error: #EF5350;
   --info: #29B6F6;
   --font-heading: 'Syne', sans-serif;
   --font-body: 'DM Sans', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
 }
 
 * {
@@ -168,4 +185,23 @@ input, textarea, select {
 
 .glow {
   box-shadow: 0 0 20px var(--accent-glow);
+}
+
+[data-theme="light"] {
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F8F8F8;
+  --bg-tertiary: #F0F0F0;
+  --accent-primary: #D32F2F;
+  --accent-secondary: #B71C1C;
+  --accent-glow: rgba(211, 47, 47, 0.1);
+  --surface: rgba(0, 0, 0, 0.03);
+  --surface-hover: rgba(0, 0, 0, 0.06);
+  --border: rgba(211, 47, 47, 0.15);
+  --text-primary: #1A1A1A;
+  --text-secondary: #555555;
+  --text-muted: #888888;
+  --success: #2E7D32;
+  --warning: #F57F17;
+  --error: #C62828;
+  --info: #0277BD;
 }

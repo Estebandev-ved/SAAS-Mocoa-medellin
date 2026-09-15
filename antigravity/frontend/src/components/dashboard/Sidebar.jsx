@@ -15,7 +15,7 @@ const navItems = [
   { path: '/dashboard/analytics', icon: 'chart', label: 'Analytics', plans: ['professional', 'enterprise'], modulo: 'reportes' },
   { path: '/dashboard/automatizaciones', icon: 'zap', label: 'Automatizaciones', plans: ['professional', 'enterprise'], modulo: 'crm' },
   { path: '/dashboard/domicilios', icon: 'truck', label: 'Domicilios', modulo: 'domicilios', plans: ['professional', 'enterprise'] },
-  { path: '/dashboard/personalizar', icon: 'palette', label: 'Configurar Bot' },
+  { path: '/dashboard/usuarios', icon: 'users', label: 'Usuarios' },
   { path: '/dashboard/ajustes', icon: 'gear', label: 'Ajustes' },
   { path: '/admin/resumen', icon: 'shield', label: 'Panel Admin', role: 'admin' }
 ];
@@ -34,7 +34,8 @@ const Icons = ({ name }) => {
     lock: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
     shield: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
     logout: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
-    truck: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+    truck: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+    users: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
   };
   return icons[name] || null;
 };

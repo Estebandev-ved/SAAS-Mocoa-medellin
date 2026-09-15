@@ -19,11 +19,11 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await authService.login(email, password);
-      if (response.success) {
+      if (response.token) {
         setToken(response.token);
-        setUser(response.user);
+        setUser(response.negocio);
         localStorage.setItem('antigravity_token', response.token);
-        localStorage.setItem('antigravity_user', JSON.stringify(response.user));
+        localStorage.setItem('antigravity_user', JSON.stringify(response.negocio));
         return { success: true };
       }
       return { success: false, error: response.error };
@@ -38,11 +38,11 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password, phone) => {
     try {
       const response = await authService.register(name, email, password, phone);
-      if (response.success) {
+      if (response.token) {
         setToken(response.token);
-        setUser(response.user);
+        setUser(response.negocio);
         localStorage.setItem('antigravity_token', response.token);
-        localStorage.setItem('antigravity_user', JSON.stringify(response.user));
+        localStorage.setItem('antigravity_user', JSON.stringify(response.negocio));
         return { success: true };
       }
       return { success: false, error: response.error };
@@ -61,8 +61,16 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('antigravity_user');
   };
 
+  const updateUser = (updates) => {
+    setUser(prev => {
+      const updated = { ...prev, ...updates };
+      localStorage.setItem('antigravity_user', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, register, loading, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ user, token, login, logout, register, updateUser, loading, isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,22 +1,16 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const mysql = require('mysql2/promise');
+const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
-const { injectTenantId, checkPlan, PLAN_LIMITS } = require('../middleware/tenant');
+const { checkPlan } = require('../middleware/tenant');
+const { getPlan, getPlanFeatures, checkLimit, getNextPlan, getPlanPrice, getIncludedFeatureLabels, getUpgradeBenefits, getAllPlans } = require('../../config/planConfig');
 
+// Router canónico para /api/business (antes montado en /api/negocio, que
+// ningún cliente llamaba — el frontend siempre pegó a /api/business/*).
+// Usa el pool de conexión y el middleware de auth compartidos en vez de los
+// propios que tenía este archivo (pool de MySQL duplicado, JWT_SECRET con
+// valor por defecto hardcodeado).
 const router = express.Router();
-
-const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'antigravity',
-    waitForConnections: true,
-    connectionLimit: 10
-});
-
-const JWT_SECRET = process.env.JWT_SECRET || 'antigravity_secret_key';
 
 router.use(verificarAuth);
 
@@ -24,7 +18,7 @@ router.get('/perfil', async (req, res) => {
     try {
         const negocioId = req.negocio.id;
 
-        const [negocios] = await pool.query(
+        const [negocios] = await db.execute(
             `SELECT id, nombre, color_principal, logo_url, whatsapp, email_dueno, 
                     nit, razon_social, tipo_negocio, ciudad, departamento, direccion, 
                     telefono, sitio_web, descripcion_negocio, numero_empleados, 
@@ -89,12 +83,12 @@ router.put('/perfil', async (req, res) => {
 
         values.push(negocioId);
 
-        await pool.query(
+        await db.execute(
             `UPDATE negocios SET ${updates.join(', ')} WHERE id = ?`,
             values
         );
 
-        const [negocios] = await pool.query(
+        const [negocios] = await db.execute(
             'SELECT * FROM negocios WHERE id = ?',
             [negocioId]
         );
@@ -109,7 +103,9 @@ router.put('/perfil', async (req, res) => {
 router.put('/password', async (req, res) => {
     try {
         const negocioId = req.negocio.id;
-        const { passwordActual, passwordNueva } = req.body;
+        const passwordActual = req.body.passwordActual;
+        // El frontend manda "passwordNuevo" (con typo); toleramos ambas formas.
+        const passwordNueva = req.body.passwordNueva || req.body.passwordNuevo;
 
         if (!passwordActual || !passwordNueva) {
             return res.status(400).json({ error: 'Passwords requeridos' });
@@ -119,7 +115,7 @@ router.put('/password', async (req, res) => {
             return res.status(400).json({ error: 'Mínimo 8 caracteres' });
         }
 
-        const [negocios] = await pool.query(
+        const [negocios] = await db.execute(
             'SELECT password FROM negocios WHERE id = ?',
             [negocioId]
         );
@@ -134,7 +130,7 @@ router.put('/password', async (req, res) => {
         }
 
         const passwordHash = await bcrypt.hash(passwordNueva, 12);
-        await pool.query(
+        await db.execute(
             'UPDATE negocios SET password = ? WHERE id = ?',
             [passwordHash, negocioId]
         );
@@ -150,7 +146,7 @@ router.get('/plan', async (req, res) => {
     try {
         const negocioId = req.negocio.id;
 
-        const [negocios] = await pool.query(
+        const [negocios] = await db.execute(
             'SELECT plan, suscripcion_activa, suscripcion_inicio, suscripcion_fin, trial_hasta FROM negocios WHERE id = ?',
             [negocioId]
         );
@@ -160,60 +156,107 @@ router.get('/plan', async (req, res) => {
         }
 
         const negocio = negocios[0];
-        
-        const features = {
-            starter: {
-                nombre: 'Starter',
-                precio: 450000,
-                features: [
-                    'Bot de ventas básico',
-                    'Hasta 100 clientes',
-                    'Catálogo de productos',
-                    'Pedidos por WhatsApp',
-                    'Reportes básicos',
-                    'Soporte por email'
-                ]
-            },
-            professional: {
-                nombre: 'Professional',
-                precio: 850000,
-                features: [
-                    'Todo de Starter',
-                    'Clientes ilimitados',
-                    'Analytics avanzado',
-                    'Automatizaciones',
-                    'Personalización completa',
-                    'Múltiples métodos de pago',
-                    'Soporte prioritario',
-                    'API access'
-                ]
-            },
-            enterprise: {
-                nombre: 'Enterprise',
-                precio: 1800000,
-                features: [
-                    'Todo de Professional',
-                    'Multi-sede',
-                    'Integraciones (Rappi/iFood)',
-                    'OCR verificación de pagos',
-                    'Equipo completo',
-                    'Soporte 24/7',
-                    'SLA garantizado',
-                    'Implementación dedicada'
-                ]
+        const plan = negocio.plan || 'starter';
+        const planInfo = getPlan(plan);
+
+        // Uso real del mes en curso — siempre en vivo desde las tablas
+        // operativas (agente_logs, clientes, productos), nunca de una tabla
+        // de caché aparte que se pueda quedar desactualizada. mensajes
+        // incluye TODOS los canales (WhatsApp y llamadas), porque
+        // orchestrator.js registra el mismo `agente_logs` sin importar el
+        // canal de origen.
+        const periodo = new Date().toISOString().substring(0, 7);
+        const [[mensajesStats], [clientesStats], [productosStats]] = await Promise.all([
+            db.execute(
+                `SELECT COUNT(*) as total FROM agente_logs
+                 WHERE negocio_id = ? AND DATE_FORMAT(created_at, '%Y-%m') = ?`,
+                [negocioId, periodo]
+            ),
+            db.execute(
+                `SELECT COUNT(*) as total FROM clientes
+                 WHERE negocio_id = ? AND DATE_FORMAT(created_at, '%Y-%m') = ?`,
+                [negocioId, periodo]
+            ),
+            db.execute(
+                `SELECT COUNT(*) as total FROM productos WHERE negocio_id = ?`,
+                [negocioId]
+            ),
+        ]);
+
+        const mensajesUsados = mensajesStats[0]?.total || 0;
+        const clientesNuevos = clientesStats[0]?.total || 0;
+        const productosCreados = productosStats[0]?.total || 0;
+
+        const now = new Date();
+        const enTrial = !!(negocio.trial_hasta && new Date(negocio.trial_hasta) > now && !negocio.suscripcion_activa);
+        const diasTrialRestantes = negocio.trial_hasta
+            ? Math.max(0, Math.ceil((new Date(negocio.trial_hasta) - now) / (1000 * 60 * 60 * 24)))
+            : 0;
+
+        const usoMensajes = checkLimit(plan, 'maxMessages', mensajesUsados);
+        const usoClientes = checkLimit(plan, 'maxClients', clientesNuevos);
+        const usoProductos = checkLimit(plan, 'maxProducts', productosCreados);
+
+        // Aversión a la pérdida: en vez de mostrar solo "lo que ganas" al
+        // subir de plan, usamos el uso real de este mes para mostrar también
+        // lo que se está dejando sobre la mesa si no se sube. Solo aparece
+        // cuando el uso ya pesa (>=70%) para no generar ruido en negocios que
+        // apenas están empezando — ver guía de pricing psicológico en el
+        // proyecto de Claude.
+        const upgradeBenefits = getUpgradeBenefits(plan);
+        if (upgradeBenefits) {
+            const perdidaPotencial = [];
+            if (usoMensajes.limit !== -1) {
+                if (usoMensajes.percentage >= 100) {
+                    perdidaPotencial.push(`Ya usaste el 100% de tus ${usoMensajes.limit} mensajes de IA este mes — el bot puede dejar de responder pedidos por WhatsApp hasta tu próximo ciclo.`);
+                } else if (usoMensajes.percentage >= 70) {
+                    perdidaPotencial.push(`Ya usaste ${usoMensajes.percentage}% de tus ${usoMensajes.limit} mensajes de IA este mes.`);
+                }
             }
-        };
+            if (usoClientes.limit !== -1 && usoClientes.percentage >= 70) {
+                perdidaPotencial.push(`Llevas ${usoClientes.usage} de ${usoClientes.limit} clientes nuevos permitidos este mes.`);
+            }
+            if (usoProductos.limit !== -1 && usoProductos.percentage >= 70) {
+                perdidaPotencial.push(`Tu catálogo tiene ${usoProductos.usage} de ${usoProductos.limit} productos permitidos.`);
+            }
+            upgradeBenefits.perdida_potencial = perdidaPotencial;
+        }
 
         res.json({
             plan: {
-                tipo: negocio.plan,
+                tipo: plan,
+                nombre: planInfo.nameEs,
+                precio: planInfo.price,
                 activo: negocio.suscripcion_activa,
                 inicio: negocio.suscripcion_inicio,
                 fin: negocio.suscripcion_fin,
                 trial_hasta: negocio.trial_hasta,
-                ...features[negocio.plan]
+                en_trial: enTrial,
+                dias_trial_restantes: diasTrialRestantes,
+                features_incluidas: getIncludedFeatureLabels(plan),
+                uso: {
+                    mensajes: usoMensajes,
+                    clientes: usoClientes,
+                    productos: usoProductos,
+                },
+                // Compatibilidad con quien ya leía estos dos campos sueltos
+                mensajes_usados: mensajesUsados,
+                limite_mensajes: getPlanFeatures(plan).maxMessages,
             },
-            features
+            // Si ya está en el plan más alto, no hay nada que ofrecer.
+            upgrade_disponible: upgradeBenefits,
+            // Tabla completa de los 3 planes (anclaje + decoy): el dashboard
+            // las muestra lado a lado, con el plan `popular` resaltado como
+            // "Más elegido" para dirigir la decisión sin ocultar las otras
+            // opciones — la más cara sirve de referencia para que el plan
+            // recomendado se vea razonable.
+            planes: getAllPlans().map(p => ({
+                id: p.id,
+                nombre: p.nameEs,
+                precio: p.price,
+                popular: p.popular,
+                features_incluidas: getIncludedFeatureLabels(p.id),
+            })),
         });
     } catch (error) {
         console.error('[Business] Error getting plan:', error);
@@ -232,7 +275,7 @@ router.put('/onboarding/:paso', async (req, res) => {
 
         const datosPaso = req.body;
 
-        const [existing] = await pool.query(
+        const [existing] = await db.execute(
             'SELECT * FROM onboarding_progress WHERE negocio_id = ?',
             [negocioId]
         );
@@ -251,12 +294,12 @@ router.put('/onboarding/:paso', async (req, res) => {
         datosAnteriores[`paso${paso}`] = datosPaso;
 
         if (existing.length === 0) {
-            await pool.query(
+            await db.execute(
                 'INSERT INTO onboarding_progress (negocio_id, paso_actual, datos_paso, completado) VALUES (?, ?, ?, false)',
                 [negocioId, paso, JSON.stringify(datosAnteriores)]
             );
         } else {
-            await pool.query(
+            await db.execute(
                 'UPDATE onboarding_progress SET paso_actual = ?, datos_paso = ?, updated_at = NOW() WHERE negocio_id = ?',
                 [paso, JSON.stringify(datosAnteriores), negocioId]
             );
@@ -350,7 +393,7 @@ router.put('/onboarding/:paso', async (req, res) => {
             valuesNegocios.push(negocioId);
             
             const query = updatesNegocios.join(', ');
-            await pool.query(
+            await db.execute(
                 `UPDATE negocios SET ${query} WHERE id = ?`,
                 valuesNegocios
             );
@@ -372,7 +415,7 @@ router.get('/onboarding', async (req, res) => {
     try {
         const negocioId = req.negocio.id;
 
-        const [progress] = await pool.query(
+        const [progress] = await db.execute(
             'SELECT * FROM onboarding_progress WHERE negocio_id = ?',
             [negocioId]
         );
@@ -409,7 +452,7 @@ router.get('/whatsapp/status', async (req, res) => {
     try {
         const negocioId = req.negocio.id;
 
-        const [negocios] = await pool.query(
+        const [negocios] = await db.execute(
             'SELECT whatsapp_conectado, numero_whatsapp, whatsapp_ultima_conexion FROM negocios WHERE id = ?',
             [negocioId]
         );
@@ -458,13 +501,13 @@ router.post('/whatsapp/connect', async (req, res) => {
             });
         } catch (e) {
             if (e.message.includes('no encontrado')) {
-                const [negocios] = await pool.query(
+                const [negocios] = await db.execute(
                     'SELECT * FROM negocios WHERE id = ?',
                     [negocioId]
                 );
                 
                 if (negocios.length > 0) {
-                    await pool.query(
+                    await db.execute(
                         'UPDATE negocios SET whatsapp_conectado = true WHERE id = ?',
                         [negocioId]
                     );
@@ -489,7 +532,7 @@ router.post('/whatsapp/disconnect', async (req, res) => {
             console.log('[WhatsApp Disconnect] Instancia no encontrada, actualizando BD');
         }
 
-        await pool.query(
+        await db.execute(
             'UPDATE negocios SET whatsapp_conectado = false WHERE id = ?',
             [negocioId]
         );
@@ -507,7 +550,7 @@ router.post('/whatsapp/disconnect', async (req, res) => {
 router.put('/whatsapp/config', async (req, res) => {
     try {
         const negocioId = req.negocio.id;
-        const { bot_nombre, bot_tono, bot_bienvenida, horario_activo_inicio, horario_activo_fin, mensaje_fuera_horario } = req.body;
+        const { bot_nombre, bot_tono, horario_activo_inicio, horario_activo_fin, mensaje_fuera_horario } = req.body;
 
         const updates = [];
         const values = [];
@@ -519,10 +562,6 @@ router.put('/whatsapp/config', async (req, res) => {
         if (bot_tono !== undefined) {
             updates.push('bot_tono = ?');
             values.push(bot_tono);
-        }
-        if (bot_bienvenida !== undefined) {
-            updates.push('bot_bienvenida = ?');
-            values.push(bot_bienvenida);
         }
         if (horario_activo_inicio !== undefined) {
             updates.push('horario_activo_inicio = ?');
@@ -543,7 +582,7 @@ router.put('/whatsapp/config', async (req, res) => {
 
         values.push(negocioId);
 
-        await pool.query(
+        await db.execute(
             `UPDATE negocios SET ${updates.join(', ')} WHERE id = ?`,
             values
         );
@@ -569,7 +608,7 @@ router.post('/plan/upgrade', checkPlan('starter'), async (req, res) => {
             return res.status(400).json({ error: 'Ya tienes este plan o uno superior' });
         }
 
-        await pool.query(
+        await db.execute(
             `UPDATE negocios SET 
                 plan = ?,
                 suscripcion_activa = true,
@@ -579,38 +618,119 @@ router.post('/plan/upgrade', checkPlan('starter'), async (req, res) => {
             [nuevoPlan, negocioId]
         );
 
-        const [suscripciones] = await pool.query(
+        const [suscripciones] = await db.execute(
             'SELECT * FROM suscripciones WHERE negocio_id = ? ORDER BY created_at DESC LIMIT 1',
             [negocioId]
         );
 
+        // El precio siempre sale de planConfig.js (fuente única de verdad) —
+        // antes había un precio hardcodeado acá (249000/499000) que ni
+        // siquiera coincidía con lo que cobra Stripe según el plan real.
+        const montoMensual = getPlanPrice(nuevoPlan);
+
         if (suscripciones.length > 0) {
-            await pool.query(
-                `UPDATE suscripciones SET 
+            await db.execute(
+                `UPDATE suscripciones SET
                     plan = ?,
                     estado = 'activa',
                     pago_inicio = NOW(),
-                    pago_fin = DATE_ADD(NOW(), INTERVAL 1 MONTH)
+                    pago_fin = DATE_ADD(NOW(), INTERVAL 1 MONTH),
+                    monto_mensual = ?
                  WHERE id = ?`,
-                [nuevoPlan, suscripciones[0].id]
+                [nuevoPlan, montoMensual, suscripciones[0].id]
             );
         } else {
-            await pool.query(
-                `INSERT INTO suscripciones 
-                    (negocio_id, plan, estado, pago_inicio, pago_fin, monto_mensual) 
+            await db.execute(
+                `INSERT INTO suscripciones
+                    (negocio_id, plan, estado, pago_inicio, pago_fin, monto_mensual)
                  VALUES (?, ?, 'activa', NOW(), DATE_ADD(NOW(), INTERVAL 1 MONTH), ?)`,
-                [negocioId, nuevoPlan, nuevoPlan === 'professional' ? 249000 : 499000]
+                [negocioId, nuevoPlan, montoMensual]
             );
         }
 
         res.json({
             success: true,
-            mensaje: `Plan actualizado a ${nuevoPlan}`,
-            nuevo_plan: nuevoPlan
+            mensaje: `Plan actualizado a ${getPlan(nuevoPlan).nameEs}`,
+            nuevo_plan: nuevoPlan,
+            precio: montoMensual,
         });
     } catch (error) {
         console.error('[Plan Upgrade] Error:', error.message);
         res.status(500).json({ error: 'Error al actualizar plan' });
+    }
+});
+
+// Plantillas de onboarding por vertical: al terminar el registro, precarga
+// mensajes del bot y un catálogo demo según el tipo de negocio (paso 2 del
+// wizard de registro). Antes de esto un negocio nuevo arrancaba con el
+// dashboard completamente vacío — sin productos, sin mensaje de bienvenida
+// propio — lo que es más fricción para alguien no técnico en la primera
+// sesión. Solo agrega productos si el negocio todavía no tiene ninguno
+// (para no duplicar catálogo si se llama más de una vez).
+const PLANTILLAS_VERTICAL = {
+    restaurante: {
+        bot_bienvenida: '¡Hola! 👋 Bienvenido a {nombre}. Escríbeme lo que se te antoje y te ayudo a hacer tu pedido.',
+        mensaje_fuera_horario: 'Gracias por escribir. En este momento estamos cerrados, pero apenas abramos te respondemos.',
+        productos: [
+            { nombre: 'Plato del día', descripcion: 'Pregunta por la opción de hoy', precio: 18000, stock: 50 },
+            { nombre: 'Jugo natural', descripcion: 'Elige tu fruta favorita', precio: 6000, stock: 100 },
+            { nombre: 'Postre de la casa', descripcion: '', precio: 8000, stock: 30 }
+        ]
+    },
+    retail: {
+        bot_bienvenida: '¡Hola! 👋 Bienvenido a {nombre}. Cuéntame qué buscas y te muestro lo que tenemos disponible.',
+        mensaje_fuera_horario: 'Gracias por escribir. Estamos fuera de horario de atención, te respondemos apenas abramos.',
+        productos: [
+            { nombre: 'Producto destacado', descripcion: 'Edita este producto con tu catálogo real', precio: 25000, stock: 20 },
+            { nombre: 'Combo/Promo', descripcion: '', precio: 40000, stock: 15 }
+        ]
+    },
+    servicios: {
+        bot_bienvenida: '¡Hola! 👋 Bienvenido a {nombre}. Cuéntame qué servicio necesitas y te ayudo a agendar.',
+        mensaje_fuera_horario: 'Gracias por escribir. Estamos fuera de horario, te confirmamos tu cita apenas abramos.',
+        productos: [
+            { nombre: 'Servicio básico', descripcion: 'Edita con tus servicios reales y precios', precio: 30000, stock: 999 },
+            { nombre: 'Servicio premium', descripcion: '', precio: 60000, stock: 999 }
+        ]
+    }
+};
+
+router.post('/plantilla', async (req, res) => {
+    try {
+        const negocioId = req.negocio.id;
+        const plantilla = PLANTILLAS_VERTICAL[req.body.tipo_negocio];
+
+        if (!plantilla) {
+            // No hay plantilla específica (ej. salud, inmobiliaria, educacion,
+            // otro) — no es un error, simplemente no hay nada que precargar
+            // todavía para ese tipo de negocio.
+            return res.json({ success: true, aplicada: false });
+        }
+
+        const [negocios] = await db.execute('SELECT nombre FROM negocios WHERE id = ?', [negocioId]);
+        const nombreNegocio = negocios[0]?.nombre || 'tu negocio';
+
+        await db.execute(
+            'UPDATE negocios SET bot_bienvenida = ?, mensaje_fuera_horario = ? WHERE id = ?',
+            [plantilla.bot_bienvenida.replace('{nombre}', nombreNegocio), plantilla.mensaje_fuera_horario, negocioId]
+        );
+
+        const [existentes] = await db.execute('SELECT COUNT(*) as total FROM productos WHERE negocio_id = ?', [negocioId]);
+        let productosCreados = 0;
+        if (existentes[0].total === 0) {
+            for (const producto of plantilla.productos) {
+                await db.execute(
+                    'INSERT INTO productos (negocio_id, nombre, descripcion, precio, stock, activo) VALUES (?, ?, ?, ?, ?, true)',
+                    [negocioId, producto.nombre, producto.descripcion || null, producto.precio, producto.stock]
+                );
+                productosCreados++;
+            }
+        }
+
+        res.json({ success: true, aplicada: true, productos_creados: productosCreados });
+    } catch (error) {
+        console.error('[Business] Error aplicando plantilla:', error.message);
+        res.status(500).json({ error: 'Error al aplicar plantilla de onboarding' });
     }
 });
 

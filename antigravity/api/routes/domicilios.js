@@ -6,8 +6,9 @@ const crypto = require('crypto');
 const axios = require('axios');
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
+const { isAutomationActive, yaSeNotifico, registrarNotificacion } = require('../services/automationsService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'antigravity_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET;
 const TRACKING_BASE_URL = process.env.TRACKING_BASE_URL || 'http://localhost:5177/delivery/track';
 
 function generarTrackingToken() {
@@ -25,6 +26,23 @@ async function enviarNotificacionWhatsApp(negocioId, numero, mensaje) {
         }, { timeout: 5000 });
     } catch (err) {
         console.error('[Domicilios] Error enviando notificación WhatsApp:', err.message);
+    }
+}
+
+// Ver el mismo helper en routes/pedidos.js — se duplica (en vez de importar
+// uno desde el otro) porque son dos entradas distintas al mismo evento
+// (dashboard vs. app de domiciliario) y así cada archivo queda autocontenido.
+async function pedirResenaSiCorresponde(negocioId, pedidoId, numeroCliente) {
+    try {
+        const { activa } = await isAutomationActive(negocioId, 'resena');
+        if (!activa || !numeroCliente) return;
+        if (await yaSeNotifico(negocioId, 'resena', pedidoId)) return;
+
+        const mensaje = '🎉 ¡Gracias por tu compra! Si tienes un segundo, nos encantaría que nos dejaras tu opinión sobre el pedido.';
+        await enviarNotificacionWhatsApp(negocioId, numeroCliente, mensaje);
+        await registrarNotificacion(negocioId, 'resena', 'Solicitud de reseña enviada', mensaje, pedidoId);
+    } catch (error) {
+        console.error('[Domicilios] Error pidiendo reseña:', error.message);
     }
 }
 
@@ -162,9 +180,9 @@ router.put('/drivers/:id', verificarAuth, async (req, res) => {
         }
 
         if (updates.length > 0) {
-            values.push(id);
+            values.push(id, req.negocio.id);
             await db.execute(
-                `UPDATE domiciliarios SET ${updates.join(', ')} WHERE id = ?`,
+                `UPDATE domiciliarios SET ${updates.join(', ')} WHERE id = ? AND negocio_id = ?`,
                 values
             );
         }
@@ -589,7 +607,7 @@ router.post('/driver/update-status', verificarAuthDomiciliario, async (req, res)
 
         if (estado === 'entregado') {
             const [domData] = await db.execute(
-                `SELECT dom.tracking_token, p.cliente_id, c.whatsapp as cliente_whatsapp
+                `SELECT dom.tracking_token, p.id as pedido_id, p.cliente_id, c.whatsapp as cliente_whatsapp
                  FROM domicilios dom
                  JOIN pedidos p ON dom.pedido_id = p.id
                  JOIN clientes c ON p.cliente_id = c.id
@@ -608,6 +626,11 @@ router.post('/driver/update-status', verificarAuthDomiciliario, async (req, res)
                     domData[0].cliente_whatsapp,
                     '🎉 ¡Tu pedido ha sido entregado! Gracias por comprar con nosotros.'
                 );
+
+                // Automatización "resena": mismo criterio que en routes/pedidos.js,
+                // para los pedidos que se entregan vía domiciliario en vez de
+                // marcarse "entregado" directo desde el dashboard.
+                pedirResenaSiCorresponde(req.domiciliario.negocio_id, domData[0].pedido_id, domData[0].cliente_whatsapp);
             }
         }
 

@@ -169,7 +169,7 @@ const Process = () => {
                 <div className="relative z-10">
                   <motion.div 
                     whileHover={{ scale: 1.2, rotate: 5 }}
-                    className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-bg border border-border flex items-center justify-center text-accent shadow-[0_0_20px_rgba(0,255,209,0.1)] relative"
+                    className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-bg border border-border flex items-center justify-center text-accent shadow-[0_0_20px_rgba(229,57,53,0.1)] relative"
                   >
                     <div className="absolute inset-0 bg-accent/5 rounded-2xl animate-pulse" />
                     <step.icon size={24} className="md:w-8 md:h-8" />
@@ -199,7 +199,7 @@ const Process = () => {
              whileHover={{ scale: 1.05 }}
              whileTap={{ scale: 0.95 }}
              onClick={() => document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })}
-             className="bg-accent text-bg px-12 py-5 rounded-2xl font-mono text-xs font-black uppercase tracking-widest shadow-[0_0_30px_rgba(0,255,209,0.3)] border-none cursor-pointer"
+             className="bg-accent text-bg px-12 py-5 rounded-2xl font-mono text-xs font-black uppercase tracking-widest shadow-[0_0_30px_rgba(229,57,53,0.3)] border-none cursor-pointer"
           >
              Iniciar Onboarding Ahora
           </motion.button>

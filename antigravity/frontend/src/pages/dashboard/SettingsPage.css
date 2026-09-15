@@ -120,3 +120,210 @@
   padding: 4px 0;
   color: var(--text-secondary);
 }
+
+.settings-section-plan {
+  max-width: 900px;
+}
+
+.plan-trial-note {
+  color: var(--accent-primary);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.plan-usage {
+  margin-bottom: 24px;
+}
+
+.usage-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.usage-item-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.usage-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-hover);
+  overflow: hidden;
+}
+
+.usage-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.usage-bar-fill.usage-normal {
+  background: var(--accent-primary);
+}
+
+.usage-bar-fill.usage-alto {
+  background: #eab308;
+}
+
+.usage-bar-fill.usage-critico {
+  background: #ef4444;
+}
+
+.usage-unlimited {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.plan-upgrade-card {
+  background: var(--surface-hover);
+  border: 1px dashed var(--accent-primary);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.plan-upgrade-card ul {
+  list-style: none;
+  margin: 12px 0;
+}
+
+.plan-upgrade-card li {
+  padding: 4px 0;
+  color: var(--text-secondary);
+}
+
+.plan-upgrade-limits li {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.plan-top-note {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* Aversión a la pérdida: aviso con lo que ya se usó / se pierde este mes,
+   basado en datos reales de uso (nunca un temporizador o cifra inventada). */
+.plan-loss-note {
+  background: rgba(234, 179, 8, 0.1);
+  border-left: 3px solid #eab308;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 12px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.plan-loss-note.plan-loss-critico {
+  background: rgba(239, 68, 68, 0.1);
+  border-left-color: #ef4444;
+}
+
+.plan-loss-note ul {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.plan-loss-note li {
+  padding: 2px 0;
+}
+
+/* Comparación de planes: anclaje (el plan más caro queda visible como
+   referencia) + decoy effect (el plan `popular` se resalta para dirigir
+   la decisión, sin ocultar las otras dos opciones). Máximo 3 planes. */
+.plan-comparison {
+  margin-top: 28px;
+}
+
+.plan-comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+  align-items: stretch;
+}
+
+@media (max-width: 720px) {
+  .plan-comparison-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.plan-compare-card {
+  position: relative;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-compare-card.popular {
+  border: 2px solid var(--accent-primary);
+  transform: scale(1.03);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.plan-compare-card.is-current {
+  opacity: 0.75;
+}
+
+.plan-compare-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.plan-compare-name {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.plan-compare-price {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-primary);
+  margin-bottom: 12px;
+}
+
+.plan-compare-price span {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.plan-compare-card ul {
+  list-style: none;
+  flex: 1;
+  margin-bottom: 16px;
+}
+
+.plan-compare-card li {
+  padding: 3px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.plan-compare-current-label {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 10px 0;
+}

@@ -81,7 +81,7 @@ const Contact = () => {
                 </div>
 
                 <motion.button
-                  whileHover={{ scale: 1.02, boxShadow: '0 10px 30px rgba(0,255,209,0.3)' }}
+                  whileHover={{ scale: 1.02, boxShadow: '0 10px 30px rgba(229,57,53,0.3)' }}
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   className="bg-accent text-bg py-5 rounded-2xl font-mono text-sm font-black tracking-widest cursor-pointer border-none flex items-center justify-center gap-3"

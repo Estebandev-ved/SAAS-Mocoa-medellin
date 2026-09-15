@@ -48,7 +48,7 @@
 
 .config-tab.active {
   background: rgba(0, 255, 209, 0.15);
-  color: #00FFD1;
+  color: var(--accent-primary);
 }
 
 .config-content {
@@ -93,7 +93,7 @@
 .config-group select:focus,
 .config-group textarea:focus {
   outline: none;
-  border-color: #00FFD1;
+  border-color: var(--accent-primary);
 }
 
 .config-group textarea {
@@ -146,7 +146,7 @@
 .toggle-group input[type="checkbox"] {
   width: 20px;
   height: 20px;
-  accent-color: #00FFD1;
+  accent-color: var(--accent-primary);
   cursor: pointer;
 }
 
@@ -217,7 +217,7 @@ input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 18px;
   height: 18px;
-  background: #00FFD1;
+  background: var(--accent-primary);
   border-radius: 50%;
   cursor: pointer;
 }

@@ -65,12 +65,12 @@
 
 .input-group input:focus {
   outline: none;
-  border-color: #00FFD1;
+  border-color: var(--accent-primary);
 }
 
 .btn-primary {
   padding: 14px;
-  background: #00FFD1;
+  background: var(--accent-primary);
   border: none;
   border-radius: 12px;
   color: #0A0F14;
@@ -118,7 +118,7 @@
   justify-content: center;
   font-weight: 700;
   font-size: 18px;
-  color: #00FFD1;
+  color: var(--accent-primary);
 }
 
 .portal-user h2 {
@@ -174,7 +174,7 @@
 }
 
 .toggle-switch.active {
-  background: #00FFD1;
+  background: var(--accent-primary);
 }
 
 .toggle-knob {
@@ -199,7 +199,7 @@
 }
 
 .toggle-label.online {
-  color: #00FFD1;
+  color: var(--accent-primary);
 }
 
 .stats-row {
@@ -223,7 +223,7 @@
 .stat-num {
   font-size: 16px;
   font-weight: 700;
-  color: #00FFD1;
+  color: var(--accent-primary);
   font-family: monospace;
 }
 
@@ -262,7 +262,7 @@
 .pending-order {
   font-family: monospace;
   font-weight: 600;
-  color: #00FFD1;
+  color: var(--accent-primary);
   font-size: 14px;
 }
 
@@ -284,7 +284,7 @@
 .btn-accept {
   width: 100%;
   padding: 14px;
-  background: #00FFD1;
+  background: var(--accent-primary);
   border: none;
   border-radius: 10px;
   color: #0A0F14;
@@ -329,7 +329,7 @@
 
 .status-badge.en_ruta {
   background: rgba(0, 255, 209, 0.1);
-  color: #00FFD1;
+  color: var(--accent-primary);
 }
 
 .status-badge.aceptado {
@@ -352,7 +352,7 @@
 .delivery-order {
   font-family: monospace;
   font-weight: 600;
-  color: #00FFD1;
+  color: var(--accent-primary);
   font-size: 15px;
 }
 
@@ -391,7 +391,7 @@
   background: rgba(0, 255, 209, 0.1);
   border: 1px solid rgba(0, 255, 209, 0.3);
   border-radius: 10px;
-  color: #00FFD1;
+  color: var(--accent-primary);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;

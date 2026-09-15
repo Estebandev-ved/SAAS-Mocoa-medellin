@@ -47,7 +47,7 @@
 .filtros-row select:focus,
 .filtros-row input:focus {
   outline: none;
-  border-color: #00FFD1;
+  border-color: var(--accent-primary);
 }
 
 .filtros-row input[type="date"] {
@@ -70,7 +70,7 @@
 }
 
 .auto-scroll-toggle input {
-  accent-color: #00FFD1;
+  accent-color: var(--accent-primary);
 }
 
 .logs-table-container {
@@ -146,7 +146,7 @@
 
 .nivel-badge.error {
   background: rgba(239, 68, 68, 0.15);
-  color: #EF4444;
+  color: var(--error);
 }
 
 .nivel-badge.warning {

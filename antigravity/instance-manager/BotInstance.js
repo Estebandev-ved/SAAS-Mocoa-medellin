@@ -1,192 +1,206 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, delay } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const fs = require('fs');
 const path = require('path');
+const QRCode = require('qrcode');
 const { emitQR, emitConnected, emitDisconnected } = require('./socketEmitter');
+const { handleMessage } = require('./handlers/messageHandler');
 
 class BotInstance {
   constructor(negocioId, negocioConfig) {
     this.negocioId = negocioId;
     this.config = {
-      nombre: negocioConfig.nombre || 'Asistente',
+      nombre: negocioConfig.nombre || 'Negocio',
       bot_nombre: negocioConfig.bot_nombre || 'Asistente',
       bot_tono: negocioConfig.bot_tono || 'amigable',
-      bot_bienvenida: negocioConfig.bot_bienvenida || '¡Hola! ¿En qué puedo ayudarte?',
+      bot_bienvenida: negocioConfig.bot_bienvenida || '',
       horario_activo_inicio: negocioConfig.horario_activo_inicio || '08:00:00',
       horario_activo_fin: negocioConfig.horario_activo_fin || '22:00:00',
-      mensaje_fuera_horario: negocioConfig.mensaje_fuera_horario || 'Estamos fuera de horario. ¿Te contactamos mañana?',
+      mensaje_fuera_horario: negocioConfig.mensaje_fuera_horario || 'Estamos fuera de horario.',
       numero_whatsapp: negocioConfig.numero_whatsapp,
       metodos_pago_activos: negocioConfig.metodos_pago_activos || []
     };
-    this.authPath = path.join(__dirname, '..', 'auth_info', `auth_info_${negocioId}`);
+    this.authPath = path.join(__dirname, '..', 'auth_info', `auth_${negocioId}`);
     this.sock = null;
     this.connected = false;
+    this.phoneNumber = null;
     this.qrCode = null;
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
+    this.reconnectTimer = null;
+    this.stopRequested = false;
+    this.credSaveInterval = null;
   }
 
   async start() {
-    try {
-      if (!fs.existsSync(this.authPath)) {
-        fs.mkdirSync(this.authPath, { recursive: true });
+    if (this.sock) {
+      this.stopRequested = true;
+      try { this.sock.end(undefined); } catch {}
+      // Wait for socket to fully close
+      await new Promise(r => setTimeout(r, 500));
+      this.sock = null;
+    }
+
+    this.stopRequested = false;
+
+    if (!fs.existsSync(this.authPath)) {
+      fs.mkdirSync(this.authPath, { recursive: true });
+    }
+
+    console.log(`[Bot-${this.negocioId}] Iniciando...`);
+
+    const { state, saveCreds } = await useMultiFileAuthState(this.authPath);
+
+    const logger = {
+      level: 'silent',
+      info: () => {},
+      error: (...args) => console.error(`[Bot-${this.negocioId}] ERR:`, ...args),
+      warn: (...args) => console.warn(`[Bot-${this.negocioId}] WARN:`, ...args),
+      debug: () => {},
+      trace: () => {},
+      child: () => logger
+    };
+
+    this.sock = makeWASocket({
+      auth: state,
+      logger,
+      browser: [`Negocio-${this.negocioId}`, 'Chrome', '120.0.0'],
+      printQRInTerminal: false,
+      markOnlineOnConnect: true,
+      generateHighQualityLinkPreview: false,
+      syncFullHistory: false,
+      maxMsgCache: 50
+    });
+
+    this.credSaveInterval = setInterval(() => {
+      if (this.sock) saveCreds().catch(() => {});
+    }, 10_000);
+
+    this.sock.ev.on('creds.update', saveCreds);
+
+    this.sock.ev.on('messages.upsert', async (upsert) => {
+      if (this.stopRequested) return;
+      for (const msg of upsert.messages) {
+        try {
+          await handleMessage(this.sock, msg, this.negocioId);
+        } catch (error) {
+          console.error(`[Bot-${this.negocioId}] Error handleMessage:`, error.message);
+        }
+      }
+    });
+
+    this.sock.ev.on('connection.update', async (update) => {
+      if (this.stopRequested) return;
+
+      const { connection, lastDisconnect, qr } = update;
+
+      if (qr) {
+        console.log(`[Bot-${this.negocioId}] QR generado`);
+        try {
+          const base64 = await QRCode.toDataURL(qr, { width: 400, margin: 2 });
+          this.qrCode = base64.replace(/^data:image\/png;base64,/, '');
+          emitQR(this.negocioId, this.qrCode);
+        } catch (err) {
+          console.error(`[Bot-${this.negocioId}] Error QR:`, err.message);
+        }
       }
 
-      const { state, saveCreds } = await useMultiFileAuthState(this.authPath);
+      if (connection === 'open') {
+        const phone = this.sock?.user?.id?.split(':')[0] || null;
+        this.connected = true;
+        this.phoneNumber = phone;
+        this.qrCode = null;
+        this.reconnectAttempts = 0;
 
-      const logger = {
-        level: 'info',
-        info: (...args) => console.log(`[Bot-${this.negocioId}]`, ...args),
-        error: (...args) => console.error(`[Bot-${this.negocioId}]`, ...args),
-        warn: (...args) => console.warn(`[Bot-${this.negocioId}]`, ...args),
-        debug: () => {},
-        trace: () => {},
-        child: () => logger
-      };
-
-      this.sock = makeWASocket({
-        auth: state,
-        printQRInTerminal: false,
-        logger: logger,
-        browser: [`ANTIGRAVITY-${this.negocioId}`, 'Chrome', '120.0.0'],
-        connectTimeoutMs: 60000,
-        keepAliveIntervalMs: 30000
-      });
-
-      this.sock.ev.on('creds.update', saveCreds);
-
-      const { handleMessage } = require('./handlers/messageHandler');
-      this.sock.ev.on('messages.upsert', async ({ messages, type }) => {
-        for (const msg of messages) {
-          try {
-            await handleMessage(this.sock, msg, this.negocioId);
-          } catch (err) {
-            console.error(`[Bot-${this.negocioId}] Error en handleMessage:`, err.message);
-          }
-        }
-      });
-
-      this.sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
-
-        if (qr) {
-          this.qrCode = qr;
-          emitQR(this.negocioId, qr);
-          console.log(`[Bot-${this.negocioId}] QR generado, esperando escaneo`);
+        if (this.reconnectTimer) {
+          clearTimeout(this.reconnectTimer);
+          this.reconnectTimer = null;
         }
 
-        if (connection === 'close') {
-          const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
-          const shouldReconnect = reason !== DisconnectReason.loggedOut;
+        console.log(`[Bot-${this.negocioId}] ✓ CONECTADO. Teléfono: ${phone}`);
 
-          console.log(`[Bot-${this.negocioId}] Conexión cerrada. Razón: ${reason}`);
+        const instanceManager = require('./InstanceManager');
+        instanceManager.markConnected(this.negocioId, phone);
 
-          if (shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
-            this.reconnectAttempts++;
-            console.log(`[Bot-${this.negocioId}] Reconectando (intento ${this.reconnectAttempts})...`);
-            setTimeout(() => this.start(), 5000);
-          } else {
-            this.connected = false;
-            emitDisconnected(this.negocioId);
-          }
-        } else if (connection === 'open') {
-          this.connected = true;
-          this.reconnectAttempts = 0;
-          console.log(`[Bot-${this.negocioId}] ✓ WhatsApp conectado`);
-          emitConnected(this.negocioId);
+        emitConnected(this.negocioId, phone);
+      }
+
+      if (connection === 'close') {
+        this.connected = false;
+        this.qrCode = null;
+
+        const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
+        console.log(`[Bot-${this.negocioId}] Desconectado. Razón: ${reason}`);
+
+        const instanceManager = require('./InstanceManager');
+        instanceManager.markDisconnected(this.negocioId);
+
+        emitDisconnected(this.negocioId);
+
+        if (reason === DisconnectReason.loggedOut) {
+          console.log(`[Bot-${this.negocioId}] Logout - eliminando auth`);
+          this.limpiarAuth();
+        } else if (reason === 440) {
+          console.log(`[Bot-${this.negocioId}] Conflicto (reemplazado). Limpiando auth y esperando reconnect desde dashboard.`);
+          this.limpiarAuth();
+        } else if (!this.stopRequested) {
+          this.reconnectAttempts++;
+          const delayMs = Math.min(5000 * this.reconnectAttempts, 60000);
+          console.log(`[Bot-${this.negocioId}] Reconectando en ${delayMs / 1000}s (intento ${this.reconnectAttempts})`);
+          this.reconnectTimer = setTimeout(() => {
+            if (!this.stopRequested) this.start();
+          }, delayMs);
         }
-      });
+      }
+    });
 
-      return this.sock;
-
-    } catch (error) {
-      console.error(`[Bot-${this.negocioId}] Error al iniciar:`, error.message);
-      throw error;
-    }
+    console.log(`[Bot-${this.negocioId}] Socket creado, esperando conexión...`);
+    return this.sock;
   }
 
   async stop() {
-    try {
-      if (this.sock) {
+    this.stopRequested = true;
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    if (this.credSaveInterval) {
+      clearInterval(this.credSaveInterval);
+      this.credSaveInterval = null;
+    }
+
+    if (this.sock) {
+      try {
         this.sock.end(undefined);
-        this.sock = null;
+      } catch (e) {}
+      this.sock = null;
+    }
+
+    this.connected = false;
+    this.qrCode = null;
+    this.phoneNumber = null;
+
+    console.log(`[Bot-${this.negocioId}] Detenido`);
+  }
+
+  limpiarAuth() {
+    try {
+      if (fs.existsSync(this.authPath)) {
+        fs.rmSync(this.authPath, { recursive: true, force: true });
+        console.log(`[Bot-${this.negocioId}] Auth eliminado`);
       }
-      this.connected = false;
-      this.qrCode = null;
-      console.log(`[Bot-${this.negocioId}] Instancia detenida`);
     } catch (error) {
-      console.error(`[Bot-${this.negocioId}] Error al detener:`, error.message);
+      console.error(`[Bot-${this.negocioId}] Error limpiando auth:`, error.message);
     }
-  }
-
-  async sendMessage(numero, texto) {
-    if (!this.sock || !this.connected) {
-      throw new Error('Bot no conectado');
-    }
-
-    const jid = this.normalizeJid(numero);
-    await this.sock.sendMessage(jid, { text: texto });
-    console.log(`[Bot-${this.negocioId}] Mensaje enviado a ${numero}`);
-  }
-
-  async sendButtons(numero, texto, botones) {
-    if (!this.sock || !this.connected) {
-      throw new Error('Bot no conectado');
-    }
-
-    const jid = this.normalizeJid(numero);
-    const buttons = botones.map(btn => ({
-      buttonId: btn.id,
-      buttonText: { displayText: btn.texto },
-      type: 1
-    }));
-
-    await this.sock.sendMessage(jid, {
-      text: texto,
-      footer: this.config.nombre,
-      buttons: buttons,
-      headerType: 1
-    });
-  }
-
-  async sendImage(numero, url, caption) {
-    if (!this.sock || !this.connected) {
-      throw new Error('Bot no conectado');
-    }
-
-    const jid = this.normalizeJid(numero);
-    await this.sock.sendMessage(jid, {
-      image: { url },
-      caption: caption
-    });
-  }
-
-  async sendListMessage(numero, texto, botones, titulo, pie) {
-    if (!this.sock || !this.connected) {
-      throw new Error('Bot no conectado');
-    }
-
-    const jid = this.normalizeJid(numero);
-    const sections = [{
-      title: titulo,
-      rows: botones.map(btn => ({
-        title: btn.texto,
-        description: btn.descripcion || '',
-        rowId: btn.id
-      }))
-    }];
-
-    await this.sock.sendMessage(jid, {
-      text: texto,
-      footer: pie,
-      title: titulo,
-      buttonText: 'Ver opciones',
-      sections
-    });
   }
 
   isConnected() {
-    return this.connected;
+    return this.connected && this.sock?.user;
+  }
+
+  getPhoneNumber() {
+    return this.phoneNumber;
   }
 
   getQR() {
@@ -197,16 +211,29 @@ class BotInstance {
     return this.config;
   }
 
-  getPhoneNumber() {
-    return this.config.numero_whatsapp;
+  async sendMessage(numero, texto) {
+    if (!this.isConnected()) {
+      throw new Error('Bot no está conectado');
+    }
+    const jid = numero.includes('@') ? numero : `${numero.replace(/[^0-9]/g, '')}@s.whatsapp.net`;
+    return this.sock.sendMessage(jid, { text: texto });
   }
 
-  normalizeJid(number) {
-    if (number.includes('@g.us') || number.includes('@s.whatsapp.net')) {
-      return number;
-    }
-    const clean = number.replace(/\D/g, '');
-    return `${clean}@s.whatsapp.net`;
+  async sendButtons(numero, texto, botones) {
+    if (!this.isConnected()) throw new Error('Bot no está conectado');
+    const jid = numero.includes('@') ? numero : `${numero.replace(/[^0-9]/g, '')}@s.whatsapp.net`;
+    return this.sock.sendMessage(jid, {
+      text: texto,
+      buttons: botones.map((b, i) => ({ buttonId: b.id || `btn_${i}`, buttonText: { displayText: b.text }, type: 1 }))
+    });
+  }
+
+  async sendImage(numero, url, caption) {
+    if (!this.isConnected()) throw new Error('Bot no está conectado');
+    const jid = numero.includes('@') ? numero : `${numero.replace(/[^0-9]/g, '')}@s.whatsapp.net`;
+    const { default: got } = require('got');
+    const buffer = await got(url, { responseType: 'buffer' }).buffer();
+    return this.sock.sendMessage(jid, { image: buffer, caption: caption || '' });
   }
 }
 

@@ -194,7 +194,7 @@ export default function DomiciliosPage() {
                                         <div className="driver-popup">
                                             <strong>{driver.nombre}</strong>
                                             <span>{driver.telefono}</span>
-                                            <span>📦 {driver.pedidos_completados || 0} hoy</span>
+                                            <span>{driver.pedidos_completados || 0} hoy</span>
                                         </div>
                                     </Popup>
                                 </Marker>
@@ -216,9 +216,9 @@ export default function DomiciliosPage() {
                                     <span className="driver-name">{driver.nombre}</span>
                                     <span className="driver-phone">{driver.telefono}</span>
                                     <div className="driver-metrics">
-                                        <span>📦 {driver.pedidos_completados || 0}</span>
-                                        <span>💰 {formatCOP(driver.ganancias_totales)}</span>
-                                        <span>📍 {driver.km_totales || 0}km</span>
+                                        <span>{driver.pedidos_completados || 0}</span>
+                                        <span>{formatCOP(driver.ganancias_totales)}</span>
+                                        <span>{driver.km_totales || 0}km</span>
                                     </div>
                                 </div>
                                 <button className="driver-delete" onClick={() => handleDeleteDriver(driver.id)} title="Desactivar">
@@ -272,7 +272,7 @@ export default function DomiciliosPage() {
                             <div className="queue-item-info">
                                 <span className="order-ref">{d.numero_pedido}</span>
                                 <span className="client-name">{d.cliente_nombre}</span>
-                                <span className="driver-name-sm">🛵 {d.domiciliario_nombre}</span>
+                                <span className="driver-name-sm">{d.domiciliario_nombre}</span>
                                 <span className={`status-badge-sm ${d.estado}`}>{d.estado.replace('_', ' ')}</span>
                             </div>
                         </div>
@@ -283,7 +283,7 @@ export default function DomiciliosPage() {
                             <div className="queue-item-info">
                                 <span className="order-ref">{d.numero_pedido}</span>
                                 <span className="client-name">{d.cliente_nombre}</span>
-                                <span className="driver-name-sm">🛵 {d.domiciliario_nombre}</span>
+                                <span className="driver-name-sm">{d.domiciliario_nombre}</span>
                                 <span className="completed-meta">{d.km_recorridos}km · {formatCOP(d.tarifa_envio)}</span>
                             </div>
                         </div>

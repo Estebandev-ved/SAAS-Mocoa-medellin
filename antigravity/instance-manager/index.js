@@ -1,13 +1,37 @@
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 const instanceManager = require('./InstanceManager');
 const { handleMessage } = require('./handlers/messageHandler');
 const monitor = require('./monitor');
-require('dotenv').config();
+const { setSocketIO } = require('./socketEmitter');
+const { io: socketClient } = require('socket.io-client');
+const SubscriptionNotifier = require('./subscriptionNotifier');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const API_URL = process.env.API_URL || 'http://localhost:3002';
+const SOCKET_SECRET = process.env.SOCKET_SECRET || 'secreto_interno_antigravity';
+const socket = socketClient(API_URL, {
+  auth: { tipo: 'bot_interno', secret: SOCKET_SECRET },
+  reconnection: true,
+  reconnectionDelay: 5000,
+});
+
+socket.on('connect', () => {
+  console.log('[Instance Manager] Conectado al API Server socket');
+  setSocketIO(socket);
+});
+
+socket.on('connect_error', (err) => {
+  console.error('[Instance Manager] Error de conexión socket:', err.message);
+});
+
+socket.on('disconnect', (reason) => {
+  console.log('[Instance Manager] Socket desconectado:', reason);
+});
 
 app.post('/internal/start/:negocioId', async (req, res) => {
   try {
@@ -31,15 +55,15 @@ app.post('/internal/stop/:negocioId', async (req, res) => {
   }
 });
 
+app.get('/internal/status/all', (req, res) => {
+  const instances = instanceManager.getAllInstances();
+  res.json({ instances, total: instances.length });
+});
+
 app.get('/internal/status/:negocioId', (req, res) => {
   const { negocioId } = req.params;
   const status = instanceManager.getStatus(parseInt(negocioId));
   res.json(status);
-});
-
-app.get('/internal/status/all', (req, res) => {
-  const instances = instanceManager.getAllInstances();
-  res.json({ instances, total: instances.length });
 });
 
 app.post('/internal/message', async (req, res) => {
@@ -94,6 +118,10 @@ async function start() {
   });
   
   monitor.start();
+
+  // Start subscription notifier (checks every hour)
+  const subNotifier = new SubscriptionNotifier(socket);
+  subNotifier.start(3600000);
 }
 
 if (require.main === module) {

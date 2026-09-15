@@ -41,7 +41,7 @@ const CaseCard = ({ c, index }) => (
     className="bg-bg2 border border-border p-8 rounded-3xl hover:border-accent/40 transition-all group"
   >
     <div className="flex items-center gap-4 mb-8">
-      <div className="w-14 h-14 rounded-2xl bg-accent text-bg flex items-center justify-center font-head font-bold text-xl shadow-[0_0_20px_rgba(0,255,209,0.2)]">
+      <div className="w-14 h-14 rounded-2xl bg-accent text-bg flex items-center justify-center font-head font-bold text-xl shadow-[0_0_20px_rgba(229,57,53,0.2)]">
         {c.avatar}
       </div>
       <div>
@@ -67,7 +67,8 @@ const CaseCard = ({ c, index }) => (
       </div>
     </div>
 
-    <p className="text-muted text-sm italic leading-relaxed relative pl-6 before:content-['\201C'] before:absolute before:left-0 before:top-[-10px] before:text-4xl before:text-accent/30 before:font-head">
+    <p className="text-muted text-sm italic leading-relaxed relative pl-6">
+      <span className="absolute left-0 top-[-10px] text-4xl text-accent/30 font-head">{'\u201C'}</span>
       {c.quote}
     </p>
   </motion.div>

@@ -17,7 +17,8 @@ async function runMigrations() {
 
         const migrations = [
             'db/queries/db_modulos.sql',
-            'db/queries/db_domicilios.sql'
+            'db/queries/db_domicilios.sql',
+            'db/migrate_voice_bot.sql'
         ];
 
         for (const file of migrations) {

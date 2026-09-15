@@ -199,7 +199,7 @@ const InteractiveDemo = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleSend}
-                className="bg-accent text-bg p-3 rounded-xl cursor-pointer border-none shadow-[0_0_15px_rgba(0,255,209,0.2)]"
+                className="bg-accent text-bg p-3 rounded-xl cursor-pointer border-none shadow-[0_0_15px_rgba(229,57,53,0.2)]"
               >
                 <Send size={20} />
               </motion.button>

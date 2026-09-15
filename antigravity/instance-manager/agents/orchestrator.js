@@ -1,20 +1,6 @@
 const db = require('../../db/config');
-const instanceManager = require('../InstanceManager');
-
-const crypto = require('crypto');
-
-const BRAIN_URL = process.env.BRAIN_URL || 'http://localhost:8000';
-const API_URL = process.env.API_URL || 'http://localhost:3002';
-const TRACKING_BASE_URL = process.env.TRACKING_BASE_URL || 'http://localhost:5177/delivery/track';
-
-function generarTrackingToken() {
-    return crypto.randomBytes(32).toString('hex');
-}
-
-const RESPUESTAS_FALLBACK = {
-    'es': "Disculpa, no pude procesar tu mensaje. ¿Podrías intentarlo de nuevo?",
-    'en': "Sorry, I couldn't process your request. Please try again."
-};
+const gemini = require('./gemini');
+const { checkLimit } = require('../../config/planConfig');
 
 const LIMITES_POR_PLAN = {
     starter: { mensajes_por_minuto: 10, mensajes_por_hora: 100, tokens_por_dia: 50000 },
@@ -28,13 +14,27 @@ async function procesarMensaje(mensaje, negocioId, clienteId, contexto = []) {
     const rateLimit = await verificarRateLimit(negocioId);
     if (!rateLimit.permitido) {
         return {
-            respuesta: RESPUESTAS_FALLBACK['es'],
+            respuesta: "Disculpa, has alcanzado el límite de mensajes. Intenta de nuevo más tarde.",
             intencion: 'rate_limit',
             agente_usado: 'none',
             datos_accion: null,
             tokens_usados: 0,
             tiempo_ms: Date.now() - inicio,
             rate_limited: true
+        };
+    }
+
+    const limiteMensual = await verificarLimiteMensual(negocioId);
+    if (!limiteMensual.permitido) {
+        console.log(`[Orchestrator] Límite mensual excedido: ${limiteMensual.uso}/${limiteMensual.limite} (${limiteMensual.porcentaje}%)`);
+        return {
+            respuesta: limiteMensual.mensaje,
+            intencion: 'limite_mensual',
+            agente_usado: 'none',
+            datos_accion: null,
+            tokens_usados: 0,
+            tiempo_ms: Date.now() - inicio,
+            limit_exceeded: true
         };
     }
     
@@ -51,46 +51,34 @@ async function procesarMensaje(mensaje, negocioId, clienteId, contexto = []) {
     }
     
     try {
-        const response = await fetch(`${BRAIN_URL}/procesar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                mensaje,
-                contexto,
-                negocio_id: negocioId,
-                cliente_id: clienteId
-            })
-        });
+        console.log(`[Orchestrator] Llamando Gemini...`);
+        const resultado = await gemini.procesarMensaje(mensaje, negocioId, clienteId, contexto);
+        console.log(`[Orchestrator] Gemini respondió: ${resultado.intencion} | ${resultado.agente_usado} | tokens: ${resultado.tokens_usados}`);
 
-        if (!response.ok) {
-            throw new Error(`Brain API error: ${response.status}`);
+        let pedidoCreado = null;
+        if (resultado.datos_accion) {
+            pedidoCreado = await ejecutarAccion(resultado.datos_accion, negocioId, clienteId);
         }
 
-        const resultado = await response.json();
+        await guardarLogAgente(negocioId, clienteId, resultado.intencion, resultado.agente_usado, mensaje, resultado.respuesta, resultado.tokens_usados || 0);
 
-        await ejecutarAccion(resultado.datos_accion, negocioId, clienteId);
-
-        let respuestaTexto = resultado.respuesta;
-        if (resultado.datos_accion?.tipo === 'crear_pedido' && ultimoTrackingUrl) {
-            respuestaTexto += `\n\n📦 Puedes seguir tu pedido en tiempo real aquí:\n${ultimoTrackingUrl}`;
-            ultimoTrackingUrl = null;
+        // Add warning footer if usage is high
+        let respuestaFinal = resultado.respuesta;
+        if (limiteMensual.advertencia && limiteMensual.porcentaje >= 100) {
+            respuestaFinal += `\n\n---\n_*Has alcanzado el ${limiteMensual.porcentaje}% de tu límite mensual. Actualiza tu plan para continuar sin interrupciones.*_`;
         }
-
-        await guardarLogAgente(negocioId, clienteId, resultado.intencion, resultado.agente_usado, mensaje, respuestaTexto, resultado.tokens_usados || 0);
 
         return {
-            respuesta: respuestaTexto,
-            intencion: resultado.intencion,
-            agente_usado: resultado.agente_usado,
-            datos_accion: resultado.datos_accion,
-            tokens_usados: resultado.tokens_usados || 0,
-            tiempo_ms: Date.now() - inicio
+            ...resultado,
+            respuesta: respuestaFinal,
+            pedido_creado: pedidoCreado,
+            limite_mensual: limiteMensual,
         };
 
     } catch (error) {
         console.error(`[Orchestrator] Error: ${error.message}`);
         return {
-            respuesta: RESPUESTAS_FALLBACK['es'],
+            respuesta: 'Disculpa, tuve un problema. ¿Podrías intentarlo de nuevo?',
             intencion: 'error',
             agente_usado: 'none',
             datos_accion: null,
@@ -132,6 +120,69 @@ async function verificarRateLimit(negocioId) {
     }
 }
 
+async function verificarLimiteMensual(negocioId) {
+    try {
+        const periodo = new Date().toISOString().substring(0, 7);
+
+        const [negocios] = await db.execute(
+            'SELECT plan FROM negocios WHERE id = ?',
+            [negocioId]
+        );
+        const plan = negocios[0]?.plan || 'starter';
+
+        const [stats] = await db.execute(
+            `SELECT COUNT(*) as mensajes
+             FROM agente_logs
+             WHERE negocio_id = ? AND DATE_FORMAT(created_at, '%Y-%m') = ?`,
+            [negocioId, periodo]
+        );
+        const mensajesUsados = stats[0]?.mensajes || 0;
+
+        const limite = checkLimit(plan, 'maxMessages', mensajesUsados);
+
+        if (limite.limit === -1) {
+            return { permitido: true, uso: 0, limite: -1, porcentaje: 0 };
+        }
+
+        const porcentaje = limite.percentage;
+
+        // 120%+ → Bloqueado
+        if (porcentaje >= 120) {
+            return {
+                permitido: false,
+                razon: 'limite_mensual_excedido',
+                uso: mensajesUsados,
+                limite: limite.limit,
+                porcentaje,
+                mensaje: `Has alcanzado el ${porcentaje}% de tu límite mensual (${mensajesUsados}/${limite.limit} mensajes). Actualiza tu plan para continuar.`
+            };
+        }
+
+        // 100-119% → Advertencia,bot sigue
+        if (porcentaje >= 100) {
+            return {
+                permitido: true,
+                advertencia: true,
+                uso: mensajesUsados,
+                limite: limite.limit,
+                porcentaje,
+                mensaje: `Has alcanzado el ${porcentaje}% de tu límite mensual. El bot funciona pero algunos mensajes pueden no ser procesados.`
+            };
+        }
+
+        return {
+            permitido: true,
+            uso: mensajesUsados,
+            limite: limite.limit,
+            porcentaje
+        };
+
+    } catch (error) {
+        console.error('[Orchestrator] Error verificando límite mensual:', error);
+        return { permitido: true };
+    }
+}
+
 async function verificarHorario(negoId) {
     try {
         const [negocios] = await db.execute(
@@ -153,13 +204,27 @@ async function verificarHorario(negoId) {
         const ahora = new Date();
         const horaActual = ahora.getHours() * 60 + ahora.getMinutes();
         
-        const [inicioH, inicioM] = negocio.horario_activo_inicio.split(':').map(Number);
-        const [finH, finM] = negocio.horario_activo_fin.split(':').map(Number);
+        // Parse time strings - handle both HH:MM and HH:MM:SS formats
+        const inicioStr = String(negocio.horario_activo_inicio).slice(0, 5);
+        const finStr = String(negocio.horario_activo_fin).slice(0, 5);
+        
+        const [inicioH, inicioM] = inicioStr.split(':').map(Number);
+        const [finH, finM] = finStr.split(':').map(Number);
         
         const inicioMinutos = inicioH * 60 + inicioM;
         const finMinutos = finH * 60 + finM;
         
-        const dentroHorario = horaActual >= inicioMinutos && horaActual <= finMinutos;
+        // Handle times that cross midnight (e.g., 8am to 12am)
+        let dentroHorario;
+        if (inicioMinutos <= finMinutos) {
+            // Normal: e.g., 8:00 to 22:00
+            dentroHorario = horaActual >= inicioMinutos && horaActual <= finMinutos;
+        } else {
+            // Crosses midnight: e.g., 22:00 to 8:00
+            dentroHorario = horaActual >= inicioMinutos || horaActual <= finMinutos;
+        }
+        
+        console.log(`[Orchestrator] Horario: actual=${horaActual}min, inicio=${inicioMinutos}min, fin=${finMinutos}min, dentro=${dentroHorario}`);
         
         return {
             dentro_horario: dentroHorario,
@@ -173,38 +238,28 @@ async function verificarHorario(negoId) {
 }
 
 async function ejecutarAccion(datosAccion, negocioId, clienteId) {
-    if (!datosAccion) return;
+    if (!datosAccion) return null;
 
     try {
         switch (datosAccion.tipo) {
             case 'crear_pedido':
-                await crearPedido(negocioId, clienteId, datosAccion);
-                break;
-
+                return await crearPedido(negocioId, clienteId, datosAccion);
             case 'confirmar_pago':
-                await confirmarPago(negocioId, clienteId, datosAccion);
-                break;
-
+                return await confirmarPago(negocioId, clienteId, datosAccion);
             case 'cancelar_pedido':
-                await cancelarPedido(negocioId, datosAccion);
-                break;
-
-            case 'escalar_humano':
-                await escalarAHumano(negocioId, clienteId, datosAccion);
-                break;
-
+                return await cancelarPedido(negocioId, datosAccion);
             default:
-                console.log(`[Orchestrator] Acción desconocida: ${datosAccion.tipo}`);
+                console.log(`[Orchestrator] Acción: ${datosAccion.tipo}`);
+                return null;
         }
     } catch (error) {
         console.error(`[Orchestrator] Error ejecutando acción ${datosAccion.tipo}:`, error);
+        return null;
     }
 }
 
-let ultimoTrackingUrl = null;
-
 async function crearPedido(negocioId, clienteId, datos) {
-    if (!datos.productos || datos.productos.length === 0) return;
+    if (!datos.productos || datos.productos.length === 0) return null;
 
     try {
         const [productosDb] = await db.execute(
@@ -212,9 +267,16 @@ async function crearPedido(negocioId, clienteId, datos) {
             [negocioId]
         );
 
+        // Get payment info
+        const [negocios] = await db.execute(
+            'SELECT numero_nequi, numero_bancolombia, nombre FROM negocios WHERE id = ?',
+            [negocioId]
+        );
+        const negocio = negocios[0] || {};
+
         let total = 0;
         const items = [];
-        let direccionEntrega = datos.direccion_entrega || datos.direccion || null;
+        let direccionEntrega = datos.direccion_entrega || null;
 
         for (const item of datos.productos) {
             const producto = productosDb.find(p => 
@@ -228,6 +290,7 @@ async function crearPedido(negocioId, clienteId, datos) {
                 total += subtotal;
                 items.push({
                     producto_id: producto.id,
+                    nombre: producto.nombre,
                     cantidad,
                     precio: producto.precio,
                     subtotal
@@ -235,7 +298,7 @@ async function crearPedido(negocioId, clienteId, datos) {
             }
         }
 
-        if (items.length === 0) return;
+        if (items.length === 0) return null;
 
         const numeroPedido = `AG-${String(negocioId).padStart(3, '0')}-${Date.now().toString().slice(-6)}`;
 
@@ -258,32 +321,22 @@ async function crearPedido(negocioId, clienteId, datos) {
             [clienteId]
         );
 
-        const [modulos] = await db.execute(
-            'SELECT activo, config FROM negocio_modulos WHERE negocio_id = ? AND modulo_name = ?',
-            [negocioId, 'domicilios']
-        );
-
-        const domiciliosActivo = modulos.length > 0 && modulos[0].activo;
-        ultimoTrackingUrl = null;
-
-        if (domiciliosActivo && direccionEntrega) {
-            const trackingToken = generarTrackingToken();
-            const tarifaEnvio = 5000;
-
-            await db.execute(
-                `INSERT INTO domicilios (negocio_id, pedido_id, estado, tarifa_envio, tracking_token)
-                 VALUES (?, ?, 'pendiente', ?, ?)`,
-                [negocioId, result.insertId, tarifaEnvio, trackingToken]
-            );
-
-            ultimoTrackingUrl = `${TRACKING_BASE_URL}/${trackingToken}`;
-            console.log(`[Orchestrator] Domicilio creado para pedido ${numeroPedido}: ${ultimoTrackingUrl}`);
-        }
-
         console.log(`[Orchestrator] Pedido ${numeroPedido} creado para cliente ${clienteId}`);
+
+        return {
+            pedido_id: result.insertId,
+            numero_pedido: numeroPedido,
+            items,
+            total,
+            direccion_entrega: direccionEntrega,
+            nequi: negocio.numero_nequi || null,
+            bancolombia: negocio.numero_bancolombia || null,
+            negocio_nombre: negocio.nombre || '',
+        };
 
     } catch (error) {
         console.error('[Orchestrator] Error creando pedido:', error);
+        return null;
     }
 }
 
@@ -330,28 +383,6 @@ async function cancelarPedido(negocioId, datos) {
     }
 }
 
-async function escalarAHumano(negocioId, clienteId, datos) {
-    try {
-        const [negocios] = await db.execute(
-            'SELECT email_dueno, nombre FROM negocios WHERE id = ?',
-            [negocioId]
-        );
-
-        if (negocios.length > 0) {
-            console.log(`[Orchestrator] ESCALAR A HUMANO - Negocio: ${negocios[0].nombre}, Resumen: ${datos.resumen}`);
-        }
-
-        await db.execute(
-            `INSERT INTO notificaciones (negocio_id, tipo, titulo, mensaje)
-             VALUES (?, 'escala_humano', 'Cliente requiere atención', ?)`,
-            [negocioId, datos.resumen]
-        );
-
-    } catch (error) {
-        console.error('[Orchestrator] Error escalando a humano:', error);
-    }
-}
-
 async function guardarLogAgente(negocioId, clienteId, intencion, agente, mensajeEntrada, respuesta, tokens) {
     try {
         await db.execute(
@@ -365,36 +396,7 @@ async function guardarLogAgente(negocioId, clienteId, intencion, agente, mensaje
 }
 
 async function verificarPagoConImagen(imagenBase64, negocioId, totalEsperado) {
-    try {
-        if (!imagenBase64 || imagenBase64.length < 1000) {
-            return { valido: false, error: 'Imagen muy pequeña o inválida' };
-        }
-
-        const response = await fetch(`${BRAIN_URL}/verificar-pago`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                imagen_base64: imagenBase64,
-                negocio_id: negocioId,
-                total_esperado: totalEsperado
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `Error HTTP: ${response.status}`);
-        }
-
-        const result = await response.json();
-        return result;
-
-    } catch (error) {
-        console.error('[Orchestrator] Error verificando pago:', error.message);
-        return { 
-            valido: false, 
-            error: `Error al verificar: ${error.message}. Intenta de nuevo o contacta al negocio.` 
-        };
-    }
+    return gemini.verificarPagoConImagen(imagenBase64, negocioId, totalEsperado);
 }
 
 module.exports = {

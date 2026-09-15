@@ -342,8 +342,8 @@ export default function PortalDomiciliario() {
                     <div className="delivery-body">
                         <div className="delivery-info">
                             <span className="delivery-order">{miEntrega.numero_pedido}</span>
-                            <span className="delivery-client">👤 {miEntrega.cliente_nombre}</span>
-                            <span className="delivery-address">📍 {miEntrega.direccion_entrega || 'Sin dirección'}</span>
+                            <span className="delivery-client"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> {miEntrega.cliente_nombre}</span>
+                            <span className="delivery-address"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> {miEntrega.direccion_entrega || 'Sin dirección'}</span>
                         </div>
                         <div className="delivery-actions">
                             {miEntrega.cliente_whatsapp && (
@@ -407,11 +407,11 @@ export default function PortalDomiciliario() {
                                 <div key={p.domicilio_id} className="pending-card">
                                     <div className="pending-header">
                                         <span className="pending-order">{p.numero_pedido}</span>
-                                        <span className="pending-pay">💰 {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(p.tarifa_envio)}</span>
+                                        <span className="pending-pay"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(p.tarifa_envio)}</span>
                                     </div>
                                     <div className="pending-body">
-                                        <span>👤 {p.cliente_nombre}</span>
-                                        <span>📍 {p.direccion_entrega || 'Sin dirección'}</span>
+                                        <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> {p.cliente_nombre}</span>
+                                        <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> {p.direccion_entrega || 'Sin dirección'}</span>
                                     </div>
                                     <button className="btn-accept" onClick={() => handleAccept(p.domicilio_id)}>
                                         Aceptar Entrega

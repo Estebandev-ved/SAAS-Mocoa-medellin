@@ -93,7 +93,7 @@ const ROISimulator = () => {
             viewport={{ once: true }}
             className="bg-bg2 p-10 rounded-3xl border border-border shadow-2xl relative"
           >
-            <div className="absolute -top-6 -left-6 w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-bg shadow-[0_0_20px_rgba(0,255,209,0.3)]">
+            <div className="absolute -top-6 -left-6 w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-bg shadow-[0_0_20px_rgba(229,57,53,0.3)]">
               <Calculator size={24} />
             </div>
 
@@ -185,7 +185,7 @@ const ROISimulator = () => {
             * Cifras estimadas basadas en costos operativos estándar de comercio electrónico en LATAM.
           </p>
           <motion.button 
-            whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(0,255,209,0.2)' }}
+            whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(229,57,53,0.2)' }}
             whileTap={{ scale: 0.95 }}
             className="bg-accent text-bg px-12 py-5 rounded-2xl font-head font-bold text-lg cursor-pointer border-none"
             onClick={() => document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })}

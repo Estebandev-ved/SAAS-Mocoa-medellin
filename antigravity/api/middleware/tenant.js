@@ -1,31 +1,5 @@
 const db = require('../../db/config');
-
-const PLAN_LIMITS = {
-  starter: {
-    maxMessagesPerMonth: 1000,
-    automations: ['recordatorio_pago', 'stock_bajo'],
-    campaigns: false,
-    visionOCR: false,
-    reports: false,
-    maxProducts: 20
-  },
-  professional: {
-    maxMessagesPerMonth: 5000,
-    automations: ['recordatorio_pago', 'stock_bajo', 'reengagement', 'reporte_semanal', 'campaña_masiva'],
-    campaigns: true,
-    visionOCR: false,
-    reports: true,
-    maxProducts: Infinity
-  },
-  enterprise: {
-    maxMessagesPerMonth: Infinity,
-    automations: ['recordatorio_pago', 'stock_bajo', 'reengagement', 'reporte_semanal', 'campaña_masiva', 'ocr_pagos'],
-    campaigns: true,
-    visionOCR: true,
-    reports: true,
-    maxProducts: Infinity
-  }
-};
+const { getPlanFeatures, hasFeature, checkLimit, getPlan } = require('../../config/planConfig');
 
 async function injectTenantId(req, res, next) {
   if (!req.negocioId) {
@@ -36,16 +10,20 @@ async function injectTenantId(req, res, next) {
   }
 
   try {
-    const [suscripciones] = await db.execute(
-      `SELECT * FROM suscripciones WHERE negocio_id = ? ORDER BY created_at DESC LIMIT 1`,
+    const [negocios] = await db.execute(
+      `SELECT plan, suscripcion_activa, suscripcion_fin, trial_hasta, trial_inicio
+       FROM negocios WHERE id = ?`,
       [req.negocioId]
     );
 
-    const suscripcion = suscripciones[0];
-    const estaEnTrial = suscripcion?.estado === 'trial';
-    const trialVencido = estaEnTrial && suscripcion?.trial_fin && new Date(suscripcion.trial_fin) < new Date();
+    const negocio = negocios[0];
+    const now = new Date();
 
-    if (!req.negocio.suscripcion_activa && estaEnTrial && trialVencido) {
+    // Check trial expiry
+    const enTrial = negocio.trial_hasta && new Date(negocio.trial_hasta) > now && !negocio.suscripcion_activa;
+    const trialVencido = negocio.trial_hasta && new Date(negocio.trial_hasta) < now && !negocio.suscripcion_activa;
+
+    if (trialVencido) {
       return res.status(402).json({
         error: 'Tu período de prueba ha vencido. Activa tu cuenta para continuar.',
         codigo: 'TRIAL_VENCIDO',
@@ -53,7 +31,25 @@ async function injectTenantId(req, res, next) {
       });
     }
 
-    req.planLimits = PLAN_LIMITS[req.negocio.plan] || PLAN_LIMITS.starter;
+    // Check subscription expiry
+    const subVencida = negocio.suscripcion_fin && new Date(negocio.suscripcion_fin) < now && negocio.suscripcion_activa;
+    if (subVencida) {
+      await db.execute('UPDATE negocios SET suscripcion_activa = 0 WHERE id = ?', [req.negocioId]);
+      return res.status(402).json({
+        error: 'Tu suscripción ha vencido. Renueva para continuar.',
+        codigo: 'SUSCRIPCION_VENCIDA',
+        necesitaRenovar: true
+      });
+    }
+
+    // Set plan limits from planConfig
+    req.planLimits = getPlanFeatures(negocio.plan);
+    req.planLimits.maxMessagesPerMonth = req.planLimits.maxMessages;
+    req.planLimits.maxProducts = req.planLimits.maxProducts === -1 ? Infinity : req.planLimits.maxProducts;
+    req.planLimits.automations = getPlan(negocio.plan).automations;
+    req.planLimits.campaigns = req.planLimits.campañasMasivas;
+    req.planLimits.visionOCR = req.planLimits.ocrPagos;
+    req.planLimits.reports = req.planLimits.reportesBasicos;
 
     next();
   } catch (error) {
@@ -134,24 +130,26 @@ async function checkMessageLimit(req, res, next) {
     const mesActual = new Date().toISOString().slice(0, 7);
     const [stats] = await db.execute(
       `SELECT COUNT(*) as mensajes_enviados 
-       FROM analytics_diario 
-       WHERE negocio_id = ? AND fecha >= ?`,
+       FROM mensajes 
+       WHERE negocio_id = ? AND DATE(created_at) >= ?`,
       [req.negocioId, `${mesActual}-01`]
     );
 
     const mensajesMes = stats[0]?.mensajes_enviados || 0;
-    const limite = req.planLimits?.maxMessagesPerMonth || 1000;
+    const limitCheck = checkLimit(req.negocio?.plan || 'starter', 'maxMessages', mensajesMes);
 
-    if (mensajesMes >= limite) {
+    if (!limitCheck.allowed) {
       return res.status(429).json({
         error: 'Has alcanzado el límite de mensajes del mes',
         codigo: 'LIMITE_MENSUAL',
         mensajes_usados: mensajesMes,
-        limite: limite,
+        limite: limitCheck.limit,
+        mensajes_restantes: limitCheck.remaining,
         upgrade_url: '/dashboard/plan'
       });
     }
 
+    req.usage = { mensajes_usados: mensajesMes };
     next();
   } catch (error) {
     console.error('[CheckLimit] Error:', error.message);
@@ -161,8 +159,8 @@ async function checkMessageLimit(req, res, next) {
 
 async function checkProductLimit(req, res, next) {
   try {
-    const limite = req.planLimits?.maxProducts || 20;
-    if (limite === Infinity) return next();
+    const limitCheck = checkLimit(req.negocio?.plan || 'starter', 'maxProducts', 0);
+    if (limitCheck.limit === -1) return next();
 
     const [stats] = await db.execute(
       `SELECT COUNT(*) as total FROM productos WHERE negocio_id = ?`,
@@ -170,11 +168,13 @@ async function checkProductLimit(req, res, next) {
     );
 
     const total = stats[0]?.total || 0;
-    if (total >= limite) {
+    const productCheck = checkLimit(req.negocio?.plan || 'starter', 'maxProducts', total);
+
+    if (!productCheck.allowed) {
       return res.status(403).json({
-        error: `Has alcanzado el límite de ${limite} productos de tu plan actual.`,
+        error: `Has alcanzado el límite de ${productCheck.limit} productos de tu plan actual.`,
         codigo: 'LIMITE_PRODUCTOS',
-        limite: limite,
+        limite: productCheck.limit,
         upgrade_url: '/dashboard/plan'
       });
     }
@@ -192,5 +192,4 @@ module.exports = {
   checkFeature,
   checkMessageLimit,
   checkProductLimit,
-  PLAN_LIMITS
 };

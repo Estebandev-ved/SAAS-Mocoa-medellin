@@ -47,12 +47,12 @@
 
 .stat-icon.green {
   background: rgba(34, 197, 94, 0.1);
-  color: #22C55E;
+  color: var(--success);
 }
 
 .stat-icon.red {
   background: rgba(239, 68, 68, 0.1);
-  color: #EF4444;
+  color: var(--error);
 }
 
 .stat-icon.purple {
@@ -95,7 +95,7 @@
 
 .admin-suscripciones .filtros-bar select:focus {
   outline: none;
-  border-color: #00FFD1;
+  border-color: var(--accent-primary);
 }
 
 .suscripciones-table {
@@ -144,12 +144,12 @@
 
 .estado-badge.activa {
   background: rgba(34, 197, 94, 0.15);
-  color: #22C55E;
+  color: var(--success);
 }
 
 .estado-badge.vencida {
   background: rgba(239, 68, 68, 0.15);
-  color: #EF4444;
+  color: var(--error);
 }
 
 .estado-badge.cancelada {
@@ -159,7 +159,7 @@
 
 .btn-danger {
   border-color: rgba(239, 68, 68, 0.3) !important;
-  color: #EF4444 !important;
+  color: var(--error) !important;
 }
 
 .btn-danger:hover {

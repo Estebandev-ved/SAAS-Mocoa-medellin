@@ -82,7 +82,7 @@ const Customizer = () => {
                   onClick={() => updateBranding({ theme: 'dark' })}
                   className={`flex items-center justify-center gap-3 py-4 rounded-xl font-mono text-xs font-bold transition-all border ${
                     branding.theme === 'dark' 
-                      ? 'bg-accent text-bg border-accent shadow-[0_0_20px_rgba(0,255,209,0.2)]' 
+                      ? 'bg-accent text-bg border-accent shadow-[0_0_20px_rgba(229,57,53,0.2)]' 
                       : 'bg-bg3 text-muted border-border hover:border-accent/50'
                   }`}
                 >
@@ -92,7 +92,7 @@ const Customizer = () => {
                   onClick={() => updateBranding({ theme: 'light' })}
                   className={`flex items-center justify-center gap-3 py-4 rounded-xl font-mono text-xs font-bold transition-all border ${
                     branding.theme === 'light' 
-                      ? 'bg-accent text-bg border-accent shadow-[0_0_20px_rgba(0,255,209,0.2)]' 
+                      ? 'bg-accent text-bg border-accent shadow-[0_0_20px_rgba(229,57,53,0.2)]' 
                       : 'bg-bg3 text-muted border-border hover:border-accent/50'
                   }`}
                 >

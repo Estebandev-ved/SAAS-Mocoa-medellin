@@ -1,0 +1,1282 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
+import {
+  Loader2,
+  Store,
+  Bot,
+  MessageSquare,
+  CreditCard,
+  Bell,
+  Shield,
+  Save,
+  Eye,
+  EyeOff,
+  LogOut,
+  CheckCircle2,
+  AlertCircle,
+  QrCode,
+  Wifi,
+  WifiOff,
+  Building2,
+  Globe,
+  Mail,
+  Phone,
+  MapPin,
+  Hash,
+  FileText,
+  Users,
+  Clock,
+  Palette,
+  MessageCircle,
+  Smartphone,
+  CreditCard as CreditCardIcon,
+  ExternalLink,
+  BellRing,
+  BellOff,
+  MailIcon,
+  AlertTriangle,
+  Lock,
+  Key,
+  Info,
+  ArrowLeft,
+} from 'lucide-react';
+
+const TABS = [
+  { id: 'negocio', label: 'Negocio', icon: Store },
+  { id: 'bot', label: 'Bot', icon: Bot },
+  { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
+  { id: 'pago', label: 'Pago', icon: CreditCard },
+  { id: 'notificaciones', label: 'Notificaciones', icon: Bell },
+  { id: 'seguridad', label: 'Seguridad', icon: Shield },
+];
+
+function Toast({ type, message, onClose }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const icons = {
+    success: <CheckCircle2 className="w-5 h-5 text-green-500" />,
+    error: <AlertCircle className="w-5 h-5 text-red-400" />,
+  };
+
+  return (
+    <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-top-4">
+      <div
+        className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl border shadow-2xl backdrop-blur-xl ${
+          type === 'success'
+            ? 'bg-green-500/10 border-green-500/30'
+            : 'bg-red-500/10 border-red-500/30'
+        }`}
+      >
+        {icons[type]}
+        <span className="text-sm font-body text-text">{message}</span>
+      </div>
+    </div>
+  );
+}
+
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-32">
+      <Loader2 className="w-10 h-10 text-accent animate-spin" />
+    </div>
+  );
+}
+
+function GlassCard({ children, className = '' }) {
+  return (
+    <div
+      className={`bg-bg2 backdrop-blur-xl rounded-2xl border border-border p-8 ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function FormField({ label, icon: Icon, children, mono = false }) {
+  return (
+    <div className="space-y-2">
+      <label
+        className={`flex items-center gap-2 text-sm ${
+          mono ? 'font-mono' : 'font-head'
+        } text-muted uppercase tracking-wider`}
+      >
+        {Icon && <Icon className="w-4 h-4 text-accent" />}
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function InputField({ icon: Icon, ...props }) {
+  return (
+    <div className="relative">
+      {Icon && (
+        <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+      )}
+      <input
+        className={`w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all ${
+          Icon ? 'pl-11' : ''
+        }`}
+        {...props}
+      />
+    </div>
+  );
+}
+
+function SelectField({ icon: Icon, options, ...props }) {
+  return (
+    <div className="relative">
+      {Icon && (
+        <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+      )}
+      <select
+        className={`w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all appearance-none ${
+          Icon ? 'pl-11' : ''
+        }`}
+        {...props}
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}               className="bg-bg">
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function ToggleSwitch({ checked, onChange, label }) {
+  return (
+    <div className="flex items-center justify-between py-3">
+      <span className="text-sm font-body text-text/70">{label}</span>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={`relative w-12 h-6 rounded-full transition-colors ${
+          checked ? 'bg-accent' : 'bg-bg3'
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-lg transition-transform ${
+            checked ? 'translate-x-6' : ''
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+function NegocioTab() {
+  const [form, setForm] = useState({
+    nombre: '',
+    email_dueno: '',
+    whatsapp: '',
+    nit: '',
+    razon_social: '',
+    tipo_negocio: '',
+    ciudad: '',
+    departamento: '',
+    direccion: '',
+    telefono: '',
+    sitio_web: '',
+    descripcion_negocio: '',
+    numero_empleados: '',
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    api
+      .get('/negocio/perfil')
+      .then((res) => {
+        const n = res.data.negocio || res.data;
+        setForm((prev) => ({ ...prev, ...n }));
+      })
+      .catch(() => setToast({ type: 'error', message: 'Error al cargar perfil' }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleChange = (e) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.put('/negocio/perfil', form);
+      setToast({ type: 'success', message: 'Perfil actualizado correctamente' });
+    } catch {
+      setToast({ type: 'error', message: 'Error al guardar cambios' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <LoadingSpinner />;
+
+  return (
+    <div className="space-y-8">
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <GlassCard>
+        <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
+          <Building2 className="w-5 h-5 text-green-500" />
+          Información del Negocio
+        </h3>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <FormField label="Nombre del Negocio" icon={Store}>
+              <InputField
+                name="nombre"
+                value={form.nombre}
+                onChange={handleChange}
+                placeholder="Mi negocio"
+              />
+            </FormField>
+            <FormField label="Email del Dueño" icon={Mail}>
+              <InputField
+                name="email_dueno"
+                type="email"
+                value={form.email_dueno}
+                onChange={handleChange}
+                placeholder="dueño@negocio.com"
+              />
+            </FormField>
+            <FormField label="WhatsApp" icon={Smartphone}>
+              <InputField
+                name="whatsapp"
+                value={form.whatsapp}
+                onChange={handleChange}
+                placeholder="+57 300 123 4567"
+              />
+            </FormField>
+            <FormField label="NIT" icon={Hash} mono>
+              <InputField
+                name="nit"
+                value={form.nit}
+                onChange={handleChange}
+                placeholder="900123456-7"
+              />
+            </FormField>
+            <FormField label="Razón Social" icon={FileText}>
+              <InputField
+                name="razon_social"
+                value={form.razon_social}
+                onChange={handleChange}
+                placeholder="Razón social S.A.S"
+              />
+            </FormField>
+            <FormField label="Tipo de Negocio" icon={Info}>
+              <InputField
+                name="tipo_negocio"
+                value={form.tipo_negocio}
+                onChange={handleChange}
+                placeholder="Restaurante, Tienda, etc."
+              />
+            </FormField>
+            <FormField label="Ciudad" icon={MapPin}>
+              <InputField
+                name="ciudad"
+                value={form.ciudad}
+                onChange={handleChange}
+                placeholder="Bogotá"
+              />
+            </FormField>
+            <FormField label="Departamento" icon={MapPin}>
+              <InputField
+                name="departamento"
+                value={form.departamento}
+                onChange={handleChange}
+                placeholder="Cundinamarca"
+              />
+            </FormField>
+            <FormField label="Dirección" icon={MapPin}>
+              <InputField
+                name="direccion"
+                value={form.direccion}
+                onChange={handleChange}
+                placeholder="Calle 123 #45-67"
+              />
+            </FormField>
+            <FormField label="Teléfono" icon={Phone}>
+              <InputField
+                name="telefono"
+                value={form.telefono}
+                onChange={handleChange}
+                placeholder="+57 601 123 4567"
+              />
+            </FormField>
+            <FormField label="Sitio Web" icon={Globe}>
+              <InputField
+                name="sitio_web"
+                value={form.sitio_web}
+                onChange={handleChange}
+                placeholder="https://minegocio.com"
+              />
+            </FormField>
+            <FormField label="Número de Empleados" icon={Users}>
+              <InputField
+                name="numero_empleados"
+                type="number"
+                value={form.numero_empleados}
+                onChange={handleChange}
+                placeholder="10"
+              />
+            </FormField>
+          </div>
+          <FormField label="Descripción del Negocio" icon={Info}>
+            <textarea
+              name="descripcion_negocio"
+              value={form.descripcion_negocio}
+              onChange={handleChange}
+              rows={3}
+              placeholder="Describe tu negocio..."
+              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+            />
+          </FormField>
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 disabled:opacity-50 text-text font-head font-semibold rounded-xl transition-colors"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Guardar Cambios
+            </button>
+          </div>
+        </form>
+      </GlassCard>
+    </div>
+  );
+}
+
+function BotTab() {
+  const [form, setForm] = useState({
+    bot_nombre: '',
+    bot_tono: 'amigable',
+    bot_bienvenida: '',
+    mensaje_fuera_horario: '',
+    horario_inicio: '09:00',
+    horario_fin: '18:00',
+    descripcion_negocio: '',
+    productos_servicios: '',
+    info_pagos: '',
+    politicas: '',
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const [whitelistMode, setWhitelistMode] = useState('todos');
+  const [whitelistNumbers, setWhitelistNumbers] = useState([]);
+  const [newNumber, setNewNumber] = useState('');
+  const [savingWhitelist, setSavingWhitelist] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/bot/config').then((res) => {
+        const b = res.data.bot || res.data;
+        setForm((prev) => ({ ...prev, ...b }));
+      }),
+      api.get('/bot/whitelist').then((res) => {
+        setWhitelistMode(res.data.modo);
+        setWhitelistNumbers(res.data.numeros);
+      }),
+    ]).catch(() =>
+      setToast({ type: 'error', message: 'Error al cargar configuración' })
+    ).finally(() => setLoading(false));
+  }, []);
+
+  const handleChange = (e) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.put('/bot/config', form);
+      setToast({ type: 'success', message: 'Bot actualizado correctamente' });
+    } catch {
+      setToast({ type: 'error', message: 'Error al guardar configuración' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <LoadingSpinner />;
+
+  return (
+    <div className="space-y-8">
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <GlassCard>
+        <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
+          <Bot className="w-5 h-5 text-green-500" />
+          Configuración del Bot
+        </h3>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <FormField label="Nombre del Bot" icon={Bot}>
+              <InputField
+                name="bot_nombre"
+                value={form.bot_nombre}
+                onChange={handleChange}
+                placeholder="Asistente Virtual"
+              />
+            </FormField>
+            <FormField label="Tono del Bot" icon={Palette}>
+              <SelectField
+                name="bot_tono"
+                value={form.bot_tono}
+                onChange={handleChange}
+                options={[
+                  { value: 'formal', label: 'Formal' },
+                  { value: 'amigable', label: 'Amigable' },
+                  { value: 'casual', label: 'Casual' },
+                ]}
+              />
+            </FormField>
+          </div>
+          <FormField label="Mensaje de Bienvenida" icon={MessageCircle}>
+            <textarea
+              name="bot_bienvenida"
+              value={form.bot_bienvenida}
+              onChange={handleChange}
+              rows={3}
+              placeholder="¡Hola! Bienvenido a nuestro negocio. ¿En qué puedo ayudarte?"
+              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+            />
+          </FormField>
+          <FormField label="Mensaje Fuera de Horario" icon={Clock}>
+            <textarea
+              name="mensaje_fuera_horario"
+              value={form.mensaje_fuera_horario}
+              onChange={handleChange}
+              rows={3}
+              placeholder="Gracias por escribirnos. Nuestro horario de atención es de 9am a 6pm..."
+              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+            />
+          </FormField>
+
+          <div className="border-t border-border pt-6 mt-6">
+            <h4 className="font-head text-lg text-text mb-4 flex items-center gap-2">
+              <Store className="w-4 h-4 text-accent" />
+              Información del Negocio (para el bot)
+            </h4>
+            <p className="text-xs text-muted mb-4 font-body">
+              El bot usa esta información para responder a tus clientes.
+            </p>
+          </div>
+
+          <FormField label="Descripción del Negocio" icon={Store}>
+            <textarea
+              name="descripcion_negocio"
+              value={form.descripcion_negocio}
+              onChange={handleChange}
+              rows={2}
+              placeholder="Ej: Empresa de contabilidad y asesoría tributaria..."
+              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+            />
+          </FormField>
+          <FormField label="Productos y Servicios" icon={FileText}>
+            <textarea
+              name="productos_servicios"
+              value={form.productos_servicios}
+              onChange={handleChange}
+              rows={3}
+              placeholder="Ej: Servicios contables, Declaración de renta, Asesoría tributaria..."
+              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+            />
+          </FormField>
+          <FormField label="Información de Pagos" icon={CreditCard}>
+            <textarea
+              name="info_pagos"
+              value={form.info_pagos}
+              onChange={handleChange}
+              rows={2}
+              placeholder="Ej: Nequi: 3001234567, Bancolombia: 1234567890..."
+              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+            />
+          </FormField>
+          <FormField label="Políticas" icon={Shield}>
+            <textarea
+              name="politicas"
+              value={form.politicas}
+              onChange={handleChange}
+              rows={2}
+              placeholder="Ej: Delivery en 30 min, Garantía 7 días, Factura electrónica..."
+              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+            />
+          </FormField>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <FormField label="Horario de Inicio" icon={Clock} mono>
+              <InputField
+                name="horario_inicio"
+                type="time"
+                value={form.horario_inicio}
+                onChange={handleChange}
+              />
+            </FormField>
+            <FormField label="Horario de Fin" icon={Clock} mono>
+              <InputField
+                name="horario_fin"
+                type="time"
+                value={form.horario_fin}
+                onChange={handleChange}
+              />
+            </FormField>
+          </div>
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 disabled:opacity-50 text-text font-head font-semibold rounded-xl transition-colors"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Guardar Configuración
+            </button>
+          </div>
+        </form>
+      </GlassCard>
+
+      <GlassCard>
+        <h3 className="font-head text-xl text-text mb-2 flex items-center gap-3">
+          <Shield className="w-5 h-5 text-yellow-500" />
+          Control de Chats
+        </h3>
+        <p className="text-sm text-muted mb-6 font-body">
+          Decide a qué chats les responde el bot. Útil para pruebas o restricciones.
+        </p>
+
+        <div className="space-y-5">
+          <FormField label="Modo del Bot" icon={Shield}>
+            <SelectField
+              value={whitelistMode}
+              onChange={(e) => setWhitelistMode(e.target.value)}
+              options={[
+                { value: 'todos', label: 'Responder a todos' },
+                { value: 'whitelist', label: 'Solo números permitidos (Whitelist)' },
+              ]}
+            />
+          </FormField>
+
+          {whitelistMode === 'whitelist' && (
+            <>
+              <FormField label="Números Permitidos" icon={Phone}>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newNumber}
+                    onChange={(e) => setNewNumber(e.target.value)}
+                    placeholder="Ej: 573208303600 (sin + ni espacios)"
+                    className="flex-1 bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (newNumber && /^\d+$/.test(newNumber) && !whitelistNumbers.includes(newNumber)) {
+                          setWhitelistNumbers([...whitelistNumbers, newNumber]);
+                          setNewNumber('');
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newNumber && /^\d+$/.test(newNumber) && !whitelistNumbers.includes(newNumber)) {
+                        setWhitelistNumbers([...whitelistNumbers, newNumber]);
+                        setNewNumber('');
+                      }
+                    }}
+                    className="px-4 py-3 bg-bg3 hover:bg-bg3/80 text-text text-sm font-body rounded-xl border border-border transition-colors"
+                  >
+                    Agregar
+                  </button>
+                </div>
+              </FormField>
+
+              {whitelistNumbers.length > 0 ? (
+                <div className="space-y-2">
+                  {whitelistNumbers.map((num, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between bg-bg border border-border rounded-xl px-4 py-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Phone className="w-4 h-4 text-green-500" />
+                        <span className="text-text text-sm font-body">+{num}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setWhitelistNumbers(whitelistNumbers.filter((_, i) => i !== idx))}
+                        className="text-red-400 hover:text-red-300 text-xs font-body transition-colors"
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-bg border border-border rounded-xl px-4 py-3 text-center">
+                  <p className="text-muted text-sm font-body">Sin números. El bot no responderá a nadie.</p>
+                </div>
+              )}
+
+              <p className="text-xs text-muted font-body">
+                Solo los números en esta lista recibirán respuestas del bot. Los demás mensajes serán ignorados.
+              </p>
+            </>
+          )}
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="button"
+              disabled={savingWhitelist}
+              onClick={async () => {
+                setSavingWhitelist(true);
+                try {
+                  await api.put('/bot/whitelist', { modo: whitelistMode, numeros: whitelistNumbers });
+                  setToast({ type: 'success', message: 'Control de chats actualizado' });
+                } catch {
+                  setToast({ type: 'error', message: 'Error al guardar control de chats' });
+                } finally {
+                  setSavingWhitelist(false);
+                }
+              }}
+              className="flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 disabled:opacity-50 text-text font-head font-semibold rounded-xl transition-colors"
+            >
+              {savingWhitelist ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Guardar Control de Chats
+            </button>
+          </div>
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+function WhatsAppTab() {
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      const res = await api.get('/negocio/whatsapp/status');
+      setStatus(res.data);
+    } catch {
+      setToast({ type: 'error', message: 'Error al obtener estado de WhatsApp' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
+  const handleConnect = async () => {
+    setActionLoading(true);
+    try {
+      await api.post('/negocio/whatsapp/connect');
+      setToast({ type: 'success', message: 'Conectando WhatsApp...' });
+      fetchStatus();
+    } catch {
+      setToast({ type: 'error', message: 'Error al conectar WhatsApp' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setActionLoading(true);
+    try {
+      await api.post('/negocio/whatsapp/disconnect');
+      setToast({ type: 'success', message: 'WhatsApp desconectado' });
+      fetchStatus();
+    } catch {
+      setToast({ type: 'error', message: 'Error al desconectar WhatsApp' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  if (loading) return <LoadingSpinner />;
+
+  const isConnected = status?.connected || false;
+
+  return (
+    <div className="space-y-8">
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <GlassCard>
+        <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
+          <MessageSquare className="w-5 h-5 text-green-500" />
+          Estado de WhatsApp
+        </h3>
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 p-5 rounded-xl bg-bg border border-border">
+            {isConnected ? (
+              <Wifi className="w-8 h-8 text-green-500" />
+            ) : (
+              <WifiOff className="w-8 h-8 text-red-400" />
+            )}
+            <div>
+              <p className="font-head text-text">
+                {isConnected ? 'Conectado' : 'Desconectado'}
+              </p>
+              <p className="text-sm font-body text-muted">
+                {isConnected
+                  ? 'Tu bot está activo en WhatsApp'
+                  : 'Conecta tu número para activar el bot'}
+              </p>
+            </div>
+            <div className="ml-auto">
+              <span
+                className={`inline-block w-3 h-3 rounded-full ${
+                  isConnected ? 'bg-[#4CAF50] animate-pulse' : 'bg-[#FF4D6A]'
+                }`}
+              />
+            </div>
+          </div>
+
+          {!isConnected && status?.qr && (
+            <div className="flex flex-col items-center gap-4 p-8 rounded-xl bg-bg border border-border">
+              <QrCode className="w-6 h-6 text-muted" />
+              <p className="font-head text-sm text-text/70">
+                Escanea el código QR con tu WhatsApp
+              </p>
+              <div className="w-56 h-56 bg-white rounded-2xl p-4 flex items-center justify-center">
+                <img
+                  src={status.qr}
+                  srcSet={status.qr}
+                  alt="QR Code"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-4">
+            {!isConnected ? (
+              <button
+                onClick={handleConnect}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 disabled:opacity-50 text-text font-head font-semibold rounded-xl transition-colors"
+              >
+                {actionLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Wifi className="w-4 h-4" />
+                )}
+                Conectar WhatsApp
+              </button>
+            ) : (
+              <button
+                onClick={handleDisconnect}
+                disabled={actionLoading}
+                className="flex items-center gap-2 px-6 py-3 bg-bg3 hover:bg-bg disabled:opacity-50 text-[#FF4D6A] border border-[#FF4D6A]/30 font-head font-semibold rounded-xl transition-colors"
+              >
+                {actionLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <WifiOff className="w-4 h-4" />
+                )}
+                Desconectar
+              </button>
+            )}
+          </div>
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+function PagoTab() {
+  const [plan, setPlan] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    api
+      .get('/negocio/plan')
+      .then((res) => setPlan(res.data.plan || res.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <LoadingSpinner />;
+
+  const mockMethods = [
+    { id: 1, tipo: 'Visa', ultimos: '4242', expira: '12/27' },
+    { id: 2, tipo: 'Mastercard', ultimos: '8888', expira: '03/28' },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <GlassCard>
+        <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
+          <CreditCard className="w-5 h-5 text-green-500" />
+          Plan Actual
+        </h3>
+        {plan ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-5 rounded-xl bg-accent/20 border border-green-500/20">
+              <div>
+                <p className="font-head text-2xl text-text">
+                  {plan.nombre || 'Plan Básico'}
+                </p>
+                <p className="text-sm font-body text-muted mt-1">
+                  {plan.descripcion || 'Funcionalidades esenciales para tu negocio'}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-mono text-3xl text-green-500 font-bold">
+                  ${plan.precio || '49.990'}
+                </p>
+                <p className="text-sm font-body text-muted">/mes</p>
+              </div>
+            </div>
+            {plan.limite_mensajes && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-bg border border-border">
+                  <p className="text-sm font-body text-muted">Mensajes usados</p>
+                  <p className="font-mono text-text text-lg mt-1">
+                    {plan.mensajes_usados || 0} / {plan.limite_mensajes}
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-bg border border-border">
+                  <p className="text-sm font-body text-muted">Próxima facturación</p>
+                  <p className="font-mono text-text text-lg mt-1">
+                    {plan.fecha_renovacion || '01/10/2026'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="font-body text-muted">No se encontró información del plan.</p>
+        )}
+      </GlassCard>
+
+      <GlassCard>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="font-head text-xl text-text flex items-center gap-3">
+            <CreditCardIcon className="w-5 h-5 text-green-500" />
+            Métodos de Pago
+          </h3>
+          <button
+            onClick={() => navigate('/suscripcion')}
+            className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-500 border border-green-500/30 font-head text-sm rounded-xl transition-colors"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Gestionar Suscripción
+          </button>
+        </div>
+        <div className="space-y-3">
+          {mockMethods.map((m) => (
+            <div
+              key={m.id}
+              className="flex items-center justify-between p-4 rounded-xl bg-bg border border-border"
+            >
+              <div className="flex items-center gap-3">
+                <CreditCard className="w-5 h-5 text-muted" />
+                <div>
+                  <p className="font-head text-text text-sm">{m.tipo}</p>
+                  <p className="font-mono text-xs text-muted">
+                    •••• •••• •••• {m.ultimos}
+                  </p>
+                </div>
+              </div>
+              <span className="font-mono text-xs text-muted">Exp: {m.expira}</span>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+function NotificacionesTab() {
+  const [prefs, setPrefs] = useState({
+    email_nuevos_mensajes: true,
+    email_resumen_diario: true,
+    email_suscripcion: true,
+    push_nuevos_mensajes: true,
+    push_error_bot: true,
+    whatsapp_alertas: false,
+    reportes_semanales: true,
+    actualizaciones: true,
+  });
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const toggle = (key) => {
+    setPrefs((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.put('/negocio/notificaciones', prefs);
+      setToast({ type: 'success', message: 'Preferencias guardadas' });
+    } catch {
+      setToast({ type: 'error', message: 'Error al guardar preferencias' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const groups = [
+    {
+      title: 'Email',
+      icon: MailIcon,
+      items: [
+        { key: 'email_nuevos_mensajes', label: 'Nuevos mensajes recibidos' },
+        { key: 'email_resumen_diario', label: 'Resumen diario de actividad' },
+        { key: 'email_suscripcion', label: 'Alertas de suscripción y pagos' },
+      ],
+    },
+    {
+      title: 'Push',
+      icon: BellRing,
+      items: [
+        { key: 'push_nuevos_mensajes', label: 'Nuevos mensajes en tiempo real' },
+        { key: 'push_error_bot', label: 'Errores del bot' },
+      ],
+    },
+    {
+      title: 'Otros',
+      icon: Bell,
+      items: [
+        { key: 'whatsapp_alertas', label: 'Alertas por WhatsApp' },
+        { key: 'reportes_semanales', label: 'Reportes semanales' },
+        { key: 'actualizaciones', label: 'Actualizaciones de la plataforma' },
+      ],
+    },
+  ];
+
+  return (
+    <div className="space-y-8">
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <GlassCard>
+        <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
+          <Bell className="w-5 h-5 text-green-500" />
+          Preferencias de Notificación
+        </h3>
+        <div className="space-y-8">
+          {groups.map((group) => (
+            <div key={group.title}>
+              <div className="flex items-center gap-2 mb-3">
+                <group.icon className="w-4 h-4 text-green-500/70" />
+                <h4 className="font-mono text-sm text-muted uppercase tracking-wider">
+                  {group.title}
+                </h4>
+              </div>
+              <div className="divide-y divide-white/5">
+                {group.items.map((item) => (
+                  <ToggleSwitch
+                    key={item.key}
+                    checked={prefs[item.key]}
+                    onChange={() => toggle(item.key)}
+                    label={item.label}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-end pt-6">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-black font-head font-semibold rounded-xl transition-colors"
+          >
+            {saving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            Guardar Preferencias
+          </button>
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+function SeguridadTab() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [form, setForm] = useState({
+    passwordActual: '',
+    passwordNueva: '',
+    passwordConfirmar: '',
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    actual: false,
+    nueva: false,
+    confirmar: false,
+  });
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const handleChange = (e) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const toggleShow = (key) => {
+    setShowPasswords((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (form.passwordNueva !== form.passwordConfirmar) {
+      setToast({ type: 'error', message: 'Las contraseñas no coinciden' });
+      return;
+    }
+    if (form.passwordNueva.length < 6) {
+      setToast({ type: 'error', message: 'La contraseña debe tener al menos 6 caracteres' });
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.put('/negocio/password', {
+        passwordActual: form.passwordActual,
+        passwordNueva: form.passwordNueva,
+      });
+      setToast({ type: 'success', message: 'Contraseña actualizada correctamente' });
+      setForm({ passwordActual: '', passwordNueva: '', passwordConfirmar: '' });
+    } catch {
+      setToast({ type: 'error', message: 'Error al actualizar contraseña' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    <div className="space-y-8">
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <GlassCard>
+        <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
+          <Lock className="w-5 h-5 text-green-500" />
+          Cambiar Contraseña
+        </h3>
+        <form onSubmit={handleSubmit} className="space-y-5 max-w-md">
+          <FormField label="Contraseña Actual" icon={Key} mono>
+            <div className="relative">
+              <InputField
+                name="passwordActual"
+                type={showPasswords.actual ? 'text' : 'password'}
+                value={form.passwordActual}
+                onChange={handleChange}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => toggleShow('actual')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-text/70"
+              >
+                {showPasswords.actual ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </FormField>
+          <FormField label="Nueva Contraseña" icon={Key} mono>
+            <div className="relative">
+              <InputField
+                name="passwordNueva"
+                type={showPasswords.nueva ? 'text' : 'password'}
+                value={form.passwordNueva}
+                onChange={handleChange}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => toggleShow('nueva')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-text/70"
+              >
+                {showPasswords.nueva ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </FormField>
+          <FormField label="Confirmar Contraseña" icon={Key} mono>
+            <div className="relative">
+              <InputField
+                name="passwordConfirmar"
+                type={showPasswords.confirmar ? 'text' : 'password'}
+                value={form.passwordConfirmar}
+                onChange={handleChange}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => toggleShow('confirmar')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-text/70"
+              >
+                {showPasswords.confirmar ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </FormField>
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 disabled:opacity-50 text-text font-head font-semibold rounded-xl transition-colors"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Actualizar Contraseña
+            </button>
+          </div>
+        </form>
+      </GlassCard>
+
+      <GlassCard className="border-red-500/20">
+        <h3 className="font-head text-xl text-text mb-4 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-400" />
+          Zona de Peligro
+        </h3>
+        <p className="text-sm font-body text-muted mb-6">
+          Cerrar sesión en todos los dispositivos activos.
+        </p>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-6 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 font-head font-semibold rounded-xl transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          Cerrar Sesión
+        </button>
+      </GlassCard>
+    </div>
+  );
+}
+
+const TAB_COMPONENTS = {
+  negocio: NegocioTab,
+  bot: BotTab,
+  whatsapp: WhatsAppTab,
+  pago: PagoTab,
+  notificaciones: NotificacionesTab,
+  seguridad: SeguridadTab,
+};
+
+export default function AjustesPage() {
+  const [activeTab, setActiveTab] = useState('negocio');
+  const navigate = useNavigate();
+  const ActiveComponent = TAB_COMPONENTS[activeTab];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-6 lg:p-10">
+      <div className="max-w-5xl mx-auto">
+        <div className="mb-10 flex items-center gap-3">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="p-2 rounded-xl bg-bg2 border border-border hover:border-accent/30 hover:bg-accent/10 transition-all"
+          >
+            <ArrowLeft className="w-5 h-5 text-muted" />
+          </button>
+          <div>
+            <h1 className="font-head text-3xl lg:text-4xl text-text tracking-tight">
+              Ajustes
+            </h1>
+            <p className="font-body text-muted mt-2">
+              Configura tu negocio, bot y preferencias
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-8 p-1.5 bg-bg2 backdrop-blur-xl rounded-2xl border border-border">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-head transition-all ${
+                  isActive
+                    ? 'bg-green-500 text-black shadow-lg shadow-green-500/20'
+                    : 'text-muted hover:text-text hover:bg-bg2'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <ActiveComponent />
+      </div>
+    </div>
+  );
+}

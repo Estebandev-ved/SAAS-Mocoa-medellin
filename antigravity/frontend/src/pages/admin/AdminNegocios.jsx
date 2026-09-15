@@ -23,7 +23,7 @@ export default function AdminNegocios() {
 
   useEffect(() => {
     loadNegocios();
-  }, [pagination.page, filtros.plan, filtros.estado]);
+  }, [pagination.page, filtros.plan, filtros.estado, filtros.search]);
 
   const loadNegocios = async () => {
     try {

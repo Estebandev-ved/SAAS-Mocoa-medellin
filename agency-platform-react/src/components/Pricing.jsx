@@ -9,7 +9,7 @@ const PricingCard = ({ tier, price, desc, features, featured, isAnnual }) => {
     <motion.div 
       whileHover={{ y: -10 }}
       className={`relative p-10 flex flex-col gap-6 ${
-        featured ? 'bg-bg3 border-2 border-accent shadow-[0_20px_50px_rgba(0,255,209,0.15)] z-10' : 'bg-bg border border-border'
+        featured ? 'bg-bg3 border-2 border-accent shadow-[0_20px_50px_rgba(229,57,53,0.15)] z-10' : 'bg-bg border border-border'
       } first:rounded-l-2xl last:rounded-r-2xl max-lg:rounded-2xl`}
     >
       {featured && (
@@ -121,7 +121,7 @@ const Pricing = () => {
             >
               <motion.div 
                 animate={{ x: isAnnual ? 28 : 0 }}
-                className="w-5 h-5 bg-accent rounded-full shadow-[0_0_10px_rgba(0,255,209,0.5)]"
+                className="w-5 h-5 bg-accent rounded-full shadow-[0_0_10px_rgba(229,57,53,0.5)]"
               />
             </button>
             <span className={`text-xs font-mono uppercase tracking-widest ${isAnnual ? 'text-accent' : 'text-muted'}`}>Anual (-20%)</span>

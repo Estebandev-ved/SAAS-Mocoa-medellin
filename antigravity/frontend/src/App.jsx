@@ -16,15 +16,16 @@ const ConversationsPage = lazy(() => import('./pages/dashboard/ConversationsPage
 const ProductsPage = lazy(() => import('./pages/dashboard/ProductsPage'));
 const AnalyticsPage = lazy(() => import('./pages/dashboard/AnalyticsPage'));
 const AutomationsPage = lazy(() => import('./pages/dashboard/AutomationsPage'));
-const CustomizePage = lazy(() => import('./pages/dashboard/CustomizePage'));
 const SettingsPage = lazy(() => import('./pages/dashboard/SettingsPage'));
 const WhatsAppPage = lazy(() => import('./pages/dashboard/WhatsAppPage'));
 const DomiciliosPage = lazy(() => import('./pages/dashboard/DomiciliosPage'));
+const UsersPage = lazy(() => import('./pages/dashboard/UsersPage'));
 const PortalDomiciliario = lazy(() => import('./pages/dashboard/PortalDomiciliario'));
 const TrackingCliente = lazy(() => import('./pages/dashboard/TrackingCliente'));
 
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
 const AdminResumen = lazy(() => import('./pages/admin/AdminResumen'));
+const AdminInteligencia = lazy(() => import('./pages/admin/AdminInteligencia'));
 const AdminNegocios = lazy(() => import('./pages/admin/AdminNegocios'));
 const AdminNegocioDetalle = lazy(() => import('./pages/admin/AdminNegocio'));
 const AdminWhatsApps = lazy(() => import('./pages/admin/AdminWhatsApps'));
@@ -191,9 +192,9 @@ export default function App() {
               <Route path="productos" element={<Suspense fallback={<DashboardLoadingScreen />}><ProductsPage /></Suspense>} />
               <Route path="analytics" element={<Suspense fallback={<DashboardLoadingScreen />}><AnalyticsPage /></Suspense>} />
               <Route path="automatizaciones" element={<Suspense fallback={<DashboardLoadingScreen />}><AutomationsPage /></Suspense>} />
-              <Route path="personalizar" element={<Suspense fallback={<DashboardLoadingScreen />}><CustomizePage /></Suspense>} />
               <Route path="ajustes" element={<Suspense fallback={<DashboardLoadingScreen />}><SettingsPage /></Suspense>} />
               <Route path="domicilios" element={<Suspense fallback={<DashboardLoadingScreen />}><DomiciliosPage /></Suspense>} />
+              <Route path="usuarios" element={<Suspense fallback={<DashboardLoadingScreen />}><UsersPage /></Suspense>} />
             </Route>
 
             <Route path="/delivery/login" element={<Suspense fallback={<DashboardLoadingScreen />}><PortalDomiciliario /></Suspense>} />
@@ -209,6 +210,7 @@ export default function App() {
             }>
               <Route index element={<Navigate to="/admin/resumen" replace />} />
               <Route path="resumen" element={<Suspense fallback={<AdminLoadingScreen />}><AdminResumen /></Suspense>} />
+              <Route path="inteligencia" element={<Suspense fallback={<AdminLoadingScreen />}><AdminInteligencia /></Suspense>} />
               <Route path="negocios" element={<Suspense fallback={<AdminLoadingScreen />}><AdminNegocios /></Suspense>} />
               <Route path="negocios/:id" element={<Suspense fallback={<AdminLoadingScreen />}><AdminNegocioDetalle /></Suspense>} />
               <Route path="whatsapps" element={<Suspense fallback={<AdminLoadingScreen />}><AdminWhatsApps /></Suspense>} />

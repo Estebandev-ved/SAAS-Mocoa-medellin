@@ -11,6 +11,19 @@ export default function ConversationsPage() {
   const [mensaje, setMensaje] = useState('');
   const [filtro, setFiltro] = useState('todas');
 
+  const getTimeAgo = (date) => {
+    if (!date) return '';
+    const now = new Date();
+    const diff = now - new Date(date);
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return 'Ahora';
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `${days}d`;
+  };
+
   useEffect(() => {
     fetchConversaciones();
   }, []);
@@ -75,7 +88,7 @@ export default function ConversationsPage() {
                 <div className="conv-content">
                   <div className="conv-header">
                     <span className="conv-name">{conv.cliente?.nombre || 'Cliente'}</span>
-                    <span className="conv-time">2 min</span>
+                    <span className="conv-time">{getTimeAgo(conv.updated_at)}</span>
                   </div>
                   <p className="conv-preview">{conv.ultimo_mensaje || 'Sin mensajes'}</p>
                   {conv.pedido_id && <StatusBadge estado="activo" size="sm" />}

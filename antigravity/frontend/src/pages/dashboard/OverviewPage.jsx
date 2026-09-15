@@ -49,7 +49,7 @@ export default function OverviewPage() {
   return (
     <div className="overview-page">
       <div className="overview-header">
-        <h2>{getGreeting()}, {user?.nombre?.split(' ')[0]} 👋</h2>
+        <h2>{getGreeting()}, {user?.nombre?.split(' ')[0]}</h2>
         <p className="overview-date">
           {new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           {' • '}

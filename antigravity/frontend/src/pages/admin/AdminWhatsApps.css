@@ -40,7 +40,7 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 56px;
   font-weight: 700;
-  color: #00FFD1;
+  color: var(--accent-primary);
 }
 
 .wa-counter .wa-divider {
@@ -74,7 +74,7 @@
 
 .wa-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #00FFD1, #22C55E);
+  background: linear-gradient(90deg, var(--accent-primary), var(--success));
   border-radius: 4px;
   transition: width 0.3s ease;
 }
@@ -128,7 +128,7 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #00FFD1, #A855F7);
+  background: linear-gradient(135deg, var(--accent-primary), #A855F7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -162,11 +162,11 @@
 }
 
 .wa-status.connected {
-  color: #22C55E;
+  color: var(--success);
 }
 
 .wa-status.disconnected {
-  color: #EF4444;
+  color: var(--error);
 }
 
 .wa-status-dot {
@@ -176,12 +176,12 @@
 }
 
 .wa-status.connected .wa-status-dot {
-  background: #22C55E;
+  background: var(--success);
   animation: pulse 2s infinite;
 }
 
 .wa-status.disconnected .wa-status-dot {
-  background: #EF4444;
+  background: var(--error);
 }
 
 .wa-card-body {

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const db = require('../../db/config');
+const { isTokenBlacklisted } = require('./security');
 
 async function verificarAuth(req, res, next) {
     try {
@@ -20,12 +21,25 @@ async function verificarAuth(req, res, next) {
         }
         
         const token = authHeader.substring(7);
-        
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'antigravity_secret_key');
+
+        // El logout marca el token como revocado (blacklist en memoria en
+        // middleware/security.js). Antes solo routes/all.js y el endpoint
+        // /verify de routes/auth.js chequeaban esto — el resto de rutas
+        // (~18 routers) seguían aceptando un token ya "cerrado". Al vivir el
+        // chequeo acá, en el verificarAuth compartido, el logout invalida el
+        // token en todos lados de una sola vez.
+        if (isTokenBlacklisted(token)) {
+            return res.status(401).json({
+                error: 'Token revocado',
+                codigo: 'TOKEN_REVOCADO'
+            });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
         const [negocios] = await db.execute(
             `SELECT id, nombre, email_dueno as email, plan, activo, suscripcion_activa, 
-             whatsapp_conectado, bot_nombre, bot_tono, bot_bienvenida,
+             whatsapp_conectado, bot_nombre, bot_tono,
              color_principal, numero_nequi, numero_bancolombia, rol
              FROM negocios WHERE id = ?`,
             [decoded.negocio_id]
@@ -57,7 +71,6 @@ async function verificarAuth(req, res, next) {
             whatsapp_conectado: negocio.whatsapp_conectado,
             bot_nombre: negocio.bot_nombre,
             bot_tono: negocio.bot_tono,
-            bot_bienvenida: negocio.bot_bienvenida,
             color_principal: negocio.color_principal,
             numero_nequi: negocio.numero_nequi,
             numero_bancolombia: negocio.numero_bancolombia,
@@ -99,7 +112,7 @@ function generarToken(negocio) {
         rol: negocio.rol || 'negocio'
     };
     
-    const token = jwt.sign(payload, process.env.JWT_SECRET || 'antigravity_secret_key', {
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
         expiresIn: '7d'
     });
     

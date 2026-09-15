@@ -24,8 +24,9 @@ router.use(verificarAuth);
 router.get('/config', async (req, res) => {
     try {
         const [negocios] = await db.execute(
-            `SELECT bot_nombre, bot_tono, horario_activo_inicio, horario_activo_fin,
-                    bot_bienvenida, mensaje_fuera_horario, bot_agentes_activos
+            `SELECT bot_nombre, bot_tono, bot_bienvenida, horario_activo_inicio, horario_activo_fin,
+                    mensaje_fuera_horario, descripcion_negocio, productos_servicios,
+                    info_pagos, politicas
              FROM negocios WHERE id = ?`,
             [req.negocioId]
         );
@@ -37,20 +38,25 @@ router.get('/config', async (req, res) => {
         const negocio = negocios[0];
         let agentesActivos = AGENTES_POR_DEFECTO[req.negocio.plan] || AGENTES_POR_DEFECTO.starter;
 
-        if (negocio.bot_agentes_activos) {
-            try {
-                agentesActivos = JSON.parse(negocio.bot_agentes_activos);
-            } catch {
-                agentesActivos = AGENTES_POR_DEFECTO[req.negocio.plan] || AGENTES_POR_DEFECTO.starter;
+        try {
+            const [agentesRows] = await db.execute(
+                "SELECT config FROM automatizaciones_config WHERE negocio_id = ? AND tipo = 'agentes'",
+                [req.negocioId]
+            );
+            if (agentesRows.length > 0 && agentesRows[0].config) {
+                const parsed = JSON.parse(agentesRows[0].config);
+                if (parsed.agentes) agentesActivos = parsed.agentes;
             }
+        } catch {
+            // keep defaults
         }
 
         res.json({
             bot_nombre: negocio.bot_nombre || 'Asistente',
             bot_tono: negocio.bot_tono || 'amigable',
+            bot_bienvenida: negocio.bot_bienvenida || '¡Hola! ¿En qué puedo ayudarte hoy?',
             horario_inicio: negocio.horario_activo_inicio ? String(negocio.horario_activo_inicio).slice(0, 5) : '08:00',
             horario_fin: negocio.horario_activo_fin ? String(negocio.horario_activo_fin).slice(0, 5) : '20:00',
-            mensaje_bienvenida: negocio.bot_bienvenida || '¡Hola! ¿En qué puedo ayudarte hoy?',
             mensaje_fuera_horario: negocio.mensaje_fuera_horario || 'Estamos fuera de horario. ¿Te contactamos mañana?',
             agentes_activos: agentesActivos,
             agentes_disponibles: AGENTES_VALIDOS,
@@ -67,11 +73,19 @@ router.put('/config', async (req, res) => {
         const {
             bot_nombre,
             bot_tono,
+            bot_bienvenida,
             horario_inicio,
             horario_fin,
             mensaje_bienvenida,
-            mensaje_fuera_horario
+            mensaje_fuera_horario,
+            descripcion_negocio,
+            productos_servicios,
+            info_pagos,
+            politicas
         } = req.body;
+
+        // Accept both bot_bienvenida and mensaje_bienvenida
+        const bienvenida = bot_bienvenida || mensaje_bienvenida;
 
         if (bot_tono && !['formal', 'amigable', 'casual'].includes(bot_tono)) {
             return res.status(400).json({ error: 'Tono inválido. Use: formal, amigable o casual' });
@@ -96,6 +110,10 @@ router.put('/config', async (req, res) => {
             updates.push('bot_tono = ?');
             values.push(bot_tono);
         }
+        if (bienvenida !== undefined) {
+            updates.push('bot_bienvenida = ?');
+            values.push(bienvenida);
+        }
         if (horario_inicio !== undefined) {
             updates.push('horario_activo_inicio = ?');
             values.push(horario_inicio + ':00');
@@ -104,13 +122,25 @@ router.put('/config', async (req, res) => {
             updates.push('horario_activo_fin = ?');
             values.push(horario_fin + ':00');
         }
-        if (mensaje_bienvenida !== undefined) {
-            updates.push('bot_bienvenida = ?');
-            values.push(mensaje_bienvenida);
-        }
         if (mensaje_fuera_horario !== undefined) {
             updates.push('mensaje_fuera_horario = ?');
             values.push(mensaje_fuera_horario);
+        }
+        if (descripcion_negocio !== undefined) {
+            updates.push('descripcion_negocio = ?');
+            values.push(descripcion_negocio);
+        }
+        if (productos_servicios !== undefined) {
+            updates.push('productos_servicios = ?');
+            values.push(productos_servicios);
+        }
+        if (info_pagos !== undefined) {
+            updates.push('info_pagos = ?');
+            values.push(info_pagos);
+        }
+        if (politicas !== undefined) {
+            updates.push('politicas = ?');
+            values.push(politicas);
         }
 
         if (updates.length === 0) {
@@ -143,11 +173,17 @@ router.put('/config/agentes', async (req, res) => {
     try {
         const { agentes } = req.body;
 
-        if (!Array.isArray(agentes)) {
-            return res.status(400).json({ error: 'Agentes debe ser un array' });
+        // Accept both array ["ventas","faq"] and object {ventas: true, faq: false}
+        let agentesArray;
+        if (Array.isArray(agentes)) {
+            agentesArray = agentes;
+        } else if (agentes && typeof agentes === 'object') {
+            agentesArray = Object.entries(agentes).filter(([_, v]) => v === true).map(([k]) => k);
+        } else {
+            return res.status(400).json({ error: 'Agentes debe ser un array u objeto' });
         }
 
-        const agentesInvalidos = agentes.filter(a => !AGENTES_VALIDOS.includes(a));
+        const agentesInvalidos = agentesArray.filter(a => !AGENTES_VALIDOS.includes(a));
         if (agentesInvalidos.length > 0) {
             return res.status(400).json({
                 error: 'Agentes inválidos',
@@ -157,20 +193,32 @@ router.put('/config/agentes', async (req, res) => {
         }
 
         const limite = LIMITES_AGENTES_POR_PLAN[req.negocio.plan] || 3;
-        if (agentes.length > limite) {
+        if (agentesArray.length > limite) {
             return res.status(403).json({
                 error: `Tu plan permite máximo ${limite} agentes`,
                 plan_actual: req.negocio.plan,
-                agentes_solicitados: agentes.length,
+                agentes_solicitados: agentesArray.length,
                 limite: limite,
                 upgrade_url: '/dashboard/plan'
             });
         }
 
-        await db.execute(
-            'UPDATE negocios SET bot_agentes_activos = ? WHERE id = ?',
-            [JSON.stringify(agentes), req.negocioId]
+        const [existing] = await db.execute(
+            "SELECT id FROM automatizaciones_config WHERE negocio_id = ? AND tipo = 'agentes'",
+            [req.negocioId]
         );
+
+        if (existing.length > 0) {
+            await db.execute(
+                "UPDATE automatizaciones_config SET config = ?, updated_at = NOW() WHERE negocio_id = ? AND tipo = 'agentes'",
+                [JSON.stringify({ agentes: agentesArray }), req.negocioId]
+            );
+        } else {
+            await db.execute(
+                "INSERT INTO automatizaciones_config (negocio_id, tipo, activa, config) VALUES (?, 'agentes', 1, ?)",
+                [req.negocioId, JSON.stringify({ agentes: agentesArray })]
+            );
+        }
 
         try {
             await fetch(`${BRAIN_URL}/catalogo/invalidar/${req.negocioId}`, { method: 'POST' });
@@ -181,7 +229,7 @@ router.put('/config/agentes', async (req, res) => {
         res.json({
             success: true,
             mensaje: 'Agentes actualizados',
-            agentes_activos: agentes,
+            agentes_activos: agentesArray,
             limite: limite
         });
     } catch (error) {
@@ -202,76 +250,9 @@ router.post('/test', async (req, res) => {
             return res.status(400).json({ error: 'Mensaje muy largo (máx 500 caracteres)' });
         }
 
-        const [negocios] = await db.execute(
-            `SELECT n.*, GROUP_CONCAT(p.id, '::', p.nombre, '::', p.precio SEPARATOR '||') as productos
-             FROM negocios n
-             LEFT JOIN productos p ON p.negocio_id = n.id AND p.activo = 1
-             WHERE n.id = ?
-             GROUP BY n.id`,
-            [req.negocioId]
-        );
-
-        if (negocios.length === 0) {
-            return res.status(404).json({ error: 'Negocio no encontrado' });
-        }
-
-        const negocio = negocios[0];
-
-        const productos = [];
-        if (negocio.productos) {
-            negocio.productos.split('||').forEach(p => {
-                const parts = p.split('::');
-                if (parts.length >= 3) {
-                    productos.push({
-                        id: parseInt(parts[0]),
-                        nombre: parts[1],
-                        precio: parseFloat(parts[2])
-                    });
-                }
-            });
-        }
-
-        const contexto = {
-            negocio_id: req.negocioId,
-            cliente_id: 0,
-            mensaje: mensaje,
-            negocio_config: {
-                id: negocio.id,
-                nombre: negocio.nombre,
-                bot_nombre: negocio.bot_nombre || 'Asistente',
-                bot_tono: negocio.bot_tono || 'amigable',
-                productos: productos,
-                metodos_pago: ['Nequi', 'Bancolombia'],
-                horario_inicio: negocio.horario_activo_inicio || '08:00:00',
-                horario_fin: negocio.horario_activo_fin || '20:00:00'
-            }
-        };
-
-        let resultado;
-        try {
-            const response = await fetch(`${BRAIN_URL}/procesar`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    mensaje: mensaje,
-                    contexto: [],
-                    negocio_id: req.negocioId,
-                    cliente_id: 0
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Brain API error');
-            }
-
-            resultado = await response.json();
-        } catch (error) {
-            console.error('[BotConfig] Error calling brain:', error);
-            return res.status(500).json({
-                error: 'Error al conectar con el servicio de IA',
-                respuesta_fallback: 'Hola, estoy configurando mi cerebro. Prueba en unos minutos.'
-            });
-        }
+        // Use Gemini directly (same as messageHandler)
+        const gemini = require('../../instance-manager/agents/gemini');
+        const resultado = await gemini.procesarMensaje(mensaje, req.negocioId, 0, []);
 
         res.json({
             mensaje_enviado: mensaje,
@@ -284,6 +265,49 @@ router.post('/test', async (req, res) => {
         });
     } catch (error) {
         console.error('[BotConfig] Error test:', error);
+        res.status(500).json({ error: 'Error al conectar con el servicio de IA' });
+    }
+});
+
+// ===== WHITELIST / BOT MODE =====
+
+router.get('/whitelist', verificarAuth, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            'SELECT bot_modo, chat_whitelist FROM negocios WHERE id = ?',
+            [req.negocioId]
+        );
+        const modo = rows[0]?.bot_modo || 'todos';
+        const rawList = rows[0]?.chat_whitelist || '';
+        const numeros = rawList.split(',').map(s => s.trim()).filter(Boolean);
+
+        res.json({ modo, numeros });
+    } catch (error) {
+        console.error('[BotConfig] Error whitelist GET:', error);
+        res.status(500).json({ error: 'Error interno' });
+    }
+});
+
+router.put('/whitelist', verificarAuth, async (req, res) => {
+    try {
+        const { modo, numeros } = req.body;
+        const validModos = ['todos', 'whitelist'];
+        if (!validModos.includes(modo)) {
+            return res.status(400).json({ error: 'Modo inválido' });
+        }
+
+        const whitelistStr = Array.isArray(numeros) ? numeros.join(',') : '';
+
+        await db.execute(
+            'UPDATE negocios SET bot_modo = ?, chat_whitelist = ? WHERE id = ?',
+            [modo, whitelistStr, req.negocioId]
+        );
+
+        console.log(`[BotConfig] Bot mode changed to ${modo} for negocio ${req.negocioId}. Whitelist: ${whitelistStr || '(empty)'}`);
+
+        res.json({ modo, numeros: whitelistStr.split(',').filter(Boolean) });
+    } catch (error) {
+        console.error('[BotConfig] Error whitelist PUT:', error);
         res.status(500).json({ error: 'Error interno' });
     }
 });

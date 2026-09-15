@@ -133,20 +133,6 @@ CREATE TABLE IF NOT EXISTS campañas (
     INDEX idx_fecha_envio (fecha_envio)
 ) ENGINE=InnoDB;
 
--- Tabla de notificaciones
-CREATE TABLE IF NOT EXISTS notificaciones (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    negocio_id INT NOT NULL,
-    tipo VARCHAR(50) NOT NULL,
-    titulo VARCHAR(150),
-    mensaje TEXT,
-    leida BOOLEAN DEFAULT false,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (negocio_id) REFERENCES negocios(id) ON DELETE CASCADE,
-    INDEX idx_negocio (negocio_id),
-    INDEX idx_leida (leida)
-) ENGINE=InnoDB;
-
 -- Tabla de sesiones
 CREATE TABLE IF NOT EXISTS sesiones (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -328,23 +314,6 @@ CREATE TABLE IF NOT EXISTS notificaciones (
     INDEX idx_negocio (negocio_id),
     INDEX idx_tipo (negocio_id, tipo),
     INDEX idx_leida (negocio_id, leida)
-) ENGINE=InnoDB;
-
--- Tabla de campañas
-CREATE TABLE IF NOT EXISTS campanhas (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    negocio_id INT NOT NULL,
-    nombre VARCHAR(255),
-    mensaje TEXT NOT NULL,
-    destinatarios_total INT DEFAULT 0,
-   enviados INT DEFAULT 0,
-    respuestas INT DEFAULT 0,
-    estado VARCHAR(20) DEFAULT 'pendiente',
-    programacion TIMESTAMP NULL,
-    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (negocio_id) REFERENCES negocios(id) ON DELETE CASCADE,
-    INDEX idx_negocio (negocio_id),
-    INDEX idx_estado (negocio_id, estado)
 ) ENGINE=InnoDB;
 
 -- ============================================

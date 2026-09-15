@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ordersService } from '../../services/api';
 import { onNuevoPedido } from '../../services/socket';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -8,6 +8,10 @@ import Modal from '../../components/ui/Modal';
 import './OrdersPage.css';
 
 const ESTADOS = ['pendiente_pago', 'pago_enviado', 'pago_confirmado', 'en_preparacion', 'enviado', 'entregado', 'cancelado'];
+
+const formatCOP = (val) => {
+  return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
+};
 
 export default function OrdersPage() {
   const [pedidos, setPedidos] = useState([]);
@@ -20,13 +24,22 @@ export default function OrdersPage() {
   });
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  const formatCOP = (val) => {
-    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val);
-  };
+  const fetchPedidos = useCallback(async () => {
+    try {
+      const data = await ordersService.getAll(filtros);
+      setPedidos(data.pedidos || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [filtros]);
 
   useEffect(() => {
     fetchPedidos();
-    
+  }, [fetchPedidos]);
+
+  useEffect(() => {
     const unsubscribe = onNuevoPedido((pedido) => {
       console.log('[OrdersPage] Nuevo pedido recibido via socket:', pedido);
       setPedidos(prev => {
@@ -51,19 +64,29 @@ export default function OrdersPage() {
     };
   }, []);
 
-  const fetchPedidos = async () => {
-    try {
-      const data = await ordersService.getAll(filtros);
-      setPedidos(data.pedidos || []);
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleExportar = () => {
+    const headers = ['Pedido', 'Cliente', 'WhatsApp', 'Total', 'Estado', 'Fecha'];
+    const rows = pedidos.map(p => [
+      p.numero_pedido,
+      p.cliente?.nombre || 'Cliente',
+      p.cliente?.whatsapp || '-',
+      p.total,
+      p.estado,
+      new Date(p.created_at).toLocaleDateString('es-CO')
+    ]);
+    
+    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `pedidos_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
-  const handleExportar = () => {
-    console.log('Exportando pedidos...');
+  const handleFiltroChange = (campo, valor) => {
+    setFiltros(prev => ({ ...prev, [campo]: valor }));
   };
 
   return (
@@ -84,13 +107,13 @@ export default function OrdersPage() {
         <Input
           placeholder="Buscar por cliente o número de pedido..."
           value={filtros.busqueda}
-          onChange={(e) => setFiltros({ ...filtros, busqueda: e.target.value })}
+          onChange={(e) => handleFiltroChange('busqueda', e.target.value)}
           leftIcon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>}
         />
         <select
           className="filter-select"
           value={filtros.estado}
-          onChange={(e) => setFiltros({ ...filtros, estado: e.target.value })}
+          onChange={(e) => handleFiltroChange('estado', e.target.value)}
         >
           <option value="">Todos los estados</option>
           {ESTADOS.map(e => (
@@ -101,13 +124,13 @@ export default function OrdersPage() {
           type="date"
           className="filter-date"
           value={filtros.fecha_inicio}
-          onChange={(e) => setFiltros({ ...filtros, fecha_inicio: e.target.value })}
+          onChange={(e) => handleFiltroChange('fecha_inicio', e.target.value)}
         />
         <input
           type="date"
           className="filter-date"
           value={filtros.fecha_fin}
-          onChange={(e) => setFiltros({ ...filtros, fecha_fin: e.target.value })}
+          onChange={(e) => handleFiltroChange('fecha_fin', e.target.value)}
         />
         <Button variant="ghost" onClick={() => setFiltros({ busqueda: '', estado: '', fecha_inicio: '', fecha_fin: '' })}>
           Limpiar

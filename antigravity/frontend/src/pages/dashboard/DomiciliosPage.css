@@ -127,7 +127,7 @@
 }
 
 .status-dot.online {
-  background: #00FFD1;
+  background: var(--accent-primary);
 }
 
 .status-dot.offline {

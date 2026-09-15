@@ -5,7 +5,7 @@ import { initSocket, subscribeToNegocio, onBotQR, onBotConnected, onBotDisconnec
 import './WhatsAppPage.css';
 
 export default function WhatsAppPage() {
-  const { negocio } = useAuth();
+  const { user } = useAuth();
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
@@ -19,30 +19,30 @@ export default function WhatsAppPage() {
     return () => {
       disconnectSocket();
     };
-  }, [negocio?.id]);
+  }, [user?.id]);
 
   const initSocketConnection = () => {
     const token = localStorage.getItem('ag_token');
-    if (!token || !negocio?.id) return;
+    if (!token || !user?.id) return;
     
     initSocket(token);
-    subscribeToNegocio(negocio.id);
+    subscribeToNegocio(user.id);
     
     onBotQR((data) => {
-      if (data.negocioId === negocio.id && data.qr) {
+      if (data.negocioId === user.id && data.qr) {
         setStatus(prev => ({ ...prev, qr: data.qr, conectado: false }));
       }
     });
     
     onBotConnected((data) => {
-      if (data.negocioId === negocio.id) {
+      if (data.negocioId === user.id) {
         setStatus(prev => ({ ...prev, conectado: true, qr: null }));
         fetchStatus();
       }
     });
     
     onBotDisconnected((data) => {
-      if (data.negocioId === negocio.id) {
+      if (data.negocioId === user.id) {
         setStatus(prev => ({ ...prev, conectado: false }));
         fetchStatus();
       }
@@ -196,7 +196,7 @@ export default function WhatsAppPage() {
           </ul>
         </div>
 
-        {!status?.conectado && negocio?.plan === 'starter' && (
+        {!status?.conectado && user?.plan === 'starter' && (
           <div className="upgrade-banner">
             <p>¿Quieres más funcionalidades? <a href="/dashboard/plan">Upgrade a Professional</a></p>
           </div>

@@ -26,7 +26,7 @@ export const authService = {
         return response.data;
     },
     register: async (name, email, password, phone) => {
-        const response = await api.post('/auth/register', { name, email, password, phone });
+        const response = await api.post('/auth/registro', { nombre: name, email_dueno: email, password, whatsapp: phone });
         return response.data;
     }
 };
@@ -54,8 +54,19 @@ export const productsService = {
 };
 
 export const analyticsService = {
-    getDaily: async (negocioId) => {
-        const response = await api.get(`/analytics/diario/${negocioId}`);
+    getDaily: async () => {
+        const response = await api.get('/analytics/resumen');
+        return response.data;
+    }
+};
+
+export const whitelistService = {
+    get: async () => {
+        const response = await api.get('/bot/whitelist');
+        return response.data;
+    },
+    update: async (modo, numeros) => {
+        const response = await api.put('/bot/whitelist', { modo, numeros });
         return response.data;
     }
 };

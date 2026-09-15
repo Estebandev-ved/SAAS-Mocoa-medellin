@@ -1,24 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const mysql = require('mysql2/promise');
+const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
-
-function obtenerPool() {
-    return mysql.createPool({
-        host: process.env.MYSQL_HOST || 'localhost',
-        user: process.env.MYSQL_USER || 'root',
-        password: process.env.MYSQL_PASSWORD || '',
-        database: process.env.MYSQL_DATABASE || 'antigravity',
-        waitForConnections: true,
-        connectionLimit: 10
-    });
-}
 
 router.use(verificarAuth);
 
 router.get('/resumen', async (req, res) => {
     try {
-        const db = obtenerPool();
+
         const negocioId = req.negocio.id;
         
         const hoy = new Date().toISOString().split('T')[0];
@@ -44,8 +33,8 @@ router.get('/resumen', async (req, res) => {
         );
         
         const [totalMensajes] = await db.execute(
-            `SELECT COUNT(*) as total FROM conversaciones 
-             WHERE negocio_id = ? AND DATE(updated_at) = ?`,
+            `SELECT COUNT(*) as total FROM mensajes 
+             WHERE negocio_id = ? AND DATE(created_at) = ?`,
             [negocioId, hoy]
         );
         
@@ -74,10 +63,20 @@ router.get('/resumen', async (req, res) => {
         
         let tasaConversion = 0;
         const mensajes = parseInt(totalMensajes[0].total) || 0;
+
+        // AI usage today
+        const [aiLogs] = await db.execute(
+            `SELECT COUNT(*) as total, SUM(tokens_usados) as tokens 
+             FROM agente_logs WHERE negocio_id = ? AND DATE(created_at) = ?`,
+            [negocioId, hoy]
+        );
+        const aiHoy = parseInt(aiLogs[0].total) || 0;
+        const tokensHoy = parseInt(aiLogs[0].tokens) || 0;
+
         if (mensajes > 0) {
             tasaConversion = ((pedidosHoy / mensajes) * 100).toFixed(1);
         }
-        
+
         res.json({
             success: true,
             data: {
@@ -86,13 +85,10 @@ router.get('/resumen', async (req, res) => {
                     total_pedidos: pedidosHoy,
                     pedidos_pendientes: parseInt(hoyData[0].pedidos_pendientes) || 0,
                     mensajes: mensajes,
+                    ai_procesados: aiHoy,
+                    tokens_usados: tokensHoy,
                     tasa_conversion: parseFloat(tasaConversion),
-                    top_producto: topProducto.length > 0 ? topProducto[0] : null
-                },
-                comparacion: {
                     cambio_ventas: parseFloat(cambioVentas),
-                    cambio_pedidos: pedidosAyer > 0 ? 
-                        ((pedidosHoy - pedidosAyer) / pedidosAyer * 100).toFixed(1) : 0,
                     ventas_ayer: ventasAyer,
                     pedidos_ayer: pedidosAyer
                 }
@@ -107,7 +103,7 @@ router.get('/resumen', async (req, res) => {
 
 router.get('/ventas', async (req, res) => {
     try {
-        const db = obtenerPool();
+
         const { periodo = 'semana' } = req.query;
         const negocioId = req.negocio.id;
         
@@ -151,7 +147,7 @@ router.get('/ventas', async (req, res) => {
 
 router.get('/productos', async (req, res) => {
     try {
-        const db = obtenerPool();
+
         const negocioId = req.negocio.id;
         
         const [productos] = await db.execute(
@@ -191,7 +187,7 @@ router.get('/productos', async (req, res) => {
 
 router.get('/clientes', async (req, res) => {
     try {
-        const db = obtenerPool();
+
         const negocioId = req.negocio.id;
         
         const [clientes] = await db.execute(
@@ -241,6 +237,159 @@ router.get('/clientes', async (req, res) => {
     } catch (error) {
         console.error('[Analytics] Error:', error.message);
         res.status(500).json({ error: 'Error al obtener clientes' });
+    }
+});
+
+// GET /api/analytics/alertas - Alertas y advertencias para el dashboard
+router.get('/alertas', async (req, res) => {
+    try {
+        const negocioId = req.negocio.id;
+        const alertas = [];
+        const periodo = new Date().toISOString().substring(0, 7);
+
+        // 1. Check token/message usage from agente_logs (real data)
+        const [logsStats] = await db.execute(
+            `SELECT COUNT(*) as mensajes, COALESCE(SUM(tokens_usados), 0) as tokens
+             FROM agente_logs
+             WHERE negocio_id = ? AND DATE_FORMAT(created_at, '%Y-%m') = ?`,
+            [negocioId, periodo]
+        );
+        const mensajesUsados = logsStats[0]?.mensajes || 0;
+
+        const [negocios] = await db.execute(
+            'SELECT plan, suscripcion_fin, trial_hasta, suscripcion_activa FROM negocios WHERE id = ?',
+            [negocioId]
+        );
+        const negocio = negocios[0];
+        const plan = negocio?.plan || 'starter';
+
+        const limites = { starter: 1000, professional: 5000, enterprise: -1 };
+        const limite = limites[plan];
+
+        if (limite !== -1 && mensajesUsados > 0) {
+            const porcentaje = Math.round((mensajesUsados / limite) * 100);
+            if (porcentaje >= 120) {
+                alertas.push({
+                    tipo: 'limite_mensajes_bloqueado',
+                    severidad: 'critica',
+                    titulo: 'Bot bloqueado por límite excedido',
+                    mensaje: `Has alcanzado el ${porcentaje}% de tu límite (${mensajesUsados}/${limite}). El bot ha dejado de responder. Actualiza tu plan para reactivarlo.`,
+                    accion: 'actualizar_plan',
+                    accion_texto: 'Reactivar bot',
+                });
+            } else if (porcentaje >= 100) {
+                alertas.push({
+                    tipo: 'limite_mensajes',
+                    severidad: 'critica',
+                    titulo: 'Límite de mensajes alcanzado',
+                    mensaje: `Has usado ${mensajesUsados.toLocaleString()} de ${limite.toLocaleString()} mensajes (${porcentaje}%). Algunos mensajes pueden no ser procesados.`,
+                    accion: 'actualizar_plan',
+                    accion_texto: 'Mejorar plan',
+                });
+            } else if (porcentaje >= 80) {
+                alertas.push({
+                    tipo: 'limite_mensajes',
+                    severidad: 'advertencia',
+                    titulo: 'Mensajes casi agotados',
+                    mensaje: `Has usado ${mensajesUsados.toLocaleString()} de ${limite.toLocaleString()} mensajes (${porcentaje}%).`,
+                    accion: 'actualizar_plan',
+                    accion_texto: 'Ver planes',
+                });
+            }
+        }
+
+        // 2. Check subscription expiry
+        if (negocio?.suscripcion_fin) {
+            const diasRestantes = Math.ceil((new Date(negocio.suscripcion_fin) - new Date()) / (1000 * 60 * 60 * 24));
+            if (diasRestantes <= 3 && diasRestantes > 0) {
+                alertas.push({
+                    tipo: 'suscripcion_vence',
+                    severidad: 'advertencia',
+                    titulo: 'Suscripción por vencer',
+                    mensaje: `Tu plan vence en ${diasRestantes} día${diasRestantes > 1 ? 's' : ''}. Renueva para mantener tu servicio.`,
+                    accion: 'renovar',
+                    accion_texto: 'Renovar ahora',
+                });
+            } else if (diasRestantes <= 0) {
+                alertas.push({
+                    tipo: 'suscripcion_vencida',
+                    severidad: 'critica',
+                    titulo: 'Suscripción vencida',
+                    mensaje: 'Tu suscripción ha vencido. El bot puede dejar de funcionar.',
+                    accion: 'renovar',
+                    accion_texto: 'Reactivar ahora',
+                });
+            }
+        }
+
+        // 3. Check trial expiry
+        if (negocio?.trial_hasta && !negocio.suscripcion_activa) {
+            const diasTrial = Math.ceil((new Date(negocio.trial_hasta) - new Date()) / (1000 * 60 * 60 * 24));
+            if (diasTrial <= 3 && diasTrial > 0) {
+                alertas.push({
+                    tipo: 'trial_vence',
+                    severidad: 'advertencia',
+                    titulo: 'Prueba gratuita por vencer',
+                    mensaje: `Tu prueba termina en ${diasTrial} día${diasTrial > 1 ? 's' : ''}. Activa tu plan para continuar.`,
+                    accion: 'actualizar_plan',
+                    accion_texto: 'Ver planes',
+                });
+            } else if (diasTrial <= 0) {
+                alertas.push({
+                    tipo: 'trial_vencido',
+                    severidad: 'critica',
+                    titulo: 'Prueba gratuita vencida',
+                    mensaje: 'Tu período de prueba ha terminado. Activa tu cuenta para que el bot siga funcionando.',
+                    accion: 'actualizar_plan',
+                    accion_texto: 'Activar cuenta',
+                });
+            }
+        }
+
+        // 4. Check error rate
+        const [errores] = await db.execute(
+            `SELECT COUNT(*) as total_errores
+             FROM agente_logs
+             WHERE negocio_id = ? AND DATE(created_at) = CURDATE() AND intencion = 'error'`,
+            [negocioId]
+        );
+        const [totalLogs] = await db.execute(
+            `SELECT COUNT(*) as total
+             FROM agente_logs
+             WHERE negocio_id = ? AND DATE(created_at) = CURDATE()`,
+            [negocioId]
+        );
+        const totalHoy = totalLogs[0]?.total || 0;
+        const erroresHoy = errores[0]?.total_errores || 0;
+        if (totalHoy > 5) {
+            const tasaError = Math.round((erroresHoy / totalHoy) * 100);
+            if (tasaError >= 40) {
+                alertas.push({
+                    tipo: 'alta_tasa_errores',
+                    severidad: 'advertencia',
+                    titulo: 'Alta tasa de errores',
+                    mensaje: `${tasaError}% de respuestas con error hoy (${erroresHoy}/${totalHoy}). Puede indicar problemas con la IA.`,
+                    accion: null,
+                });
+            }
+        }
+
+        // 5. Plan upgrade suggestions
+        if (plan === 'starter' && mensajesUsados >= 500) {
+            alertas.push({
+                tipo: 'upgrade_sugerido',
+                severidad: 'info',
+                titulo: '¿Necesitas más mensajes?',
+                mensaje: `Llevas ${mensajesUsados} mensajes este mes. Con Professional tendrías 5,000/mes y automatizaciones avanzadas.`,
+                accion: 'actualizar_plan',
+                accion_texto: 'Mejorar a Professional',
+            });
+        }
+
+        res.json({ alertas, total: alertas.length });
+    } catch (error) {
+        console.error('[Analytics] Error alertas:', error.message);
+        res.status(500).json({ error: 'Error obteniendo alertas', alertas: [] });
     }
 });
 

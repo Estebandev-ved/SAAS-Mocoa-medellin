@@ -64,15 +64,21 @@ export default function LoginPage() {
           <h1 className="auth-tagline">El sistema nervioso de tu negocio</h1>
           <ul className="auth-benefits">
             <li className="fade-up" style={{ animationDelay: '0.1s' }}>
-              <span className="benefit-icon">🤖</span>
+              <span className="benefit-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2"><path d="M12 2a4 4 0 0 1 4 4v1a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-1l3 3m-3-3H9m6 0v4m-4-4H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1" /><circle cx="9" cy="15" r="1" /><circle cx="15" cy="15" r="1" /></svg>
+              </span>
               Automatización con IA avanzada
             </li>
             <li className="fade-up" style={{ animationDelay: '0.2s' }}>
-              <span className="benefit-icon">💬</span>
+              <span className="benefit-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+              </span>
               Atención 24/7 por WhatsApp
             </li>
             <li className="fade-up" style={{ animationDelay: '0.3s' }}>
-              <span className="benefit-icon">📈</span>
+              <span className="benefit-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
+              </span>
               Incrementa tus ventas automáticamente
             </li>
           </ul>

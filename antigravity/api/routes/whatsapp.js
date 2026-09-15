@@ -20,29 +20,34 @@ router.get('/status', async (req, res) => {
         }
 
         const negocio = negocios[0];
+        let qrBase64 = null;
+        let instanceConnected = false;
+        let instancePhone = null;
 
         try {
             const response = await fetch(`${INSTANCE_MANAGER_URL}/internal/status/${req.negocioId}`);
-            const imStatus = response.ok ? await response.json() : null;
-
-            res.json({
-                conectado: negocio.whatsapp_conectado,
-                numero: negocio.numero_whatsapp || null,
-                ultimo_ping: imStatus?.ultimo_ping || null,
-                qr_disponible: imStatus?.qr_disponible || false,
-                qr_data: imStatus?.qr_data || null
-            });
+            if (response.ok) {
+                const imStatus = await response.json();
+                instanceConnected = imStatus.connected || false;
+                instancePhone = imStatus.phone || null;
+                if (imStatus.qr) {
+                    qrBase64 = imStatus.qr;
+                }
+            }
         } catch {
-            res.json({
-                conectado: negocio.whatsapp_conectado,
-                numero: negocio.numero_whatsapp || null,
-                ultimo_ping: negocio.whatsapp_ultima_conexion,
-                qr_disponible: false
-            });
+            console.log('[WhatsApp] IM no disponible');
         }
+
+        res.json({
+            conectado: instanceConnected,
+            numero: instancePhone || negocio.numero_whatsapp || null,
+            ultimo_ping: negocio.whatsapp_ultima_conexion,
+            qr_disponible: !!qrBase64,
+            qr_data: qrBase64
+        });
     } catch (error) {
         console.error('[WhatsApp] Error status:', error);
-        res.status(500).json({ error: 'Error al obtener estado de WhatsApp' });
+        res.status(500).json({ error: 'Error al obtener estado' });
     }
 });
 
@@ -54,33 +59,30 @@ router.post('/connect', async (req, res) => {
         );
 
         if (negocios[0]?.whatsapp_conectado) {
-            return res.json({
-                ya_conectado: true,
-                mensaje: 'WhatsApp ya está conectado',
-                numero: negocios[0].numero_whatsapp
-            });
+            const statusRes = await fetch(`${INSTANCE_MANAGER_URL}/internal/status/${req.negocioId}`).catch(() => null);
+            if (statusRes?.ok) {
+                const st = await statusRes.json();
+                if (st.connected) {
+                    return res.json({ ya_conectado: true, mensaje: 'Ya está conectado', numero: st.phone });
+                }
+            }
         }
 
         try {
             const response = await fetch(`${INSTANCE_MANAGER_URL}/internal/start/${req.negocioId}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ negocio_id: req.negocioId })
+                headers: { 'Content-Type': 'application/json' }
             });
 
             if (!response.ok) {
-                throw new Error('Instance Manager error');
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.error || 'IM error');
             }
 
-            res.json({
-                iniciando: true,
-                mensaje: 'Generando código QR. Espera un momento...'
-            });
+            res.json({ iniciando: true, mensaje: 'Generando código QR...' });
         } catch (error) {
-            console.error('[WhatsApp] Error conectando:', error);
-            res.status(500).json({
-                error: 'Error al iniciar conexión. Verifica que el Instance Manager esté activo.'
-            });
+            console.error('[WhatsApp] Error conectando:', error.message);
+            res.status(500).json({ error: 'Error al conectar. Verifica que el IM esté activo.' });
         }
     } catch (error) {
         console.error('[WhatsApp] Error connect:', error);
@@ -91,23 +93,18 @@ router.post('/connect', async (req, res) => {
 router.post('/disconnect', async (req, res) => {
     try {
         try {
-            await fetch(`${INSTANCE_MANAGER_URL}/internal/stop/${req.negocioId}`, {
-                method: 'POST'
-            });
-        } catch {
-            console.log('[WhatsApp] Instance Manager no disponible para disconnect');
-        }
+            await fetch(`${INSTANCE_MANAGER_URL}/internal/stop/${req.negocioId}`, { method: 'POST' });
+        } catch {}
 
         await db.execute(
-            `UPDATE negocios SET whatsapp_conectado = false, numero_whatsapp = NULL 
-             WHERE id = ?`,
+            `UPDATE negocios SET whatsapp_conectado = false WHERE id = ?`,
             [req.negocioId]
         );
 
-        res.json({ desconectado: true, mensaje: 'WhatsApp desconectado exitosamente' });
+        res.json({ desconectado: true, mensaje: 'WhatsApp desconectado' });
     } catch (error) {
         console.error('[WhatsApp] Error disconnect:', error);
-        res.status(500).json({ error: 'Error al desconectar WhatsApp' });
+        res.status(500).json({ error: 'Error al desconectar' });
     }
 });
 
@@ -117,58 +114,15 @@ router.get('/qr', async (req, res) => {
             const response = await fetch(`${INSTANCE_MANAGER_URL}/internal/status/${req.negocioId}`);
             if (response.ok) {
                 const status = await response.json();
-                if (status.qr_data) {
-                    return res.json({
-                        qr_data: status.qr_data,
-                        disponible: true
-                    });
+                if (status.qr) {
+                    return res.json({ qr_data: status.qr, disponible: true });
                 }
             }
-        } catch {
-            console.log('[WhatsApp] Instance Manager no disponible para QR');
-        }
+        } catch {}
 
-        res.json({
-            qr_data: null,
-            disponible: false,
-            mensaje: 'QR no disponible. Inicia la conexión primero.'
-        });
+        res.json({ qr_data: null, disponible: false, mensaje: 'QR no disponible. Inicia la conexión.' });
     } catch (error) {
-        console.error('[WhatsApp] Error qr:', error);
         res.status(500).json({ error: 'Error al obtener QR' });
-    }
-});
-
-router.post('/test-message', async (req, res) => {
-    try {
-        const { numero, mensaje } = req.body;
-
-        if (!numero || !mensaje) {
-            return res.status(400).json({ error: 'Número y mensaje son requeridos' });
-        }
-
-        try {
-            const response = await fetch(`${INSTANCE_MANAGER_URL}/internal/send/${req.negocioId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ numero, mensaje })
-            });
-
-            if (!response.ok) {
-                throw new Error('Error enviando mensaje');
-            }
-
-            const result = await response.json();
-            res.json({ enviado: true, ...result });
-        } catch (error) {
-            res.status(500).json({
-                enviado: false,
-                error: 'No se pudo enviar el mensaje de prueba'
-            });
-        }
-    } catch (error) {
-        console.error('[WhatsApp] Error test:', error);
-        res.status(500).json({ error: 'Error interno' });
     }
 });
 

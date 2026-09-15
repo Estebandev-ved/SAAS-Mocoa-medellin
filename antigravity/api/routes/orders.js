@@ -1,18 +1,43 @@
 const express = require('express');
 const router = express.Router();
-const mysql = require('mysql2/promise');
+const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
-const { emitirEstadoCambiado, emitirNuevoPedido } = require('../../bot/services/socket');
+const { isAutomationActive, yaSeNotifico, registrarNotificacion, enviarWhatsApp } = require('../services/automationsService');
 
-function obtenerPool() {
-    return mysql.createPool({
-        host: process.env.MYSQL_HOST || 'localhost',
-        user: process.env.MYSQL_USER || 'root',
-        password: process.env.MYSQL_PASSWORD || '',
-        database: process.env.MYSQL_DATABASE || 'antigravity',
-        waitForConnections: true,
-        connectionLimit: 10
-    });
+// Router canónico para /api/pedidos. Reemplaza la implementación duplicada
+// que vivía en routes/all.js (pool de MySQL propio, sin chequeo de cuenta
+// deshabilitada/suscripción) y la versión más simple que había en
+// routes/orders.js. Usa el pool y el middleware de auth compartidos.
+router.use(verificarAuth);
+
+// Si el pedido pasó a "entregado" y el negocio tiene activa la automatización
+// "resena", pide una reseña por WhatsApp. No hace nada si ya se envió antes
+// para este pedido (evita reenvíos si el estado se vuelve a guardar igual).
+// Esto solo cubre pedidos que se marcan "entregado" directamente desde acá
+// (dashboard); los que pasan por el flujo de domiciliario/repartidor se
+// notifican desde routes/domicilios.js con la misma automatización.
+async function pedirResenaSiCorresponde(negocioId, pedidoId) {
+    try {
+        const { activa } = await isAutomationActive(negocioId, 'resena');
+        if (!activa) return;
+        if (await yaSeNotifico(negocioId, 'resena', pedidoId)) return;
+
+        const [pedidos] = await db.execute(
+            `SELECT c.whatsapp as cliente_whatsapp FROM pedidos p
+             JOIN clientes c ON p.cliente_id = c.id WHERE p.id = ?`,
+            [pedidoId]
+        );
+        const numeroCliente = pedidos[0]?.cliente_whatsapp;
+        if (!numeroCliente) return;
+
+        const mensaje = '🎉 ¡Gracias por tu compra! Si tienes un segundo, nos encantaría que nos dejaras tu opinión sobre el pedido.';
+        const enviado = await enviarWhatsApp(negocioId, numeroCliente, mensaje);
+        if (enviado) {
+            await registrarNotificacion(negocioId, 'resena', 'Solicitud de reseña enviada', mensaje, pedidoId);
+        }
+    } catch (error) {
+        console.error('[Pedidos] Error pidiendo reseña:', error.message);
+    }
 }
 
 const TRANSICIONES_VALIDAS = {
@@ -25,293 +50,225 @@ const TRANSICIONES_VALIDAS = {
     'cancelado': []
 };
 
-router.use(verificarAuth);
-
 router.get('/', async (req, res) => {
     try {
-        const db = obtenerPool();
-        const { estado, fecha_desde, fecha_hasta, cliente, page = 1, limit = 20 } = req.query;
-        
+        const { estado, busqueda, fecha_inicio, fecha_fin, page = 1, limit = 50 } = req.query;
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+
         let whereClause = 'WHERE p.negocio_id = ?';
-        const params = [req.negocio.id];
-        
-        if (estado) {
+        const params = [req.negocioId];
+
+        if (estado && estado !== 'todos') {
             whereClause += ' AND p.estado = ?';
             params.push(estado);
         }
-        
-        if (fecha_desde) {
+        if (busqueda) {
+            whereClause += ' AND (c.nombre LIKE ? OR p.numero_pedido LIKE ?)';
+            params.push(`%${busqueda}%`, `%${busqueda}%`);
+        }
+        if (fecha_inicio) {
             whereClause += ' AND DATE(p.created_at) >= ?';
-            params.push(fecha_desde);
+            params.push(fecha_inicio);
         }
-        
-        if (fecha_hasta) {
+        if (fecha_fin) {
             whereClause += ' AND DATE(p.created_at) <= ?';
-            params.push(fecha_hasta);
+            params.push(fecha_fin);
         }
-        
-        if (cliente) {
-            whereClause += ' AND c.nombre LIKE ?';
-            params.push(`%${cliente}%`);
-        }
-        
-        const offset = (page - 1) * limit;
-        
+
         const [countResult] = await db.execute(
-            `SELECT COUNT(*) as total FROM pedidos p 
-             JOIN clientes c ON p.cliente_id = c.id 
-             ${whereClause}`,
+            `SELECT COUNT(*) as total FROM pedidos p LEFT JOIN clientes c ON p.cliente_id = c.id ${whereClause}`,
             params
         );
-        
+
         const [pedidos] = await db.execute(
             `SELECT p.*, c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp
              FROM pedidos p
-             JOIN clientes c ON p.cliente_id = c.id
+             LEFT JOIN clientes c ON p.cliente_id = c.id
              ${whereClause}
              ORDER BY p.created_at DESC
              LIMIT ? OFFSET ?`,
-            [...params, parseInt(limit), offset]
+            [...params, parseInt(limit), parseInt(offset)]
         );
-        
+
         for (const pedido of pedidos) {
-            const [items] = await db.execute(
-                `SELECT ip.*, pr.nombre as producto_nombre, pr.imagen_url 
-                 FROM items_pedido ip 
-                 JOIN productos pr ON ip.producto_id = pr.id 
-                 WHERE ip.pedido_id = ?`,
-                [pedido.id]
-            );
-            pedido.items = items;
+            try {
+                const [items] = await db.execute(
+                    `SELECT ip.*, pr.nombre as producto_nombre, pr.precio as producto_precio
+                     FROM items_pedido ip
+                     LEFT JOIN productos pr ON ip.producto_id = pr.id
+                     WHERE ip.pedido_id = ?`,
+                    [pedido.id]
+                );
+                pedido.items = items.map(item => ({
+                    id: item.id,
+                    cantidad: item.cantidad,
+                    precio_unitario: item.precio_unitario,
+                    subtotal: item.subtotal,
+                    producto: { nombre: item.producto_nombre, precio: item.producto_precio }
+                }));
+            } catch (e) {
+                pedido.items = [];
+            }
+
+            pedido.cliente = { nombre: pedido.cliente_nombre, whatsapp: pedido.cliente_whatsapp };
+
+            pedido.tiene_imagen_pago = !!pedido.imagen_pago;
+            if (pedido.imagen_pago) {
+                pedido.imagen_pago = pedido.imagen_pago.substring(0, 50) + '...';
+            }
         }
-        
+
         res.json({
-            success: true,
-            data: pedidos,
-            paginacion: {
-                pagina: parseInt(page),
-                limite: parseInt(limit),
-                total: countResult[0].total,
-                paginas: Math.ceil(countResult[0].total / limit)
+            pedidos,
+            total: countResult[0]?.total || 0,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: countResult[0]?.total || 0
             }
         });
-        
     } catch (error) {
-        console.error('[Orders] Error:', error.message);
+        console.error('[Pedidos] Error:', error.message);
         res.status(500).json({ error: 'Error al obtener pedidos' });
+    }
+});
+
+router.get('/:id/imagen', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [pedidos] = await db.execute(
+            'SELECT imagen_pago FROM pedidos WHERE id = ? AND negocio_id = ?',
+            [id, req.negocioId]
+        );
+
+        if (pedidos.length === 0 || !pedidos[0].imagen_pago) {
+            return res.status(404).json({ error: 'No hay imagen de pago' });
+        }
+
+        res.json({ imagen: pedidos[0].imagen_pago });
+    } catch (error) {
+        console.error('[Pedidos] Error obteniendo imagen:', error.message);
+        res.status(500).json({ error: 'Error obteniendo imagen' });
     }
 });
 
 router.get('/:id', async (req, res) => {
     try {
-        const db = obtenerPool();
         const { id } = req.params;
-        
+
         const [pedidos] = await db.execute(
-            `SELECT p.*, c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp, c.email as cliente_email
+            `SELECT p.*, c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp
              FROM pedidos p
-             JOIN clientes c ON p.cliente_id = c.id
+             LEFT JOIN clientes c ON p.cliente_id = c.id
              WHERE p.id = ? AND p.negocio_id = ?`,
-            [id, req.negocio.id]
+            [id, req.negocioId]
         );
-        
+
         if (pedidos.length === 0) {
             return res.status(404).json({ error: 'Pedido no encontrado' });
         }
-        
+
         const pedido = pedidos[0];
-        
-        const [items] = await db.execute(
-            `SELECT ip.*, pr.nombre as producto_nombre, pr.imagen_url, pr.descripcion as producto_descripcion
-             FROM items_pedido ip
-             JOIN productos pr ON ip.producto_id = pr.id
-             WHERE ip.pedido_id = ?`,
-            [id]
-        );
-        pedido.items = items;
-        
-        const [conversacion] = await db.execute(
-            `SELECT id, mensajes FROM conversaciones 
-             WHERE pedido_id = ? AND cliente_id = ?`,
-            [id, pedido.cliente_id]
-        );
-        if (conversacion.length > 0) {
-            pedido.conversacion = {
-                id: conversacion[0].id,
-                mensajes: JSON.parse(conversacion[0].mensajes || '[]')
-            };
+        pedido.cliente = { nombre: pedido.cliente_nombre, whatsapp: pedido.cliente_whatsapp };
+
+        try {
+            const [items] = await db.execute(
+                `SELECT ip.*, pr.nombre as producto_nombre, pr.precio as producto_precio
+                 FROM items_pedido ip
+                 LEFT JOIN productos pr ON ip.producto_id = pr.id
+                 WHERE ip.pedido_id = ?`,
+                [id]
+            );
+            pedido.items = items.map(item => ({
+                id: item.id,
+                cantidad: item.cantidad,
+                precio_unitario: item.precio_unitario,
+                subtotal: item.subtotal,
+                producto: { nombre: item.producto_nombre, precio: item.producto_precio }
+            }));
+        } catch (e) {
+            pedido.items = [];
         }
-        
-        res.json({ success: true, data: pedido });
-        
+
+        res.json(pedido);
     } catch (error) {
-        console.error('[Orders] Error:', error.message);
+        console.error('[Pedidos] Error:', error.message);
         res.status(500).json({ error: 'Error al obtener pedido' });
     }
 });
 
+// PUT /:id — actualiza estado (lo que usa el dashboard: ordersService.updateEstado)
+router.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { estado } = req.body;
+
+        if (!estado) {
+            return res.status(400).json({ error: 'El estado es requerido' });
+        }
+
+        const [result] = await db.execute(
+            'UPDATE pedidos SET estado = ?, updated_at = NOW() WHERE id = ? AND negocio_id = ?',
+            [estado, id, req.negocioId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Pedido no encontrado' });
+        }
+
+        if (estado === 'entregado') {
+            pedirResenaSiCorresponde(req.negocioId, id);
+        }
+
+        res.json({ mensaje: 'Pedido actualizado', success: true });
+    } catch (error) {
+        console.error('[Pedidos] Error:', error.message);
+        res.status(500).json({ error: 'Error al actualizar pedido' });
+    }
+});
+
+// PATCH /:id/estado — mismo efecto que el PUT de arriba, valida transición.
+// Se mantiene por compatibilidad con integraciones que ya la usen.
 router.patch('/:id/estado', async (req, res) => {
     try {
-        const db = obtenerPool();
         const { id } = req.params;
         const { estado: nuevoEstado } = req.body;
-        
+
         if (!nuevoEstado) {
             return res.status(400).json({ error: 'El estado es requerido' });
         }
-        
+
         const [pedidos] = await db.execute(
-            'SELECT * FROM pedidos WHERE id = ? AND negocio_id = ?',
-            [id, req.negocio.id]
+            'SELECT estado FROM pedidos WHERE id = ? AND negocio_id = ?',
+            [id, req.negocioId]
         );
-        
+
         if (pedidos.length === 0) {
             return res.status(404).json({ error: 'Pedido no encontrado' });
         }
-        
-        const pedidoActual = pedidos[0];
-        const estadoActual = pedidoActual.estado;
-        
-        const transicionesPermitidas = TRANSICIONES_VALIDAS[estadoActual] || [];
-        
-        if (!transicionesPermitidas.includes(nuevoEstado)) {
+
+        const estadoActual = pedidos[0].estado;
+        const permitidas = TRANSICIONES_VALIDAS[estadoActual] || [];
+        if (estadoActual !== nuevoEstado && !permitidas.includes(nuevoEstado)) {
             return res.status(400).json({
-                error: `No se puede cambiar de '${estadoActual}' a '${nuevoEstado}'`,
-                transiciones_permitidas: transicionesPermitidas
+                error: `No se puede pasar de "${estadoActual}" a "${nuevoEstado}"`,
+                transiciones_validas: permitidas
             });
         }
-        
+
         await db.execute(
-            'UPDATE pedidos SET estado = ?, updated_at = NOW() WHERE id = ?',
-            [nuevoEstado, id]
+            'UPDATE pedidos SET estado = ?, updated_at = NOW() WHERE id = ? AND negocio_id = ?',
+            [nuevoEstado, id, req.negocioId]
         );
-        
+
         if (nuevoEstado === 'entregado') {
-            await db.execute(
-                `UPDATE clientes SET 
-                 total_pedidos = total_pedidos + 1,
-                 total_gastado = total_gastado + ?,
-                 ultimo_pedido = NOW()
-                 WHERE id = ?`,
-                [pedidoActual.total, pedidoActual.cliente_id]
-            );
+            pedirResenaSiCorresponde(req.negocioId, id);
         }
-        
-        const [pedidoActualizado] = await db.execute(
-            `SELECT p.*, c.nombre as cliente_nombre 
-             FROM pedidos p 
-             JOIN clientes c ON p.cliente_id = c.id 
-             WHERE p.id = ?`,
-            [id]
-        );
-        
-        emitirEstadoCambiado(id, nuevoEstado, req.negocio.id, pedidoActualizado[0]);
-        
-        res.json({
-            success: true,
-            message: `Estado actualizado a ${nuevoEstado}`,
-            data: pedidoActualizado[0]
-        });
-        
+
+        res.json({ success: true, message: `Estado actualizado a ${nuevoEstado}` });
     } catch (error) {
-        console.error('[Orders] Error:', error.message);
+        console.error('[Pedidos] Error:', error.message);
         res.status(500).json({ error: 'Error al actualizar estado' });
-    }
-});
-
-router.delete('/:id', async (req, res) => {
-    try {
-        const db = obtenerPool();
-        const { id } = req.params;
-        
-        const [pedidos] = await db.execute(
-            'SELECT * FROM pedidos WHERE id = ? AND negocio_id = ?',
-            [id, req.negocio.id]
-        );
-        
-        if (pedidos.length === 0) {
-            return res.status(404).json({ error: 'Pedido no encontrado' });
-        }
-        
-        if (pedidos[0].estado === 'cancelado') {
-            return res.status(400).json({ error: 'El pedido ya está cancelado' });
-        }
-        
-        await db.execute(
-            'UPDATE pedidos SET estado = ?, updated_at = NOW() WHERE id = ?',
-            ['cancelado', id]
-        );
-        
-        for (const item of pedidos[0].items || []) {
-            await db.execute(
-                'UPDATE productos SET stock = stock + ? WHERE id = ?',
-                [item.cantidad, item.producto_id]
-            );
-        }
-        
-        emitirEstadoCambiado(id, 'cancelado', req.negocio.id);
-        
-        res.json({ success: true, message: 'Pedido cancelado correctamente' });
-        
-    } catch (error) {
-        console.error('[Orders] Error:', error.message);
-        res.status(500).json({ error: 'Error al cancelar pedido' });
-    }
-});
-
-router.post('/exportar', async (req, res) => {
-    try {
-        const db = obtenerPool();
-        const { fecha_desde, fecha_hasta, formato = 'csv' } = req.body;
-        
-        let whereClause = 'WHERE p.negocio_id = ?';
-        const params = [req.negocio.id];
-        
-        if (fecha_desde) {
-            whereClause += ' AND DATE(p.created_at) >= ?';
-            params.push(fecha_desde);
-        }
-        
-        if (fecha_hasta) {
-            whereClause += ' AND DATE(p.created_at) <= ?';
-            params.push(fecha_hasta);
-        }
-        
-        const [pedidos] = await db.execute(
-            `SELECT p.numero_pedido, p.estado, p.total, p.metodo_pago, 
-                    p.direccion_entrega, p.created_at, c.nombre as cliente, c.whatsapp
-             FROM pedidos p
-             JOIN clientes c ON p.cliente_id = c.id
-             ${whereClause}
-             ORDER BY p.created_at DESC`,
-            params
-        );
-        
-        if (formato === 'csv') {
-            const headers = ['Numero Pedido', 'Estado', 'Total', 'Metodo Pago', 'Direccion', 'Fecha', 'Cliente', 'WhatsApp'];
-            const rows = pedidos.map(p => [
-                p.numero_pedido,
-                p.estado,
-                p.total,
-                p.metodo_pago || '',
-                p.direccion_entrega || '',
-                p.created_at,
-                p.cliente,
-                p.whatsapp
-            ]);
-            
-            const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
-            
-            res.setHeader('Content-Type', 'text/csv');
-            res.setHeader('Content-Disposition', 'attachment; filename=pedidos.csv');
-            return res.send(csv);
-        }
-        
-        res.json({ success: true, data: pedidos, total: pedidos.length });
-        
-    } catch (error) {
-        console.error('[Orders] Error:', error.message);
-        res.status(500).json({ error: 'Error al exportar pedidos' });
     }
 });
 

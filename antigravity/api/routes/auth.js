@@ -1,20 +1,11 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const mysql = require('mysql2/promise');
+const pool = require('../../db/config');
 
 const router = express.Router();
 
-const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'antigravity',
-    waitForConnections: true,
-    connectionLimit: 10
-});
-
-const JWT_SECRET = process.env.JWT_SECRET || 'antigravity_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const { body, validationResult } = require('express-validator');
 const { loginRateLimit, sanitizeLog, blacklistToken, checkBlacklist } = require('../middleware/security');

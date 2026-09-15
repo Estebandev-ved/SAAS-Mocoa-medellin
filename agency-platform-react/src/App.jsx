@@ -18,6 +18,23 @@ import Customizer from './components/Customizer';
 import Pricing from './components/Pricing';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import Dashboard from './pages/Dashboard';
+import ConversacionesPage from './pages/ConversacionesPage';
+import PedidosPage from './pages/PedidosPage';
+import ClientesPage from './pages/ClientesPage';
+import AutomatizacionesPage from './pages/AutomatizacionesPage';
+import SuscripcionPage from './pages/SuscripcionPage';
+import AjustesPage from './pages/AjustesPage';
+import DomiciliosPage from './pages/DomiciliosPage';
+import WhatsAppConnectionPage from './pages/WhatsAppConnectionPage';
+import ProductosPage from './pages/ProductosPage';
+import MonitoreoPage from './pages/MonitoreoPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import MultiChannelPage from './pages/MultiChannelPage';
+import VoiceBotPage from './pages/VoiceBotPage';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Layers } from 'lucide-react';
 
 const LoadingScreen = () => (
@@ -88,15 +105,33 @@ const HomePage = () => {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <BrandingProvider>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-          </Routes>
-        </BrandingProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <BrandingProvider>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/conversaciones" element={<ConversacionesPage />} />
+              <Route path="/pedidos" element={<PedidosPage />} />
+              <Route path="/clientes" element={<ClientesPage />} />
+              <Route path="/automatizaciones" element={<AutomatizacionesPage />} />
+              <Route path="/suscripcion" element={<SuscripcionPage />} />
+              <Route path="/domicilios" element={<DomiciliosPage />} />
+              <Route path="/productos" element={<ProductosPage />} />
+              <Route path="/monitoreo" element={<MonitoreoPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/multichannel" element={<MultiChannelPage />} />
+              <Route path="/voice" element={<VoiceBotPage />} />
+              <Route path="/whatsapp" element={<WhatsAppConnectionPage />} />
+              <Route path="/ajustes" element={<AjustesPage />} />
+            </Routes>
+          </BrandingProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

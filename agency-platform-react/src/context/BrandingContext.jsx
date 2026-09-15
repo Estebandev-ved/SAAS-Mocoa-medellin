@@ -5,8 +5,8 @@ const BrandingContext = createContext();
 export const BrandingProvider = ({ children }) => {
   const [branding, setBranding] = useState({
     name: 'Antigravity',
-    primary: '#00FFD1',
-    accent: '#00C4A0',
+    primary: '#E53935',
+    accent: '#C62828',
     theme: 'dark',
     logo: '⚡',
   });
@@ -27,7 +27,7 @@ export const BrandingProvider = ({ children }) => {
     if (branding.theme === 'light') {
       root.style.setProperty('--bg', '#F5F5F0');
       root.style.setProperty('--bg2', '#FFFFFF');
-      root.style.setProperty('--bg3', '#EAEA E5');
+      root.style.setProperty('--bg3', '#EAEAE5');
       root.style.setProperty('--text', '#111111');
       root.style.setProperty('--muted', '#666666');
     } else {

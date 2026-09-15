@@ -1,19 +1,25 @@
-const { io } = require('../api/index');
+let io = null;
+
+function setSocketIO(socketIO) {
+  io = socketIO;
+}
 
 function emitQR(negocioId, qr) {
   if (io) {
-    io.to(`negocio_${negocioId}`).emit('bot_qr', {
-      negocioId,
-      qr: qr,
+    io.emit('qr_update', {
+      negocio_id: negocioId,
+      qr_data: qr,
       timestamp: new Date().toISOString()
     });
   }
 }
 
-function emitConnected(negocioId) {
+function emitConnected(negocioId, phone) {
   if (io) {
-    io.to(`negocio_${negocioId}`).emit('bot_connected', {
-      negocioId,
+    io.emit('whatsapp_status', {
+      negocio_id: negocioId,
+      conectado: true,
+      numero: phone || null,
       timestamp: new Date().toISOString()
     });
   }
@@ -21,8 +27,10 @@ function emitConnected(negocioId) {
 
 function emitDisconnected(negocioId) {
   if (io) {
-    io.to(`negocio_${negocioId}`).emit('bot_disconnected', {
-      negocioId,
+    io.emit('whatsapp_status', {
+      negocio_id: negocioId,
+      conectado: false,
+      numero: null,
       timestamp: new Date().toISOString()
     });
   }
@@ -30,7 +38,8 @@ function emitDisconnected(negocioId) {
 
 function emitCampaignProgress(negocioId, campaignId, progress) {
   if (io) {
-    io.to(`negocio_${negocioId}`).emit('campaña_progreso', {
+    io.emit('campaign_progress', {
+      negocio_id: negocioId,
       campaignId,
       ...progress
     });
@@ -39,11 +48,15 @@ function emitCampaignProgress(negocioId, campaignId, progress) {
 
 function emitNewMessage(negocioId, message) {
   if (io) {
-    io.to(`negocio_${negocioId}`).emit('nuevo_mensaje', message);
+    io.emit('nuevo_mensaje', {
+      negocio_id: negocioId,
+      ...message
+    });
   }
 }
 
 module.exports = {
+  setSocketIO,
   emitQR,
   emitConnected,
   emitDisconnected,

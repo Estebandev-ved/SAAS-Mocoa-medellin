@@ -82,7 +82,7 @@ const Hero = () => {
           className="flex flex-wrap justify-center gap-6 mb-24"
         >
           <motion.button
-            whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(0,255,209,0.3)' }}
+            whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(229,57,53,0.3)' }}
             whileTap={{ scale: 0.95 }}
             className="bg-accent text-bg px-10 py-5 rounded-2xl font-mono text-xs font-black tracking-widest flex items-center gap-3 cursor-pointer border-none shadow-xl"
             onClick={() => document.getElementById('ecosistema')?.scrollIntoView({ behavior: 'smooth' })}

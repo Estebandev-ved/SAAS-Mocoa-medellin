@@ -197,30 +197,79 @@ router.post('/campañas', checkPlan('professional', 'enterprise'), async (req, r
 
     const [result] = await db.execute(
       `INSERT INTO campañas (negocio_id, nombre, mensaje, segmento, segmento_config, fecha_envio, estado, total_destinatarios)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [req.negocioId, nombre, mensaje, segmento, JSON.stringify(segmento_config || {}), fecha_envio || null, fecha_envio ? 'programada' : 'borrador', totalDestinatarios]
+       VALUES (?, ?, ?, ?, ?, ?, 'borrador', ?)`,
+      [req.negocioId, nombre, mensaje, segmento, JSON.stringify(segmento_config || {}), fecha_envio || null, totalDestinatarios]
     );
 
-    if (fecha_envio) {
+    // Antes solo se encolaba la campaña cuando venía fecha_envio: una
+    // campaña "enviar ahora" (sin fecha) quedaba guardada como 'borrador'
+    // para siempre, sin ninguna forma de disparar el envío. Ahora toda
+    // campaña nueva se intenta encolar de una vez (delay 0 si no hay
+    // fecha_envio — ver enqueueCampaign en queue/jobs/sendCampaign.js).
+    //
+    // El require queda protegido: si el paquete de colas (bull) no está
+    // instalado o Redis no está corriendo, la campaña se guarda igual como
+    // 'borrador' en vez de tumbar el endpoint con un 500, y el frontend se
+    // entera por `cola_disponible` para poder avisarle al dueño y reintentar
+    // luego con POST /campañas/:id/enviar.
+    let colaDisponible = true;
+    try {
       const { enqueueCampaign } = require('../../queue/jobs/sendCampaign');
       await enqueueCampaign(result.insertId, req.negocioId);
+      await db.execute(`UPDATE campañas SET estado = 'programada' WHERE id = ?`, [result.insertId]);
+    } catch (queueError) {
+      colaDisponible = false;
+      console.error('[Campaigns] No se pudo encolar la campaña (¿bull instalado? ¿Redis / queue worker corriendo?):', queueError.message);
     }
 
     res.status(201).json({
       success: true,
+      cola_disponible: colaDisponible,
+      ...(colaDisponible ? {} : { advertencia: 'La campaña se guardó como borrador pero no se pudo programar el envío automático. Verifica que el servicio de colas (Redis + queue worker) esté activo e inténtalo de nuevo con POST /campañas/:id/enviar.' }),
       campaña: {
         id: result.insertId,
         nombre,
         mensaje,
         segmento,
         fecha_envio,
-        estado: fecha_envio ? 'programada' : 'borrador',
+        estado: colaDisponible ? 'programada' : 'borrador',
         total_destinatarios: totalDestinatarios
       }
     });
   } catch (error) {
     console.error('[Campaigns] Error:', error.message);
     res.status(500).json({ error: 'Error al crear campaña' });
+  }
+});
+
+// Reintenta encolar una campaña que quedó en 'borrador' (por ejemplo porque
+// el servicio de colas no estaba disponible al crearla, o porque se canceló
+// por error). No aplica si ya está enviando/completada.
+router.post('/campañas/:id/enviar', checkPlan('professional', 'enterprise'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [campañas] = await db.execute(
+      `SELECT * FROM campañas WHERE id = ? AND negocio_id = ?`,
+      [id, req.negocioId]
+    );
+
+    if (campañas.length === 0) {
+      return res.status(404).json({ error: 'Campaña no encontrada' });
+    }
+
+    if (['enviando', 'completada'].includes(campañas[0].estado)) {
+      return res.status(400).json({ error: `La campaña ya está ${campañas[0].estado}` });
+    }
+
+    const { enqueueCampaign } = require('../../queue/jobs/sendCampaign');
+    await enqueueCampaign(id, req.negocioId);
+    await db.execute(`UPDATE campañas SET estado = 'programada' WHERE id = ?`, [id]);
+
+    res.json({ success: true, mensaje: 'Campaña encolada para envío' });
+  } catch (error) {
+    console.error('[Campaign Send] Error:', error.message);
+    res.status(500).json({ error: 'No se pudo encolar la campaña. Verifica que el servicio de colas (Redis + queue worker) esté activo.' });
   }
 });
 

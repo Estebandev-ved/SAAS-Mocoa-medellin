@@ -56,6 +56,7 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-antigravity}
       REDIS_HOST: redis
       JWT_SECRET: ${JWT_SECRET}
+      INSTANCE_MANAGER_URL: http://instance-manager:3001
     depends_on:
       mysql:
         condition: service_healthy
@@ -79,8 +80,13 @@ services:
       MYSQL_USER: ${MYSQL_USER:-antigravity}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-antigravity}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-antigravity}
+      REDIS_HOST: redis
+      API_URL: http://api:3002
+      TRACKING_BASE_URL: ${TRACKING_BASE_URL:-http://localhost:5177/delivery/track}
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - antigravity_network
@@ -104,30 +110,6 @@ services:
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USER: ${SMTP_USER}
       SMTP_PASS: ${SMTP_PASS}
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - antigravity_network
-
-  brain:
-    build:
-      context: ..
-      dockerfile: Dockerfile.brain
-    container_name: ag-brain
-    restart: unless-stopped
-    environment:
-      PYTHONUNBUFFERED: 1
-      MYSQL_HOST: mysql
-      MYSQL_USER: ${MYSQL_USER:-antigravity}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-antigravity}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-antigravity}
-      REDIS_HOST: redis
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-    ports:
-      - "8000:8000"
     depends_on:
       mysql:
         condition: service_healthy

@@ -100,10 +100,10 @@ export const onBotDisconnected = (callback) => {
   }
 };
 
-export const onCampañaProgreso = (callback) => {
+export const onCampaignProgress = (callback) => {
   if (socket) {
-    socket.on('campaña_progreso', (data) => {
-      console.log('[Socket] Progreso campaña:', data);
+    socket.on('campaign_progress', (data) => {
+      console.log('[Socket] Campaign progress:', data);
       callback(data);
     });
   }
