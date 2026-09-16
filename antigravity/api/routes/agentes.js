@@ -1,43 +1,31 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
 const { verificarAuth } = require('../middleware/auth');
-
-const BRAIN_URL = process.env.BRAIN_URL || 'http://localhost:8000';
 
 router.use(verificarAuth);
 
+// El servicio Python `brain/` que calculaba estas métricas fue retirado del
+// proyecto (un solo cerebro real en `instance-manager/`, en Node). Estos dos
+// endpoints se dejan con la misma forma de respuesta que ya devolvían cuando
+// el brain no estaba disponible, sin el intento de red que siempre fallaba.
 router.get('/stats', async (req, res) => {
-    try {
-        const response = await axios.get(`${BRAIN_URL}/agentes/stats`);
-        res.json(response.data);
-    } catch (error) {
-        console.error('[AgentesAPI] Error obtieniendo stats:', error.message);
-        res.json({
-            supervisores: 0,
-            workers: 0,
-            cola: 0,
-            mensajes_procesados: 0,
-            tiempo_respuesta_promedio_ms: 0,
-            error: 'Brain no disponible'
-        });
-    }
+    res.json({
+        supervisores: 0,
+        workers: 0,
+        cola: 0,
+        mensajes_procesados: 0,
+        tiempo_respuesta_promedio_ms: 0,
+        error: 'No disponible'
+    });
 });
 
 router.get('/presupuesto', async (req, res) => {
-    try {
-        const negocioId = req.negocio.id;
-        const response = await axios.get(`${BRAIN_URL}/agentes/presupuesto/${negocioId}`);
-        res.json(response.data);
-    } catch (error) {
-        console.error('[AgentesAPI] Error presupuesto:', error.message);
-        res.json({
-            tokens_usados: 0,
-            limite: 50000,
-            porcentaje: 0,
-            restantes: 50000
-        });
-    }
+    res.json({
+        tokens_usados: 0,
+        limite: 50000,
+        porcentaje: 0,
+        restantes: 50000
+    });
 });
 
 router.get('/logs', async (req, res) => {
@@ -88,15 +76,12 @@ router.get('/intenciones', async (req, res) => {
     }
 });
 
+// El disparo manual por negocio pasaba por el `brain/` (Python) retirado.
+// El reengagement real hoy corre solo, cada 5 min, para todos los negocios
+// que lo tengan activo (ver revisarReengagement() en api/scheduler.js) — no
+// hay disparo por negocio individual todavía.
 router.post('/seguimiento/ejecutar', async (req, res) => {
-    try {
-        const negocioId = req.negocio.id;
-        const response = await axios.post(`${BRAIN_URL}/agentes/ejecutar-seguimiento/${negocioId}`);
-        res.json(response.data);
-    } catch (error) {
-        console.error('[AgentesAPI] Error seguimiento:', error.message);
-        res.json({ error: 'Error ejecutando seguimiento' });
-    }
+    res.status(501).json({ error: 'El seguimiento se ejecuta automáticamente cada 5 minutos, no hay disparo manual disponible' });
 });
 
 module.exports = router;

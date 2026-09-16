@@ -50,7 +50,7 @@ async function obtenerConfigNegocio(negocioId) {
             productos
         };
     } catch (error) {
-        return { negocio: {}, productos: [] };
+        return { negocio: {}, productos: {} };
     }
 }
 

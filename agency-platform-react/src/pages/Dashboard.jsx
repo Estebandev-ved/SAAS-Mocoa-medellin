@@ -180,7 +180,7 @@ export default function Dashboard() {
 
     const fetchPlan = async () => {
       try {
-        const res = await api.get('/negocio/plan')
+        const res = await api.get('/business/plan')
         if (res.data?.plan?.tipo) {
           setApiPlan(res.data.plan.tipo)
         }

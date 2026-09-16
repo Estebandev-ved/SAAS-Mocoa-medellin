@@ -194,7 +194,7 @@ function NegocioTab() {
 
   useEffect(() => {
     api
-      .get('/negocio/perfil')
+      .get('/business/perfil')
       .then((res) => {
         const n = res.data.negocio || res.data;
         setForm((prev) => ({ ...prev, ...n }));
@@ -211,7 +211,7 @@ function NegocioTab() {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.put('/negocio/perfil', form);
+      await api.put('/business/perfil', form);
       setToast({ type: 'success', message: 'Perfil actualizado correctamente' });
     } catch {
       setToast({ type: 'error', message: 'Error al guardar cambios' });
@@ -694,7 +694,7 @@ function WhatsAppTab() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await api.get('/negocio/whatsapp/status');
+      const res = await api.get('/business/whatsapp/status');
       setStatus(res.data);
     } catch {
       setToast({ type: 'error', message: 'Error al obtener estado de WhatsApp' });
@@ -710,7 +710,7 @@ function WhatsAppTab() {
   const handleConnect = async () => {
     setActionLoading(true);
     try {
-      await api.post('/negocio/whatsapp/connect');
+      await api.post('/business/whatsapp/connect');
       setToast({ type: 'success', message: 'Conectando WhatsApp...' });
       fetchStatus();
     } catch {
@@ -723,7 +723,7 @@ function WhatsAppTab() {
   const handleDisconnect = async () => {
     setActionLoading(true);
     try {
-      await api.post('/negocio/whatsapp/disconnect');
+      await api.post('/business/whatsapp/disconnect');
       setToast({ type: 'success', message: 'WhatsApp desconectado' });
       fetchStatus();
     } catch {
@@ -836,7 +836,7 @@ function PagoTab() {
 
   useEffect(() => {
     api
-      .get('/negocio/plan')
+      .get('/business/plan')
       .then((res) => setPlan(res.data.plan || res.data))
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -955,7 +955,7 @@ function NotificacionesTab() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.put('/negocio/notificaciones', prefs);
+      await api.put('/business/notificaciones', prefs);
       setToast({ type: 'success', message: 'Preferencias guardadas' });
     } catch {
       setToast({ type: 'error', message: 'Error al guardar preferencias' });
@@ -1084,7 +1084,7 @@ function SeguridadTab() {
     }
     setSaving(true);
     try {
-      await api.put('/negocio/password', {
+      await api.put('/business/password', {
         passwordActual: form.passwordActual,
         passwordNueva: form.passwordNueva,
       });

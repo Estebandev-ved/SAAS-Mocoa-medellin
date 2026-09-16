@@ -2,13 +2,14 @@
 
 ---
 
-## 📅 Plan para Hoy: 2026-09-16
+## 📅 Plan para Hoy: 2026-09-17
 
 ### Tareas Prioritarias
 
-- [ ] Instalar ngrok, exponer la API (`ngrok http 3002`), pegar la URL en `VOICE_PUBLIC_URL` del `.env` y configurar el webhook de voz en la consola de Twilio para el número `+573208303600`. Luego probar el bot de llamadas con una llamada real.
-- [ ] Correr `npm run dev` en `antigravity/frontend`, entrar con una cuenta de negocio válida (la demo `demo@antigravity.co` aparece **bloqueada** — desbloquearla o crear una cuenta de prueba nueva) y revisar visualmente la grilla de 3 planes en Ajustes → Plan: que se vea bien, que "Más elegido" resalte Professional, y que el botón de upgrade funcione de punta a punta.
-- [ ] Limpiar las llamadas muertas a `BRAIN_URL` (`http://localhost:8000`) que quedaron en `api/routes/agentes.js`, `api/routes/bot-config.js`, `api/index.js` (stats de agentes por socket) y `instance-manager/handlers/paymentHandler.js` — el servicio `brain/` (Python) ya no existe en el proyecto, hoy se borró la carpeta junto con `requirements.txt` y `Dockerfile.brain`. Esas llamadas ya fallan de forma controlada (try/catch), pero es código muerto apuntando a un servicio retirado.
+- [ ] Instalar ngrok, exponer la API (`ngrok http 3002`), pegar la URL en `VOICE_PUBLIC_URL` del `.env` y configurar el webhook de voz en la consola de Twilio para el número `+573208303600`. Luego probar el bot de llamadas con una llamada real. (Sigue pendiente — requiere acción manual del socio: instalar software e iniciar una llamada real.)
+- [ ] Revisar visualmente en el navegador el resto de la pestaña Plan con la pantalla ancha (no solo el contenido/DOM): hoy se verificó todo por texto/DOM porque el panel de vista previa no estaba renderizando capturas, así que falta el vistazo visual final (alineación, responsive, hover del botón de upgrade).
+- [ ] Decidir si se elimina `/api/suscripcion/*` (router duplicado que el frontend no usa) o se migra el frontend a usarlo.
+- [ ] Revisar los cambios que aparecen sin commitear en `agency-platform-react/src/pages/AjustesPage.jsx`, `Dashboard.jsx`, `DomiciliosPage.jsx`, `antigravity/api/routes/analyticsAdvanced.js` e `instance-manager/agents/gemini.js` — no se tocaron hoy en esta sesión, conviene confirmar que son cambios intencionales antes de que se acumulen más.
 - [ ] [Agrega aquí cualquier tarea manual que tú quieras encargarle hoy]
 
 ---
@@ -17,10 +18,10 @@
 
 - Free trial con downgrade para el bot de llamadas al registrarse (pendiente de la estrategia de pricing psicológico).
 - Pantalla propia "Llamadas" en el dashboard — hoy `voice_bot_config` se maneja por API/SQL directo.
-- Decidir si se elimina `/api/suscripcion/*` (router duplicado que el frontend no usa) o se migra el frontend a usarlo.
 - Prueba social en la pestaña Plan (cifras reales de negocios activos) — esperar a tener una base de clientes que valga la pena citar.
 - Auditar a fondo `instance-manager/agents/gemini.js` y decidir si vale la pena portar la detección de escalación a humano que quedó en el `brain/` retirado.
-- Hay ~189 archivos con cambios sin commitear en el working tree (incluye todo `agency-platform-react/` y gran parte de `antigravity/`). Vale la pena revisar y hacer commits por bloques temáticos antes de que crezca más y se vuelva difícil de revisar.
+- Hay dos negocios distintos (`id=1` "Tienda Ejemplo Colombia" e `id=4` "Admin Antigravity") compartiendo el mismo `email_dueno = demo@antigravity.co`. El login (`api/routes/auth.js`) hace `SELECT * FROM negocios WHERE email_dueno = ?` sin filtrar más y toma `negocios[0]` — hoy funcionó porque el orden natural devolvió el id=1, pero es un dato duplicado que puede dar sorpresas. Vale la pena decidir si el email debe ser único por negocio o si esto es intencional (cuenta demo + cuenta admin comparten correo a propósito).
+- Auditar si hay otros lugares en el código que muten objetos devueltos por `getPlanFeatures()`/`getPlan()` de `config/planConfig.js` sin clonar primero — el mismo patrón que causó el bug de hoy (ver Historial) podría estar repetido en otro middleware o ruta que no se revisó todavía.
 
 ---
 
@@ -42,3 +43,11 @@
 - [x] Revisión de código de la grilla de 3 planes (Ajustes → Plan): frontend, CSS, endpoint `GET /api/business/plan` y `planConfig.js` verificados de punta a punta, sin desfases de datos. No se pudo probar en vivo en el navegador porque la cuenta demo aparece bloqueada.
 - [x] Bot de llamadas preparado del lado de código: `npm install` en `antigravity/`, `node run-migrations.js` (tablas `voice_calls`, `voice_bot_config`, `voice_custom_voices` creadas), y variables `VOICE_PUBLIC_URL` + `TWILIO_VALIDATE_SIGNATURE=true` agregadas al `.env`. Falta ngrok + webhook de Twilio + llamada real (tarea manual, pasa a mañana).
 - [x] Limpieza: borrados `antigravity/brain/`, `requirements.txt` y `Dockerfile.brain` (sin uso desde que quedó un solo cerebro en `instance-manager/`), y removidas las variables `AZURE_OPENAI_*` del `.env`. Verificado que ningún otro archivo del proyecto las referenciaba.
+
+### 16 sept 2026
+
+- [x] Limpieza de código muerto apuntando al `brain/` (Python) retirado: quitado el `setInterval` de stats de agentes por socket en `api/index.js`, simplificados `agentes.js` (endpoints `/stats` y `/presupuesto` ya no intentan red) y `bot-config.js` (quitadas las invalidaciones de caché al brain), y `paymentHandler.js` ya no intenta `fetch` a un servicio que no existe. Verificado que la API arranca limpio y responde en `/health`.
+- [x] Cuenta demo (`demo@antigravity.co`, negocio id=1) estaba bloqueada por intentos fallidos previos — desbloqueada y contraseña restablecida a `Demo2024#` directamente en BD (cuenta de prueba local, no de cliente real) para poder revisar el dashboard.
+- [x] **Bug encontrado y corregido**: la pestaña Plan mostraba "Productos en catálogo: 9 / null" en vez de "Ilimitado" para negocios en plan Professional/Enterprise. Causa raíz: `api/middleware/tenant.js` tomaba el objeto de `getPlanFeatures()` de `config/planConfig.js` (que devuelve la referencia directa al singleton, sin clonar) y lo **mutaba en memoria** (`maxProducts: -1 → Infinity`), corrompiendo la config compartida para todo el proceso y para todos los negocios en cuanto cualquier request pasaba por ese middleware una vez. `Infinity` no es serializable en JSON (se vuelve `null`), de ahí el síntoma visible. Corregido clonando el objeto (`{ ...getPlanFeatures(...) }`) antes de mutarlo.
+- [x] **Segundo bug encontrado y corregido**: la tarjeta "Inicial" (Starter) en la grilla comparativa de planes se mostraba sin ningún feature listado (vacía) porque `FEATURE_LABELS` en `planConfig.js` solo tenía etiquetas para features premium, ninguna de las cuales tiene Starter. Se agregaron etiquetas para las 6 features base (bot de ventas, catálogo, pedidos por WhatsApp, reportes básicos, soporte email, analytics básico), verificado que ahora la tarjeta Starter muestra su propia lista.
+- [x] Verificación end-to-end de ambos fixes con la API corriendo real (login + `GET /api/business/plan` vía curl y navegador): `productos.limit` ahora es `-1` (antes `null`), y el plan Starter devuelve 6 features en vez de `[]`.

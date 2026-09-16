@@ -150,6 +150,15 @@ const PLAN_ORDER = ['starter', 'professional', 'enterprise'];
 // arriba, se le pone su etiqueta acá y automáticamente aparece en las
 // comparaciones de upgrade (GET /api/business/plan) sin tocar nada más.
 const FEATURE_LABELS = {
+    // Features base (las tiene también Starter) — sin esto, getIncludedFeatureLabels('starter')
+    // devolvía [] y la tarjeta "Inicial" de la grilla de comparación (GET /api/business/plan)
+    // se mostraba vacía, sin ningún check ✓, mientras Professional/Enterprise sí listaban las suyas.
+    botVentas: 'Bot de ventas por WhatsApp',
+    catalogoProductos: 'Catálogo de productos',
+    pedidosWhatsApp: 'Pedidos por WhatsApp',
+    reportesBasicos: 'Reportes básicos',
+    soporteEmail: 'Soporte por email',
+    analyticsBasico: 'Analytics básico',
     analyticsAvanzado: 'Analytics avanzado',
     automatizaciones: 'Automatizaciones (recordatorios, reenganche, campañas)',
     personalizacionCompleta: 'Personalización completa del bot',

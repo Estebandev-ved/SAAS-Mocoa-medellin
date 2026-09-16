@@ -3,8 +3,6 @@ const router = express.Router();
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
 
-const BRAIN_URL = process.env.BRAIN_URL || 'http://localhost:8000';
-
 const AGENTES_VALIDOS = ['ventas', 'pagos', 'pedidos', 'faq', 'reclamos', 'retencion'];
 
 const LIMITES_AGENTES_POR_PLAN = {
@@ -153,12 +151,6 @@ router.put('/config', async (req, res) => {
             values
         );
 
-        try {
-            await fetch(`${BRAIN_URL}/catalogo/invalidar/${req.negocioId}`, { method: 'POST' });
-        } catch {
-            console.log('[BotConfig] No se pudo invalidar cache del brain');
-        }
-
         res.json({
             success: true,
             mensaje: 'Configuración del bot actualizada'
@@ -218,12 +210,6 @@ router.put('/config/agentes', async (req, res) => {
                 "INSERT INTO automatizaciones_config (negocio_id, tipo, activa, config) VALUES (?, 'agentes', 1, ?)",
                 [req.negocioId, JSON.stringify({ agentes: agentesArray })]
             );
-        }
-
-        try {
-            await fetch(`${BRAIN_URL}/catalogo/invalidar/${req.negocioId}`, { method: 'POST' });
-        } catch {
-            console.log('[BotConfig] No se pudo invalidar cache del brain');
         }
 
         res.json({

@@ -1,33 +1,16 @@
 // NOTA: este módulo no está conectado al flujo real de mensajes.
 // El manejo de pagos en vivo pasa por messageHandler.js -> orchestrator.js
 // -> gemini.js (verificarPagoConImagen), que usa Gemini directamente.
-// `verificarPago` de aquí abajo dependía del servicio Python `brain/`
-// (ya retirado del proyecto), así que quedará devolviendo error si algo
-// llega a invocarla. Las demás funciones (notificar*, registrarPagoEnviado,
-// confirmarPago) son helpers de BD/WhatsApp independientes del brain y
-// quedan disponibles por si se necesitan más adelante (ej. un botón de
-// "marcar como pagado" en el dashboard).
+// `verificarPago` dependía del servicio Python `brain/`, ya retirado del
+// proyecto, así que queda devolviendo error sin intentar red. Las demás
+// funciones (notificar*, registrarPagoEnviado, confirmarPago) son helpers
+// de BD/WhatsApp independientes del brain y quedan disponibles por si se
+// necesitan más adelante (ej. un botón de "marcar como pagado" en el
+// dashboard).
 const db = require('../../db/config');
 
 async function verificarPago(imagenBase64, negocioId, totalEsperado) {
-  try {
-    const BRAIN_URL = process.env.BRAIN_URL || 'http://localhost:8000';
-    const response = await fetch(`${BRAIN_URL}/verificar-pago`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        imagen_base64: imagenBase64,
-        negocio_id: negocioId,
-        total_esperado: totalEsperado
-      })
-    });
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('[PaymentHandler] Error verificando pago:', error.message);
-    return { valido: false, error: error.message };
-  }
+  return { valido: false, error: 'Servicio de verificación no disponible' };
 }
 
 async function notificarPagoConfirmado(negocioId, pedidoId, clienteWhatsapp) {

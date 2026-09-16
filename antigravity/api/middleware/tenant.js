@@ -42,8 +42,14 @@ async function injectTenantId(req, res, next) {
       });
     }
 
-    // Set plan limits from planConfig
-    req.planLimits = getPlanFeatures(negocio.plan);
+    // Set plan limits from planConfig. Clonar: getPlanFeatures() devuelve la
+    // MISMA referencia al objeto singleton de PLANS (config/planConfig.js no
+    // clona). Mutar req.planLimits sin copiar corrompía la config compartida
+    // para todo el proceso — p.ej. maxProducts -1 (ilimitado) se convertía en
+    // Infinity de forma permanente en cuanto un negocio Professional/Enterprise
+    // pasaba por este middleware, rompiendo el límite mostrado a TODOS los
+    // negocios (Infinity no es serializable en JSON, llega como null al front).
+    req.planLimits = { ...getPlanFeatures(negocio.plan) };
     req.planLimits.maxMessagesPerMonth = req.planLimits.maxMessages;
     req.planLimits.maxProducts = req.planLimits.maxProducts === -1 ? Infinity : req.planLimits.maxProducts;
     req.planLimits.automations = getPlan(negocio.plan).automations;

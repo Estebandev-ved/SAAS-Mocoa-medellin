@@ -458,18 +458,6 @@ io.on('connection', (socket) => {
     });
 });
 
-const BRAIN_URL = process.env.BRAIN_URL || 'http://localhost:8000';
-
-setInterval(async () => {
-    try {
-        const axios = require('axios');
-        const res = await axios.get(`${BRAIN_URL}/agentes/stats`, { timeout: 5000 });
-        io.emit('agentes_stats', res.data);
-    } catch (err) {
-        // console.log('[Socket] Brain no disponible para stats de agentes');
-    }
-}, 15000);
-
 server.listen(PORT, () => {
     console.log(`[API] Servidor corriendo en puerto ${PORT}`);
 });
