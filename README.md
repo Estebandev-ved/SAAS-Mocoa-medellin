@@ -1,50 +1,86 @@
-# ?? ANTIGRAVITY — Bot WhatsApp con IA para Negocios (SaaS)
+# ?? ANTIGRAVITY ï¿½ Bot WhatsApp con IA para Negocios (SaaS)
 
-> Sistema multi-agente de automatización de ventas por WhatsApp. Plataforma SaaS que permite a negocios conectar su WhatsApp, configurar un bot IA y gestionar pedidos, domicilios y conversaciones desde un dashboard.
+> Sistema multi-agente de automatizaciï¿½n de ventas por WhatsApp. Plataforma SaaS que permite a negocios conectar su WhatsApp, configurar un bot IA y gestionar pedidos, domicilios y conversaciones desde un dashboard.
 
+
+## ðŸŒŸ Novedades Recientes
+- **Arquitectura Simplificada**: Se ha retirado el antiguo 'Brain' en Python y ahora todo el motor de Inteligencia Artificial (Gemini) estÃ¡ integrado de forma nativa en el `instance-manager` de Node.js.
+- **Bot de Llamadas**: ImplementaciÃ³n del nuevo bot de llamadas con Twilio y Clonar-voz, completamente multi-tenant y seguro.
+- **API Mejorada**: ConsolidaciÃ³n de rutas por recursos en la API REST y auditorÃ­a de seguridad implementada (correcciÃ³n de IDOR).
+- **GestiÃ³n de Planes**: Nuevo sistema en el dashboard que muestra en tiempo real las caracterÃ­sticas del plan, uso actual y estrategia de precios dinÃ¡mica.
+
+## ðŸš€ InstalaciÃ³n y EjecuciÃ³n FÃ¡cil
+
+1. **Clona el repositorio e instala:**
+   ```bash
+   git clone <url-del-repositorio>
+   cd "Bot NOMA"
+   
+   # Instala dependencias del backend
+   npm install --prefix antigravity
+   
+   # Instala dependencias del frontend
+   npm install --prefix agency-platform-react
+   ```
+
+2. **Configura las variables de entorno:**
+   Copia el archivo `.env.example` a `.env` en la carpeta `antigravity/` y completa los datos (MySQL, Gemini, Twilio).
+
+3. **Inicia el sistema (Todo en uno):**
+   ```bash
+   # En una terminal: arranca la API y el Instance Manager
+   cd antigravity
+   .\start.bat
+   
+   # En otra terminal: arranca el Frontend (Dashboard & Landing)
+   cd agency-platform-react
+   npm run dev
+   ```
+   
 ---
+
 
 ## ?? Arquitectura General del Sistema
 
 ```
 +-----------------------------------------------------------------+
-¦                     CLIENTE FINAL (WhatsApp)                    ¦
+ï¿½                     CLIENTE FINAL (WhatsApp)                    ï¿½
 +-----------------------------------------------------------------+
-                                ¦ Mensaje de texto
+                                ï¿½ Mensaje de texto
                                 ?
 +-----------------------------------------------------------------+
-¦          INSTANCE MANAGER (Node.js — puerto 3001)               ¦
-¦  Baileys: gestiona múltiples conexiones WhatsApp simultáneas    ¦
-¦  Un BotInstance por cada negocio registrado                     ¦
+ï¿½          INSTANCE MANAGER (Node.js ï¿½ puerto 3001)               ï¿½
+ï¿½  Baileys: gestiona mï¿½ltiples conexiones WhatsApp simultï¿½neas    ï¿½
+ï¿½  Un BotInstance por cada negocio registrado                     ï¿½
 +----------------------------------------------------------------+
-            ¦ HTTP POST /procesar                  ¦ Socket.io
+            ï¿½ HTTP POST /procesar                  ï¿½ Socket.io
             ?                                      ?
 +-----------------------+              +---------------------------+
-¦   BRAIN IA (Python    ¦              ¦   API REST (Node.js —     ¦
-¦   FastAPI — p. 8000)  ¦              ¦   puerto 3002)            ¦
-¦                       ¦              ¦                           ¦
-¦  orchestrator.py      ¦              ¦  auth, negocios,          ¦
-¦  9 Agentes IA (GPT)   ¦              ¦  productos, pedidos,      ¦
-¦  context_manager.py   ¦              ¦  domicilios, admin...     ¦
-¦  prompt_builder.py    ¦              ¦                           ¦
+ï¿½   BRAIN IA (Python    ï¿½              ï¿½   API REST (Node.js ï¿½     ï¿½
+ï¿½   FastAPI ï¿½ p. 8000)  ï¿½              ï¿½   puerto 3002)            ï¿½
+ï¿½                       ï¿½              ï¿½                           ï¿½
+ï¿½  orchestrator.py      ï¿½              ï¿½  auth, negocios,          ï¿½
+ï¿½  9 Agentes IA (GPT)   ï¿½              ï¿½  productos, pedidos,      ï¿½
+ï¿½  context_manager.py   ï¿½              ï¿½  domicilios, admin...     ï¿½
+ï¿½  prompt_builder.py    ï¿½              ï¿½                           ï¿½
 +-----------------------+              +---------------------------+
-            ¦                                       ¦
+            ï¿½                                       ï¿½
             +---------------------------------------+
-                              ¦
+                              ï¿½
                     +-------------------+
-                    ¦   MySQL + Redis    ¦
-                    ¦  (datos + caché)  ¦
+                    ï¿½   MySQL + Redis    ï¿½
+                    ï¿½  (datos + cachï¿½)  ï¿½
                     +-------------------+
-                              ¦
+                              ï¿½
                               ?
 +-----------------------------------------------------------------+
-¦           FRONTEND — DOS PROYECTOS REACT                        ¦
-¦                                                                 ¦
-¦  1. agency-platform-react/ (puerto 5173)                        ¦
-¦     Landing page pública: Hero, Features, Precios, Contacto     ¦
-¦                                                                 ¦
-¦  2. antigravity/frontend/ (puerto 5174/5177)                    ¦
-¦     Dashboard SaaS: Login, Register, Panel de Administración    ¦
+ï¿½           FRONTEND ï¿½ DOS PROYECTOS REACT                        ï¿½
+ï¿½                                                                 ï¿½
+ï¿½  1. agency-platform-react/ (puerto 5173)                        ï¿½
+ï¿½     Landing page pï¿½blica: Hero, Features, Precios, Contacto     ï¿½
+ï¿½                                                                 ï¿½
+ï¿½  2. antigravity/frontend/ (puerto 5174/5177)                    ï¿½
+ï¿½     Dashboard SaaS: Login, Register, Panel de Administraciï¿½n    ï¿½
 +-----------------------------------------------------------------+
 ```
 
@@ -54,102 +90,102 @@
 
 ```
 Bot NOMA/
-¦
-+-- agency-platform-react/        # LANDING PAGE PÚBLICA (React + Vite)
-¦   +-- src/
-¦   ¦   +-- components/           # Navbar, Hero, Features, Pricing, etc.
-¦   ¦   +-- pages/                # (solo LoginPage — auth redirige al dashboard)
-¦   ¦   +-- context/              # AuthContext, BrandingContext
-¦   ¦   +-- App.jsx               # Rutas: solo "/" (landing)
-¦   +-- .env.local                # VITE_ANTIGRAVITY_URL=http://localhost:5174
-¦   +-- package.json
-¦
+ï¿½
++-- agency-platform-react/        # LANDING PAGE Pï¿½BLICA (React + Vite)
+ï¿½   +-- src/
+ï¿½   ï¿½   +-- components/           # Navbar, Hero, Features, Pricing, etc.
+ï¿½   ï¿½   +-- pages/                # (solo LoginPage ï¿½ auth redirige al dashboard)
+ï¿½   ï¿½   +-- context/              # AuthContext, BrandingContext
+ï¿½   ï¿½   +-- App.jsx               # Rutas: solo "/" (landing)
+ï¿½   +-- .env.local                # VITE_ANTIGRAVITY_URL=http://localhost:5174
+ï¿½   +-- package.json
+ï¿½
 +-- antigravity/                  # NUCLEO DEL SISTEMA (Backend + Dashboard)
-¦   ¦
-¦   +-- api/                      # API REST (Express, puerto 3002)
-¦   ¦   +-- index.js              # Servidor Express + Socket.io
-¦   ¦   +-- middleware/           # security.js, auth.js, admin.js, rateLimit.js
-¦   ¦   +-- routes/               # 14 archivos de rutas
-¦   ¦       +-- auth.js           # Login, registro, verify, reset-password
-¦   ¦       +-- business.js       # Perfil de negocio, config del bot
-¦   ¦       +-- products.js       # CRUD catálogo de productos
-¦   ¦       +-- orders.js         # Pedidos del negocio
-¦   ¦       +-- conversaciones.js # Historial de chats
-¦   ¦       +-- whatsapp.js       # Conectar/desconectar/QR
-¦   ¦       +-- domicilios.js     # Sistema de delivery y tracking
-¦   ¦       +-- admin.js          # Panel superadmin
-¦   ¦       +-- agentes.js        # Estadísticas de agentes IA
-¦   ¦       +-- automations.js    # Flujos de automatización
-¦   ¦       +-- analytics.js      # Métricas y reportes
-¦   ¦       +-- bot-config.js     # Configuración personalizable del bot
-¦   ¦
-¦   +-- brain/                    # MOTOR IA (Python FastAPI, puerto 8000)
-¦   ¦   +-- main.py               # Servidor FastAPI + endpoints
-¦   ¦   +-- orchestrator.py       # Clasifica la intención del mensaje
-¦   ¦   +-- context_manager.py    # Memoria de conversación por cliente
-¦   ¦   +-- prompt_builder.py     # Construye el prompt para GPT
-¦   ¦   +-- router.py             # Enruta al agente correcto
-¦   ¦   +-- agents/               # 9 agentes especializados
-¦   ¦       +-- ventas.py         # Detecta compras, cierra ventas
-¦   ¦       +-- pagos.py          # Instrucciones de pago + OCR comprobantes
-¦   ¦       +-- pedidos.py        # Estado, cancelación, modificaciones
-¦   ¦       +-- faq.py            # Info del negocio, horarios, productos
-¦   ¦       +-- reclamos.py       # Quejas con escalado humano
-¦   ¦       +-- retencion.py      # Anti-churn, ofertas de retención
-¦   ¦       +-- seguimiento.py    # Estado de domicilios en tiempo real
-¦   ¦       +-- escalacion.py     # Traspaso a agente humano
-¦   ¦       +-- campanas.py       # Campañas de mensajería masiva
-¦   ¦
-¦   +-- instance-manager/         # GESTOR DE BOTS WHATSAPP (Node.js, p. 3001)
-¦   ¦   +-- index.js              # Entrada: arranca todos los bots
-¦   ¦   +-- InstanceManager.js    # Crea/destruye instancias de bot
-¦   ¦   +-- BotInstance.js        # Conexión Baileys por negocio
-¦   ¦   +-- socketEmitter.js      # Emite eventos al dashboard en tiempo real
-¦   ¦   +-- monitor.js            # Monitoreo de salud 24/7
-¦   ¦   +-- handlers/
-¦   ¦       +-- messageHandler.js # Procesa mensajes entrantes
-¦   ¦
-¦   +-- db/                       # BASE DE DATOS
-¦   ¦   +-- schema.sql            # Schema completo (USAR ESTE para crear tablas)
-¦   ¦   +-- schema_simple.sql     # Schema simplificado (para pruebas)
-¦   ¦   +-- seed.sql              # Datos de prueba / demo
-¦   ¦   +-- config.js             # Conexión MySQL (mysql2)
-¦   ¦   +-- queries/              # Queries específicas
-¦   ¦
-¦   +-- frontend/                 # DASHBOARD + AUTH (React + Vite, p. 5174)
-¦   ¦   +-- src/
-¦   ¦       +-- pages/
-¦   ¦       ¦   +-- LoginPage.jsx
-¦   ¦       ¦   +-- RegisterPage.jsx   # Wizard de 5 pasos
-¦   ¦       ¦   +-- dashboard/
-¦   ¦       ¦   ¦   +-- OverviewPage.jsx       # Panel principal
-¦   ¦       ¦   ¦   +-- WhatsAppPage.jsx       # Conectar WhatsApp / QR
-¦   ¦       ¦   ¦   +-- OrdersPage.jsx         # Gestión de pedidos
-¦   ¦       ¦   ¦   +-- ConversationsPage.jsx  # Historial de chats
-¦   ¦       ¦   ¦   +-- ProductsPage.jsx       # Catálogo
-¦   ¦       ¦   ¦   +-- AnalyticsPage.jsx      # Métricas
-¦   ¦       ¦   ¦   +-- AutomationsPage.jsx    # Flujos automáticos
-¦   ¦       ¦   ¦   +-- CustomizePage.jsx      # Personalizar bot
-¦   ¦       ¦   ¦   +-- SettingsPage.jsx       # Configuración cuenta
-¦   ¦       ¦   ¦   +-- DomiciliosPage.jsx     # Sistema de domicilios
-¦   ¦       ¦   ¦   +-- PortalDomiciliario.jsx # Vista para el domiciliario
-¦   ¦       ¦   ¦   +-- TrackingCliente.jsx    # Seguimiento público
-¦   ¦       ¦   +-- admin/                     # Panel superadmin
-¦   ¦       ¦       +-- AdminResumen.jsx
-¦   ¦       ¦       +-- AdminNegocios.jsx
-¦   ¦       ¦       +-- AdminNegocio.jsx
-¦   ¦       ¦       +-- AdminWhatsApps.jsx
-¦   ¦       ¦       +-- AdminSuscripciones.jsx
-¦   ¦       ¦       +-- AdminLogs.jsx
-¦   ¦       ¦       +-- AdminConfig.jsx
-¦   ¦       +-- context/AuthContext.jsx
-¦   ¦       +-- services/
-¦   ¦
-¦   +-- .env                      # Variables de entorno (NO subir al repo)
-¦   +-- .env.example              # PLANTILLA para crear el .env
-¦   +-- package.json
-¦   +-- requirements.txt
-¦
+ï¿½   ï¿½
+ï¿½   +-- api/                      # API REST (Express, puerto 3002)
+ï¿½   ï¿½   +-- index.js              # Servidor Express + Socket.io
+ï¿½   ï¿½   +-- middleware/           # security.js, auth.js, admin.js, rateLimit.js
+ï¿½   ï¿½   +-- routes/               # 14 archivos de rutas
+ï¿½   ï¿½       +-- auth.js           # Login, registro, verify, reset-password
+ï¿½   ï¿½       +-- business.js       # Perfil de negocio, config del bot
+ï¿½   ï¿½       +-- products.js       # CRUD catï¿½logo de productos
+ï¿½   ï¿½       +-- orders.js         # Pedidos del negocio
+ï¿½   ï¿½       +-- conversaciones.js # Historial de chats
+ï¿½   ï¿½       +-- whatsapp.js       # Conectar/desconectar/QR
+ï¿½   ï¿½       +-- domicilios.js     # Sistema de delivery y tracking
+ï¿½   ï¿½       +-- admin.js          # Panel superadmin
+ï¿½   ï¿½       +-- agentes.js        # Estadï¿½sticas de agentes IA
+ï¿½   ï¿½       +-- automations.js    # Flujos de automatizaciï¿½n
+ï¿½   ï¿½       +-- analytics.js      # Mï¿½tricas y reportes
+ï¿½   ï¿½       +-- bot-config.js     # Configuraciï¿½n personalizable del bot
+ï¿½   ï¿½
+ï¿½   +-- brain/                    # MOTOR IA (Python FastAPI, puerto 8000)
+ï¿½   ï¿½   +-- main.py               # Servidor FastAPI + endpoints
+ï¿½   ï¿½   +-- orchestrator.py       # Clasifica la intenciï¿½n del mensaje
+ï¿½   ï¿½   +-- context_manager.py    # Memoria de conversaciï¿½n por cliente
+ï¿½   ï¿½   +-- prompt_builder.py     # Construye el prompt para GPT
+ï¿½   ï¿½   +-- router.py             # Enruta al agente correcto
+ï¿½   ï¿½   +-- agents/               # 9 agentes especializados
+ï¿½   ï¿½       +-- ventas.py         # Detecta compras, cierra ventas
+ï¿½   ï¿½       +-- pagos.py          # Instrucciones de pago + OCR comprobantes
+ï¿½   ï¿½       +-- pedidos.py        # Estado, cancelaciï¿½n, modificaciones
+ï¿½   ï¿½       +-- faq.py            # Info del negocio, horarios, productos
+ï¿½   ï¿½       +-- reclamos.py       # Quejas con escalado humano
+ï¿½   ï¿½       +-- retencion.py      # Anti-churn, ofertas de retenciï¿½n
+ï¿½   ï¿½       +-- seguimiento.py    # Estado de domicilios en tiempo real
+ï¿½   ï¿½       +-- escalacion.py     # Traspaso a agente humano
+ï¿½   ï¿½       +-- campanas.py       # Campaï¿½as de mensajerï¿½a masiva
+ï¿½   ï¿½
+ï¿½   +-- instance-manager/         # GESTOR DE BOTS WHATSAPP (Node.js, p. 3001)
+ï¿½   ï¿½   +-- index.js              # Entrada: arranca todos los bots
+ï¿½   ï¿½   +-- InstanceManager.js    # Crea/destruye instancias de bot
+ï¿½   ï¿½   +-- BotInstance.js        # Conexiï¿½n Baileys por negocio
+ï¿½   ï¿½   +-- socketEmitter.js      # Emite eventos al dashboard en tiempo real
+ï¿½   ï¿½   +-- monitor.js            # Monitoreo de salud 24/7
+ï¿½   ï¿½   +-- handlers/
+ï¿½   ï¿½       +-- messageHandler.js # Procesa mensajes entrantes
+ï¿½   ï¿½
+ï¿½   +-- db/                       # BASE DE DATOS
+ï¿½   ï¿½   +-- schema.sql            # Schema completo (USAR ESTE para crear tablas)
+ï¿½   ï¿½   +-- schema_simple.sql     # Schema simplificado (para pruebas)
+ï¿½   ï¿½   +-- seed.sql              # Datos de prueba / demo
+ï¿½   ï¿½   +-- config.js             # Conexiï¿½n MySQL (mysql2)
+ï¿½   ï¿½   +-- queries/              # Queries especï¿½ficas
+ï¿½   ï¿½
+ï¿½   +-- frontend/                 # DASHBOARD + AUTH (React + Vite, p. 5174)
+ï¿½   ï¿½   +-- src/
+ï¿½   ï¿½       +-- pages/
+ï¿½   ï¿½       ï¿½   +-- LoginPage.jsx
+ï¿½   ï¿½       ï¿½   +-- RegisterPage.jsx   # Wizard de 5 pasos
+ï¿½   ï¿½       ï¿½   +-- dashboard/
+ï¿½   ï¿½       ï¿½   ï¿½   +-- OverviewPage.jsx       # Panel principal
+ï¿½   ï¿½       ï¿½   ï¿½   +-- WhatsAppPage.jsx       # Conectar WhatsApp / QR
+ï¿½   ï¿½       ï¿½   ï¿½   +-- OrdersPage.jsx         # Gestiï¿½n de pedidos
+ï¿½   ï¿½       ï¿½   ï¿½   +-- ConversationsPage.jsx  # Historial de chats
+ï¿½   ï¿½       ï¿½   ï¿½   +-- ProductsPage.jsx       # Catï¿½logo
+ï¿½   ï¿½       ï¿½   ï¿½   +-- AnalyticsPage.jsx      # Mï¿½tricas
+ï¿½   ï¿½       ï¿½   ï¿½   +-- AutomationsPage.jsx    # Flujos automï¿½ticos
+ï¿½   ï¿½       ï¿½   ï¿½   +-- CustomizePage.jsx      # Personalizar bot
+ï¿½   ï¿½       ï¿½   ï¿½   +-- SettingsPage.jsx       # Configuraciï¿½n cuenta
+ï¿½   ï¿½       ï¿½   ï¿½   +-- DomiciliosPage.jsx     # Sistema de domicilios
+ï¿½   ï¿½       ï¿½   ï¿½   +-- PortalDomiciliario.jsx # Vista para el domiciliario
+ï¿½   ï¿½       ï¿½   ï¿½   +-- TrackingCliente.jsx    # Seguimiento pï¿½blico
+ï¿½   ï¿½       ï¿½   +-- admin/                     # Panel superadmin
+ï¿½   ï¿½       ï¿½       +-- AdminResumen.jsx
+ï¿½   ï¿½       ï¿½       +-- AdminNegocios.jsx
+ï¿½   ï¿½       ï¿½       +-- AdminNegocio.jsx
+ï¿½   ï¿½       ï¿½       +-- AdminWhatsApps.jsx
+ï¿½   ï¿½       ï¿½       +-- AdminSuscripciones.jsx
+ï¿½   ï¿½       ï¿½       +-- AdminLogs.jsx
+ï¿½   ï¿½       ï¿½       +-- AdminConfig.jsx
+ï¿½   ï¿½       +-- context/AuthContext.jsx
+ï¿½   ï¿½       +-- services/
+ï¿½   ï¿½
+ï¿½   +-- .env                      # Variables de entorno (NO subir al repo)
+ï¿½   +-- .env.example              # PLANTILLA para crear el .env
+ï¿½   +-- package.json
+ï¿½   +-- requirements.txt
+ï¿½
 +-- README.md                     # Este archivo
 ```
 
@@ -157,27 +193,27 @@ Bot NOMA/
 
 ## ?? Requisitos Previos
 
-| Herramienta | Versión mínima | Verificar con |
+| Herramienta | Versiï¿½n mï¿½nima | Verificar con |
 |-------------|----------------|---------------|
 | **Node.js** | 18.x | `node --version` |
 | **Python** | 3.10 | `python --version` |
 | **MySQL** | 8.0 | `mysql --version` |
 | **Redis** | 7.x (opcional) | `redis-cli --version` |
 
-> **Nota sobre Redis:** El sistema funciona sin Redis. Si no está instalado, el Brain usa un bypass interno automáticamente.
+> **Nota sobre Redis:** El sistema funciona sin Redis. Si no estï¿½ instalado, el Brain usa un bypass interno automï¿½ticamente.
 
 ---
 
-## ?? Instalación Completa (Paso a Paso)
+## ?? Instalaciï¿½n Completa (Paso a Paso)
 
-### PASO 1 — Clonar el repositorio
+### PASO 1 ï¿½ Clonar el repositorio
 
 ```bash
 git clone <URL_DEL_REPO>
 cd "Bot NOMA"
 ```
 
-### PASO 2 — Configurar variables de entorno
+### PASO 2 ï¿½ Configurar variables de entorno
 
 ```bash
 cd antigravity
@@ -187,7 +223,7 @@ copy .env.example .env
 Abrir el archivo `antigravity/.env` y rellenar los valores:
 
 ```env
-# IA — OpenAI
+# IA ï¿½ OpenAI
 OPENAI_API_KEY=sk-...tu-clave-aqui...
 
 # MySQL
@@ -200,7 +236,7 @@ MYSQL_DATABASE=antigravity
 REDIS_HOST=localhost
 REDIS_PORT=6379
 
-# Seguridad — CAMBIAR en produccion
+# Seguridad ï¿½ CAMBIAR en produccion
 JWT_SECRET=una_clave_secreta_muy_larga_y_segura_aqui
 SOCKET_SECRET=otra_clave_secreta_para_sockets_aqui
 
@@ -222,7 +258,7 @@ FRONTEND_SOCKET_URL=http://localhost:3002
 NODE_ENV=development
 ```
 
-### PASO 3 — Configurar la Base de Datos MySQL
+### PASO 3 ï¿½ Configurar la Base de Datos MySQL
 
 ```bash
 # Opcion 1: Por consola interactiva
@@ -236,7 +272,7 @@ mysql -u root -p antigravity < antigravity/db/schema.sql
 mysql -u root -p antigravity < antigravity/db/seed.sql
 ```
 
-### PASO 4 — Instalar dependencias Node.js
+### PASO 4 ï¿½ Instalar dependencias Node.js
 
 ```bash
 # Backend API
@@ -259,7 +295,7 @@ npm install
 cd ..
 ```
 
-### PASO 5 — Instalar dependencias Python (Brain IA)
+### PASO 5 ï¿½ Instalar dependencias Python (Brain IA)
 
 ```bash
 pip install fastapi uvicorn openai python-dotenv requests python-multipart mysql-connector-python redis
@@ -271,7 +307,7 @@ pip install fastapi uvicorn openai python-dotenv requests python-multipart mysql
 
 Necesitas **4 terminales abiertas**. Arrancar en este orden:
 
-### Terminal 1 — API REST (Backend principal)
+### Terminal 1 ï¿½ API REST (Backend principal)
 
 ```bash
 cd antigravity
@@ -280,7 +316,7 @@ node api/index.js
 
 Debe mostrar: `[API] Servidor corriendo en puerto 3002`
 
-### Terminal 2 — Brain IA (Python)
+### Terminal 2 ï¿½ Brain IA (Python)
 
 ```bash
 cd antigravity
@@ -289,7 +325,7 @@ python -m uvicorn brain.main:app --host 0.0.0.0 --port 8000 --reload
 
 Debe mostrar: `Uvicorn running on http://0.0.0.0:8000`
 
-### Terminal 3 — Instance Manager (Bot WhatsApp)
+### Terminal 3 ï¿½ Instance Manager (Bot WhatsApp)
 
 ```bash
 cd antigravity/instance-manager
@@ -298,7 +334,7 @@ node index.js
 
 Debe mostrar: `[InstanceManager] Sistema iniciado`
 
-### Terminal 4 — Dashboard (Frontend)
+### Terminal 4 ï¿½ Dashboard (Frontend)
 
 ```bash
 cd antigravity/frontend
@@ -307,7 +343,7 @@ npm run dev
 
 Abrir en browser: http://localhost:5174
 
-### Terminal 5 (opcional) — Landing Page
+### Terminal 5 (opcional) ï¿½ Landing Page
 
 ```bash
 cd agency-platform-react
@@ -349,7 +385,7 @@ Abrir en browser: http://localhost:5173
 2. Clic "Crear Cuenta" ? va a localhost:5174/register
 3. Completa wizard de 5 pasos ? /dashboard
 4. Dashboard > WhatsApp > Conectar > Escanea QR
-5. Bot activo — clientes escriben al WhatsApp del negocio
+5. Bot activo ï¿½ clientes escriben al WhatsApp del negocio
 6. Brain IA clasifica y responde automaticamente
 7. Dashboard muestra pedidos, conversaciones y metricas en tiempo real
 ```
@@ -364,7 +400,7 @@ POST   /api/auth/registro          ? Crear nuevo negocio
 POST   /api/auth/login             ? Iniciar sesion (devuelve JWT)
 GET    /api/auth/verify            ? Verificar token activo
 POST   /api/auth/logout            ? Cerrar sesion
-POST   /api/auth/forgot-password   ? Solicitar reset de contraseña
+POST   /api/auth/forgot-password   ? Solicitar reset de contraseï¿½a
 ```
 
 ### Negocio / Perfil
@@ -465,18 +501,18 @@ GET    /stats/:id                  ? Estadisticas de agentes por negocio
 - Rate Limiting global (100 req/min por IP) y por plan
 - XSS sanitization en todos los inputs
 - express-validator en endpoints criticos
-- bcryptjs para hash de contraseñas
+- bcryptjs para hash de contraseï¿½as
 - Variables de entorno para todos los secretos
 - Roles: negocio, admin, superadmin
 - Socket.io autenticado con JWT o secret interno
 
 ---
 
-## ?? LO QUE FALTA — Tareas Pendientes para el Socio
+## ?? LO QUE FALTA ï¿½ Tareas Pendientes para el Socio
 
 ### PRIORIDAD ALTA (bloquea funcionalidades clave)
 
-#### TAREA 1 — Integracion Landing con Dashboard (Auth)
+#### TAREA 1 ï¿½ Integracion Landing con Dashboard (Auth)
 **Problema:** Los botones "Login" y "Crear Cuenta" de la landing no redirigen al dashboard correctamente.
 
 **Que hacer:**
@@ -484,7 +520,7 @@ GET    /stats/:id                  ? Estadisticas de agentes por negocio
 - O agregar en `agency-platform-react/src/App.jsx` rutas `/login` y `/register` que hagan redirect externo
 - Verificar `agency-platform-react/.env.local` tiene `VITE_ANTIGRAVITY_URL=http://localhost:5174`
 
-#### TAREA 2 — Variables de entorno del Frontend Dashboard
+#### TAREA 2 ï¿½ Variables de entorno del Frontend Dashboard
 **Problema:** `antigravity/frontend/.env` puede tener URLs hardcodeadas o incorrectas.
 
 **Que hacer:**
@@ -495,7 +531,7 @@ GET    /stats/:id                  ? Estadisticas de agentes por negocio
   ```
 - Verificar que todos los archivos en `frontend/src/services/` usen `import.meta.env.VITE_API_URL`
 
-#### TAREA 3 — Flujo QR de WhatsApp en el Dashboard
+#### TAREA 3 ï¿½ Flujo QR de WhatsApp en el Dashboard
 **Problema:** `WhatsAppPage.jsx` debe mostrar el QR real y actualizarse via Socket.io.
 
 **Que hacer:**
@@ -507,55 +543,55 @@ GET    /stats/:id                  ? Estadisticas de agentes por negocio
 
 ### PRIORIDAD MEDIA (mejoras importantes)
 
-#### TAREA 4 — Sistema de Domicilios completo
+#### TAREA 4 ï¿½ Sistema de Domicilios completo
 - Conectar boton "Crear Domicilio" al endpoint `POST /api/domicilios`
 - Mostrar lista en tiempo real con Socket.io
 - Probar link de tracking al cliente: `http://localhost:5174/tracking/:token`
 - Verificar `PortalDomiciliario.jsx` (vista para el repartidor)
 
-#### TAREA 5 — Pagina Analytics con graficas reales
+#### TAREA 5 ï¿½ Pagina Analytics con graficas reales
 - Conectar `AnalyticsPage.jsx` al endpoint `GET /api/analytics` (o el de `routes/analytics.js`)
 - Mostrar: mensajes por dia, conversiones, productos mas pedidos
 - Puede usar `recharts` (npm install recharts en frontend/)
 
-#### TAREA 6 — Pagina de Automatizaciones funcional
+#### TAREA 6 ï¿½ Pagina de Automatizaciones funcional
 - `AutomationsPage.jsx` actualmente solo tiene estructura base
 - Conectar al endpoint de `routes/automations.js`
 - Permitir crear/editar/eliminar automatizaciones desde el dashboard
 
-#### TAREA 7 — Panel Admin completo
+#### TAREA 7 ï¿½ Panel Admin completo
 - Verificar que `AdminNegocios.jsx` carga desde `/api/admin/negocios`
 - Verificar que `AdminWhatsApps.jsx` muestra estado de cada bot
-- `AdminSuscripciones.jsx` — verificar si el endpoint existe en admin.js
-- `AdminLogs.jsx` — crear o conectar al endpoint de logs
+- `AdminSuscripciones.jsx` ï¿½ verificar si el endpoint existe en admin.js
+- `AdminLogs.jsx` ï¿½ crear o conectar al endpoint de logs
 
 ---
 
 ### PRIORIDAD BAJA (mejoras futuras)
 
-#### TAREA 8 — Integracion con Stripe (Pagos del SaaS)
+#### TAREA 8 ï¿½ Integracion con Stripe (Pagos del SaaS)
 - La BD tiene `stripe_customer_id` en la tabla `negocios` (listo para conectar)
 - Crear webhooks de Stripe en `api/routes/`
 - Actualizar plan del negocio cuando Stripe confirme pago
 - La landing ya tiene seccion de precios (`Pricing.jsx`), conectarla a Stripe Checkout
 
-#### TAREA 9 — Tests Automatizados
+#### TAREA 9 ï¿½ Tests Automatizados
 - No hay tests en ningun modulo actualmente
 - Backend Node: usar jest (`npm install -D jest`)
 - Brain Python: usar pytest (`pip install pytest`)
 - Prioridad: tests de auth endpoints y del orchestrator
 
-#### TAREA 10 — Docker Compose para produccion
+#### TAREA 10 ï¿½ Docker Compose para produccion
 - No existe `docker-compose.yml` en el proyecto
 - Crear uno que levante: MySQL, Redis, API, Brain, Instance Manager
 - Documentar deploy con Nginx + Cloudflare Tunnels
 
-#### TAREA 11 — Campanas masivas con interfaz
+#### TAREA 11 ï¿½ Campanas masivas con interfaz
 - El agente `campanas.py` existe pero no tiene endpoint en la API
 - Crear `POST /api/campanas` para enviar mensajes a lista de contactos
 - Agregar interfaz en `AutomationsPage.jsx` o crear pagina dedicada
 
-#### TAREA 12 — Reset de Contrasena funcional
+#### TAREA 12 ï¿½ Reset de Contrasena funcional
 - El endpoint `POST /api/auth/forgot-password` existe en `auth.js`
 - Verificar que el email de recuperacion se envia (SMTP en .env)
 - Crear pagina en el frontend: `/reset-password?token=...`
@@ -664,10 +700,10 @@ agency-platform-react/node_modules/
 ## ?? Flujo de Trabajo del Equipo
 
 - Usar branches por feature: `git checkout -b feature/nombre-de-la-tarea`
-- Commits descriptivos en español
+- Commits descriptivos en espaï¿½ol
 - Deploy local: Nginx + Cloudflare Tunnels
 - Secretos siempre en `.env`, nunca en el codigo
 
 ---
 
-*Ultima actualizacion: Junio 2026 — Sistema en desarrollo activo*
+*Ultima actualizacion: Junio 2026 ï¿½ Sistema en desarrollo activo*

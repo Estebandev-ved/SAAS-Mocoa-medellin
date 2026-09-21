@@ -1,3 +1,6 @@
+/* Campos (design.md > Components > Campos de formulario):
+   44px, radio md, borde 1px border-strong, relleno horizontal 16px.
+   Etiqueta arriba en label-lg con 8px de separación. */
 .input-wrapper {
   position: relative;
   width: 100%;
@@ -5,16 +8,11 @@
 
 .input-label {
   display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  transition: all 0.2s ease;
-}
-
-.input-label-float {
-  font-size: 12px;
-  color: var(--accent-primary);
+  font-size: var(--type-label-lg-size);
+  line-height: var(--type-label-lg-line);
+  font-weight: var(--type-label-lg-weight);
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
 }
 
 .input-container {
@@ -25,35 +23,34 @@
 
 .input-field {
   width: 100%;
-  padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-size: 14px;
+  height: var(--control-height);
+  padding: 0 var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: var(--type-body-md-size);
   outline: none;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .input-field::placeholder {
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
+/* Foco: borde y anillo primary */
 .input-field:focus {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px var(--accent-glow);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
 }
 
-.input-focused .input-field {
-  border-color: var(--accent-primary);
-}
-
+/* Error: borde error y mensaje en body-sm */
 .input-error .input-field {
-  border-color: var(--error);
+  border-color: var(--color-error);
 }
 
 .input-error .input-field:focus {
-  box-shadow: 0 0 0 3px rgba(255, 82, 82, 0.15);
+  box-shadow: 0 0 0 1px var(--color-error);
 }
 
 .has-left-icon {
@@ -69,7 +66,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .input-icon svg {
@@ -93,24 +90,27 @@
 }
 
 .password-toggle:hover {
-  color: var(--accent-primary);
+  color: var(--color-primary-strong);
 }
 
 .input-error-text {
   display: block;
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--error);
+  margin-top: var(--space-2);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-line);
+  color: color-mix(in srgb, var(--color-error) 80%, black);
 }
 
 .input-hint {
   display: block;
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
+  margin-top: var(--space-2);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-line);
+  color: var(--color-text-muted);
 }
 
 .input-wrapper.input-disabled .input-field {
-  opacity: 0.5;
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
   cursor: not-allowed;
 }

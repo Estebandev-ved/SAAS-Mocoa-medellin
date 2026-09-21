@@ -7,6 +7,7 @@ const axios = require('axios');
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
 const { isAutomationActive, yaSeNotifico, registrarNotificacion } = require('../services/automationsService');
+const { calcularCondicionesDomicilio } = require('../../instance-manager/services/domicilioTarifa');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const TRACKING_BASE_URL = process.env.TRACKING_BASE_URL || 'http://localhost:5177/delivery/track';
@@ -43,6 +44,48 @@ async function pedirResenaSiCorresponde(negocioId, pedidoId, numeroCliente) {
         await registrarNotificacion(negocioId, 'resena', 'Solicitud de reseña enviada', mensaje, pedidoId);
     } catch (error) {
         console.error('[Domicilios] Error pidiendo reseña:', error.message);
+    }
+}
+
+const STRIKES_PARA_SUSPENDER = 3;
+const DIAS_SUSPENSION = 7;
+
+// Suspende automáticamente a un domiciliario que acumula demasiados
+// incidentes (entregas tarde, robos confirmados) — igual que Rappi/Didi
+// bajan la cuenta a un repartidor con mala tasa de cumplimiento, sin que
+// el dueño del negocio tenga que estar revisando manualmente cada caso.
+async function penalizarSiCorresponde(domiciliarioId, negocioId) {
+    try {
+        const [rows] = await db.execute('SELECT strikes, nombre FROM domiciliarios WHERE id = ?', [domiciliarioId]);
+        if (rows.length === 0) return;
+        if (rows[0].strikes >= STRIKES_PARA_SUSPENDER) {
+            await db.execute(
+                'UPDATE domiciliarios SET suspendido_hasta = DATE_ADD(NOW(), INTERVAL ? DAY), estado_activo = 0 WHERE id = ?',
+                [DIAS_SUSPENSION, domiciliarioId]
+            );
+            await registrarNotificacion(
+                negocioId, 'domicilio_suspension',
+                'Domiciliario suspendido automáticamente',
+                `${rows[0].nombre} acumuló ${rows[0].strikes} incidentes y quedó suspendido ${DIAS_SUSPENSION} días.`,
+                domiciliarioId
+            );
+        }
+    } catch (error) {
+        console.error('[Domicilios] Error evaluando penalización:', error.message);
+    }
+}
+
+async function obtenerTiempoLimiteMinutos(negocioId) {
+    try {
+        const [modulos] = await db.execute(
+            `SELECT config FROM negocio_modulos WHERE negocio_id = ? AND modulo_name = 'domicilios'`,
+            [negocioId]
+        );
+        if (modulos.length === 0) return 45;
+        const config = typeof modulos[0].config === 'string' ? JSON.parse(modulos[0].config) : (modulos[0].config || {});
+        return config.tiempo_limite_minutos || 45;
+    } catch (e) {
+        return 45;
     }
 }
 
@@ -83,10 +126,62 @@ router.get('/modulos/check', verificarAuth, async (req, res) => {
     }
 });
 
+// Configuración del módulo de domicilios que edita el dueño: tarifa por km
+// (con mínimo/máximo opcionales), tarifa fija de respaldo y tiempo límite.
+// Se mezcla con lo que ya haya en negocio_modulos.config, sin pisar otras claves.
+const CAMPOS_CONFIG_DOMICILIOS = ['tarifa_por_km', 'tarifa_minima', 'tarifa_maxima', 'valor_fijo', 'tiempo_limite_minutos'];
+
+router.put('/modulos/config', verificarAuth, async (req, res) => {
+    try {
+        const nuevos = {};
+        for (const campo of CAMPOS_CONFIG_DOMICILIOS) {
+            if (req.body[campo] === undefined) continue;
+            const valor = req.body[campo] === null || req.body[campo] === '' ? null : Number(req.body[campo]);
+            if (valor !== null && (!Number.isFinite(valor) || valor < 0)) {
+                return res.status(400).json({ error: `${campo} debe ser un número mayor o igual a 0` });
+            }
+            nuevos[campo] = valor;
+        }
+        if (Object.keys(nuevos).length === 0) {
+            return res.status(400).json({ error: 'No se enviaron campos para actualizar' });
+        }
+        if (nuevos.tarifa_minima && nuevos.tarifa_maxima && nuevos.tarifa_minima > nuevos.tarifa_maxima) {
+            return res.status(400).json({ error: 'La tarifa mínima no puede ser mayor que la máxima' });
+        }
+
+        const [modulos] = await db.execute(
+            `SELECT config FROM negocio_modulos WHERE negocio_id = ? AND modulo_name = 'domicilios' AND activo = 1`,
+            [req.negocio.id]
+        );
+        if (modulos.length === 0) {
+            return res.status(404).json({ error: 'El módulo de domicilios no está activo para este negocio' });
+        }
+
+        let actual = {};
+        try {
+            actual = typeof modulos[0].config === 'string' ? JSON.parse(modulos[0].config) : (modulos[0].config || {});
+        } catch (e) { actual = {}; }
+
+        const config = { ...actual, ...nuevos };
+        for (const k of Object.keys(config)) if (config[k] === null) delete config[k];
+
+        await db.execute(
+            `UPDATE negocio_modulos SET config = ? WHERE negocio_id = ? AND modulo_name = 'domicilios'`,
+            [JSON.stringify(config), req.negocio.id]
+        );
+
+        res.json({ success: true, config });
+    } catch (error) {
+        console.error('[Domicilios] Error guardando config:', error);
+        res.status(500).json({ error: 'Error al guardar la configuración' });
+    }
+});
+
 router.get('/drivers', verificarAuth, async (req, res) => {
     try {
         const [drivers] = await db.execute(
             `SELECT d.id, d.nombre, d.telefono, d.latitud, d.longitud, d.estado_activo, d.activo, d.created_at,
+                    d.score, d.strikes, d.suspendido_hasta,
                     COUNT(CASE WHEN dom.estado = 'entregado' THEN 1 END) as pedidos_completados,
                     COALESCE(SUM(CASE WHEN dom.estado = 'entregado' THEN dom.km_recorridos ELSE 0 END), 0) as km_totales,
                     COALESCE(SUM(CASE WHEN dom.estado = 'entregado' THEN dom.tarifa_envio ELSE 0 END), 0) as ganancias_totales
@@ -94,7 +189,7 @@ router.get('/drivers', verificarAuth, async (req, res) => {
              LEFT JOIN domicilios dom ON d.id = dom.domiciliario_id
              WHERE d.negocio_id = ? AND d.activo = 1
              GROUP BY d.id
-             ORDER BY d.created_at DESC`,
+             ORDER BY d.score DESC, d.created_at DESC`,
             [req.negocio.id]
         );
 
@@ -211,11 +306,45 @@ router.delete('/drivers/:id', verificarAuth, async (req, res) => {
     }
 });
 
+// Convierte la fila de un domicilio en lo que necesitan los mapas: `destino`
+// {lat,lng} (dirección de entrega geocodificada) y `ruta` [[lat,lng],...]
+// (polilínea negocio → cliente guardada al crear el domicilio). La polilínea de
+// TravelTime trae cientos de puntos por ruta; se reduce a ~150 para no inflar
+// las respuestas de las listas (se conservan siempre el primero y el último).
+function normalizarRuta(fila) {
+    if (!fila) return fila;
+    let ruta = null;
+    if (fila.ruta_coords) {
+        try {
+            const puntos = JSON.parse(fila.ruta_coords);
+            if (Array.isArray(puntos) && puntos.length > 1) {
+                const paso = Math.max(1, Math.ceil(puntos.length / 150));
+                ruta = puntos.filter((_, i) => i % paso === 0);
+                const ultimo = puntos[puntos.length - 1];
+                if (ruta[ruta.length - 1] !== ultimo) ruta.push(ultimo);
+            }
+        } catch (e) { ruta = null; }
+    }
+    const destino = fila.direccion_lat != null && fila.direccion_lng != null
+        ? { lat: Number(fila.direccion_lat), lng: Number(fila.direccion_lng) }
+        : null;
+    const { ruta_coords, direccion_lat, direccion_lng, ...resto } = fila;
+    return { ...resto, ruta, destino };
+}
+
 router.get('/active', verificarAuth, async (req, res) => {
     try {
+        const [negociosUbicacion] = await db.execute(
+            'SELECT lat, lng, nombre FROM negocios WHERE id = ?',
+            [req.negocio.id]
+        );
+        const negocioUbicacion = negociosUbicacion[0] && negociosUbicacion[0].lat != null
+            ? { lat: Number(negociosUbicacion[0].lat), lng: Number(negociosUbicacion[0].lng), nombre: negociosUbicacion[0].nombre }
+            : null;
+
         const [pendientes] = await db.execute(
-            `SELECT dom.id, dom.estado, dom.tracking_token, dom.created_at,
-                    p.id as pedido_id, p.numero_pedido, p.total, p.direccion_entrega,
+            `SELECT dom.id, dom.estado, dom.tracking_token, dom.created_at, dom.ruta_coords,
+                    p.id as pedido_id, p.numero_pedido, p.total, p.direccion_entrega, p.direccion_lat, p.direccion_lng,
                     c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp
              FROM domicilios dom
              JOIN pedidos p ON dom.pedido_id = p.id
@@ -227,8 +356,8 @@ router.get('/active', verificarAuth, async (req, res) => {
 
         const [enCurso] = await db.execute(
             `SELECT dom.id, dom.estado, dom.tracking_token, dom.km_recorridos, dom.tiempo_minutos, dom.tarifa_envio,
-                    dom.created_at, dom.updated_at,
-                    p.id as pedido_id, p.numero_pedido, p.total, p.direccion_entrega,
+                    dom.created_at, dom.updated_at, dom.ruta_coords,
+                    p.id as pedido_id, p.numero_pedido, p.total, p.direccion_entrega, p.direccion_lat, p.direccion_lng,
                     c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp,
                     d.nombre as domiciliario_nombre, d.telefono as domiciliario_telefono,
                     d.latitud, d.longitud
@@ -258,7 +387,12 @@ router.get('/active', verificarAuth, async (req, res) => {
 
         res.json({
             success: true,
-            data: { pendientes, en_curso: enCurso, completados }
+            data: {
+                pendientes: pendientes.map(normalizarRuta),
+                en_curso: enCurso.map(normalizarRuta),
+                completados,
+                negocio_ubicacion: negocioUbicacion
+            }
         });
     } catch (error) {
         console.error('[Domicilios] Error listing active:', error);
@@ -288,7 +422,7 @@ router.post('/assign', verificarAuth, async (req, res) => {
         }
 
         const [driver] = await db.execute(
-            'SELECT id, estado_activo FROM domiciliarios WHERE id = ? AND negocio_id = ? AND activo = 1',
+            'SELECT id, estado_activo, suspendido_hasta FROM domiciliarios WHERE id = ? AND negocio_id = ? AND activo = 1',
             [domiciliario_id, req.negocio.id]
         );
 
@@ -296,9 +430,15 @@ router.post('/assign', verificarAuth, async (req, res) => {
             return res.status(404).json({ error: 'Domiciliario no encontrado' });
         }
 
+        if (driver[0].suspendido_hasta && new Date(driver[0].suspendido_hasta) > new Date()) {
+            return res.status(400).json({ error: `Este domiciliario está suspendido hasta ${new Date(driver[0].suspendido_hasta).toLocaleString('es-CO')}` });
+        }
+
+        const tiempoLimiteMinutos = await obtenerTiempoLimiteMinutos(req.negocio.id);
+
         await db.execute(
-            'UPDATE domicilios SET domiciliario_id = ?, estado = "aceptado", updated_at = NOW() WHERE id = ?',
-            [domiciliario_id, domicilio_id]
+            'UPDATE domicilios SET domiciliario_id = ?, estado = "aceptado", limite_entrega_at = DATE_ADD(NOW(), INTERVAL ? MINUTE), updated_at = NOW() WHERE id = ?',
+            [domiciliario_id, tiempoLimiteMinutos, domicilio_id]
         );
 
         const [domActualizado] = await db.execute(
@@ -375,7 +515,9 @@ router.post('/driver/login', async (req, res) => {
                 nombre: driver.nombre,
                 telefono: driver.telefono,
                 estado_activo: driver.estado_activo,
-                negocio_id: driver.negocio_id
+                negocio_id: driver.negocio_id,
+                score: driver.score,
+                suspendido_hasta: driver.suspendido_hasta
             }
         });
     } catch (error) {
@@ -441,12 +583,18 @@ router.get('/driver/stats', verificarAuthDomiciliario, async (req, res) => {
             [req.domiciliario.negocio_id]
         );
 
+        const [reputacion] = await db.execute(
+            'SELECT score, strikes, suspendido_hasta FROM domiciliarios WHERE id = ?',
+            [req.domiciliario.id]
+        );
+
         res.json({
             success: true,
             data: {
                 hoy: stats[0],
                 total: totalStats[0],
-                pendientes: conteoPendientes[0].total
+                pendientes: conteoPendientes[0].total,
+                reputacion: reputacion[0] || { score: 100, strikes: 0, suspendido_hasta: null }
             }
         });
     } catch (error) {
@@ -457,8 +605,8 @@ router.get('/driver/stats', verificarAuthDomiciliario, async (req, res) => {
 router.get('/driver/orders', verificarAuthDomiciliario, async (req, res) => {
     try {
         const [pendientes] = await db.execute(
-            `SELECT dom.id as domicilio_id, dom.estado, dom.created_at, dom.tarifa_envio,
-                    p.id as pedido_id, p.numero_pedido, p.total, p.direccion_entrega,
+            `SELECT dom.id as domicilio_id, dom.estado, dom.created_at, dom.tarifa_envio, dom.km_recorridos, dom.tiempo_minutos, dom.ruta_coords,
+                    p.id as pedido_id, p.numero_pedido, p.total, p.direccion_entrega, p.direccion_lat, p.direccion_lng,
                     c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp
              FROM domicilios dom
              JOIN pedidos p ON dom.pedido_id = p.id
@@ -469,7 +617,7 @@ router.get('/driver/orders', verificarAuthDomiciliario, async (req, res) => {
         );
 
         const [miEntrega] = await db.execute(
-            `SELECT dom.*, p.numero_pedido, p.total, p.direccion_entrega,
+            `SELECT dom.*, dom.id as domicilio_id, p.numero_pedido, p.total, p.direccion_entrega, p.direccion_lat, p.direccion_lng,
                     c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp
              FROM domicilios dom
              JOIN pedidos p ON dom.pedido_id = p.id
@@ -482,8 +630,8 @@ router.get('/driver/orders', verificarAuthDomiciliario, async (req, res) => {
         res.json({
             success: true,
             data: {
-                pendientes,
-                mi_entrega: miEntrega[0] || null
+                pendientes: pendientes.map(normalizarRuta),
+                mi_entrega: normalizarRuta(miEntrega[0]) || null
             }
         });
     } catch (error) {
@@ -500,6 +648,22 @@ router.post('/driver/accept', verificarAuthDomiciliario, async (req, res) => {
             return res.status(400).json({ error: 'domicilio_id requerido' });
         }
 
+        const [yo] = await db.execute(
+            'SELECT suspendido_hasta FROM domiciliarios WHERE id = ?',
+            [req.domiciliario.id]
+        );
+        if (yo[0]?.suspendido_hasta && new Date(yo[0].suspendido_hasta) > new Date()) {
+            return res.status(403).json({ error: `Estás suspendido hasta ${new Date(yo[0].suspendido_hasta).toLocaleString('es-CO')} por incidentes anteriores` });
+        }
+
+        const [enDisputa] = await db.execute(
+            `SELECT id FROM domicilios WHERE domiciliario_id = ? AND estado_incidente = 'en_disputa'`,
+            [req.domiciliario.id]
+        );
+        if (enDisputa.length > 0) {
+            return res.status(403).json({ error: 'Tienes una entrega en disputa sin resolver. No puedes tomar nuevos domicilios hasta que el negocio la revise.' });
+        }
+
         const [domicilio] = await db.execute(
             'SELECT id, estado FROM domicilios WHERE id = ? AND negocio_id = ? AND estado = "pendiente"',
             [domicilio_id, req.domiciliario.negocio_id]
@@ -509,9 +673,11 @@ router.post('/driver/accept', verificarAuthDomiciliario, async (req, res) => {
             return res.status(404).json({ error: 'Domicilio no disponible' });
         }
 
+        const tiempoLimiteMinutos = await obtenerTiempoLimiteMinutos(req.domiciliario.negocio_id);
+
         await db.execute(
-            'UPDATE domicilios SET domiciliario_id = ?, estado = "aceptado", updated_at = NOW() WHERE id = ?',
-            [req.domiciliario.id, domicilio_id]
+            'UPDATE domicilios SET domiciliario_id = ?, estado = "aceptado", limite_entrega_at = DATE_ADD(NOW(), INTERVAL ? MINUTE), updated_at = NOW() WHERE id = ?',
+            [req.domiciliario.id, tiempoLimiteMinutos, domicilio_id]
         );
 
         const [domActualizado] = await db.execute(
@@ -542,7 +708,7 @@ router.post('/driver/accept', verificarAuthDomiciliario, async (req, res) => {
 
 router.post('/driver/update-status', verificarAuthDomiciliario, async (req, res) => {
     try {
-        const { domicilio_id, estado } = req.body;
+        const { domicilio_id, estado, codigo_confirmacion } = req.body;
 
         if (!domicilio_id || !estado) {
             return res.status(400).json({ error: 'domicilio_id y estado requeridos' });
@@ -553,7 +719,7 @@ router.post('/driver/update-status', verificarAuthDomiciliario, async (req, res)
         }
 
         const [domicilio] = await db.execute(
-            'SELECT id, estado, tracking_token, km_recorridos, tiempo_minutos FROM domicilios WHERE id = ? AND domiciliario_id = ?',
+            'SELECT id, estado, tracking_token, km_recorridos, tiempo_minutos, codigo_confirmacion, limite_entrega_at FROM domicilios WHERE id = ? AND domiciliario_id = ?',
             [domicilio_id, req.domiciliario.id]
         );
 
@@ -571,8 +737,33 @@ router.post('/driver/update-status', verificarAuthDomiciliario, async (req, res)
             });
         }
 
+        // El domiciliario NO puede marcar como entregado con solo un botón:
+        // necesita el código que el bot le mandó al cliente por WhatsApp.
+        // Esto evita que se cierre un pedido que nunca llegó (robo o error).
+        if (estado === 'entregado') {
+            if (domicilio[0].codigo_confirmacion) {
+                if (!codigo_confirmacion || String(codigo_confirmacion).trim() !== String(domicilio[0].codigo_confirmacion).trim()) {
+                    return res.status(400).json({ error: 'Código de entrega incorrecto. Pídele al cliente el código que le llegó por WhatsApp.', codigo: 'CODIGO_INVALIDO' });
+                }
+            }
+
+            const aTiempo = !domicilio[0].limite_entrega_at || new Date() <= new Date(domicilio[0].limite_entrega_at);
+            if (aTiempo) {
+                await db.execute(
+                    'UPDATE domiciliarios SET score = LEAST(100, score + 2) WHERE id = ?',
+                    [req.domiciliario.id]
+                );
+            } else {
+                await db.execute(
+                    'UPDATE domiciliarios SET score = GREATEST(0, score - 5), strikes = strikes + 1 WHERE id = ?',
+                    [req.domiciliario.id]
+                );
+                await penalizarSiCorresponde(req.domiciliario.id, req.domiciliario.negocio_id);
+            }
+        }
+
         await db.execute(
-            'UPDATE domicilios SET estado = ?, updated_at = NOW() WHERE id = ?',
+            `UPDATE domicilios SET estado = ?, updated_at = NOW()${estado === 'entregado' ? ", estado_incidente = IF(estado_incidente = 'retrasado', 'resuelto', estado_incidente)" : ''} WHERE id = ?`,
             [estado, domicilio_id]
         );
 
@@ -691,12 +882,15 @@ router.get('/public/track/:token', async (req, res) => {
         const { token } = req.params;
 
         const [domicilios] = await db.execute(
-            `SELECT dom.estado, dom.created_at, dom.updated_at,
-                    p.numero_pedido, p.total,
+            `SELECT dom.estado, dom.created_at, dom.updated_at, dom.codigo_confirmacion, dom.ruta_coords,
+                    dom.km_recorridos, dom.tiempo_minutos,
+                    p.numero_pedido, p.total, p.direccion_entrega, p.direccion_lat, p.direccion_lng,
                     d.nombre as domiciliario_nombre, d.telefono as domiciliario_telefono,
-                    d.latitud, d.longitud
+                    d.latitud, d.longitud,
+                    n.lat as negocio_lat, n.lng as negocio_lng, n.nombre as negocio_nombre
              FROM domicilios dom
              JOIN pedidos p ON dom.pedido_id = p.id
+             JOIN negocios n ON dom.negocio_id = n.id
              LEFT JOIN domiciliarios d ON dom.domiciliario_id = d.id
              WHERE dom.tracking_token = ?`,
             [token]
@@ -706,16 +900,132 @@ router.get('/public/track/:token', async (req, res) => {
             return res.status(404).json({ error: 'Seguimiento no encontrado' });
         }
 
-        res.json({ success: true, data: domicilios[0] });
+        const fila = normalizarRuta(domicilios[0]);
+        fila.negocio = fila.negocio_lat != null
+            ? { lat: Number(fila.negocio_lat), lng: Number(fila.negocio_lng), nombre: fila.negocio_nombre }
+            : null;
+        delete fila.negocio_lat; delete fila.negocio_lng;
+
+        res.json({ success: true, data: fila });
     } catch (error) {
         console.error('[Domicilios] Error tracking:', error);
         res.status(500).json({ error: 'Error al obtener seguimiento' });
     }
 });
 
+// El domiciliario reporta que algo salió mal (no encuentra la dirección, el
+// cliente no contesta, sospecha de un intento de estafa, etc). Abre un
+// incidente que el dueño del negocio resuelve desde el dashboard; mientras
+// esté abierto, este domiciliario no puede tomar nuevos domicilios.
+router.post('/driver/reportar-problema', verificarAuthDomiciliario, async (req, res) => {
+    try {
+        const { domicilio_id, motivo } = req.body;
+
+        if (!domicilio_id) {
+            return res.status(400).json({ error: 'domicilio_id requerido' });
+        }
+
+        const [domicilio] = await db.execute(
+            'SELECT id FROM domicilios WHERE id = ? AND domiciliario_id = ?',
+            [domicilio_id, req.domiciliario.id]
+        );
+
+        if (domicilio.length === 0) {
+            return res.status(404).json({ error: 'Domicilio no encontrado' });
+        }
+
+        await db.execute(
+            `UPDATE domicilios SET estado_incidente = 'en_disputa', updated_at = NOW() WHERE id = ?`,
+            [domicilio_id]
+        );
+
+        await registrarNotificacion(
+            req.domiciliario.negocio_id, 'domicilio_incidente',
+            'Problema reportado en una entrega',
+            `${req.domiciliario.nombre} reportó un problema: ${motivo || 'sin detalle'}`,
+            domicilio_id
+        );
+
+        try {
+            const { io } = require('../index');
+            if (io) io.to(`negocio_${req.domiciliario.negocio_id}`).emit('domicilio_incidente', { domicilio_id, motivo });
+        } catch (e) {}
+
+        res.json({ success: true, message: 'Problema reportado, el negocio lo revisará pronto' });
+    } catch (error) {
+        console.error('[Domicilios] Error reportando problema:', error);
+        res.status(500).json({ error: 'Error al reportar problema' });
+    }
+});
+
+// Panel de incidentes para el dashboard: todo domicilio retrasado o en
+// disputa que el dueño del negocio necesita revisar y resolver a mano.
+router.get('/incidentes', verificarAuth, async (req, res) => {
+    try {
+        const [incidentes] = await db.execute(
+            `SELECT dom.id, dom.estado, dom.estado_incidente, dom.limite_entrega_at, dom.created_at, dom.updated_at,
+                    p.numero_pedido, p.direccion_entrega, p.total,
+                    c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp,
+                    d.id as domiciliario_id, d.nombre as domiciliario_nombre, d.telefono as domiciliario_telefono, d.score, d.strikes
+             FROM domicilios dom
+             JOIN pedidos p ON dom.pedido_id = p.id
+             JOIN clientes c ON p.cliente_id = c.id
+             LEFT JOIN domiciliarios d ON dom.domiciliario_id = d.id
+             WHERE dom.negocio_id = ? AND dom.estado_incidente IN ('retrasado', 'en_disputa')
+             ORDER BY dom.updated_at DESC`,
+            [req.negocio.id]
+        );
+
+        res.json({ success: true, data: incidentes });
+    } catch (error) {
+        console.error('[Domicilios] Error listando incidentes:', error);
+        res.status(500).json({ error: 'Error al listar incidentes' });
+    }
+});
+
+// El dueño decide si el incidente fue un robo real (penaliza fuerte al
+// domiciliario) o una falsa alarma (lo libera para seguir trabajando).
+router.post('/incidentes/:id/resolver', verificarAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { resultado } = req.body; // 'robo_confirmado' | 'resuelto'
+
+        if (!['robo_confirmado', 'resuelto'].includes(resultado)) {
+            return res.status(400).json({ error: "resultado debe ser 'robo_confirmado' o 'resuelto'" });
+        }
+
+        const [domicilio] = await db.execute(
+            'SELECT id, domiciliario_id FROM domicilios WHERE id = ? AND negocio_id = ?',
+            [id, req.negocio.id]
+        );
+
+        if (domicilio.length === 0) {
+            return res.status(404).json({ error: 'Domicilio no encontrado' });
+        }
+
+        await db.execute(
+            `UPDATE domicilios SET estado_incidente = ?, updated_at = NOW() WHERE id = ?`,
+            [resultado, id]
+        );
+
+        if (resultado === 'robo_confirmado' && domicilio[0].domiciliario_id) {
+            await db.execute(
+                'UPDATE domiciliarios SET score = GREATEST(0, score - 40), strikes = strikes + 1 WHERE id = ?',
+                [domicilio[0].domiciliario_id]
+            );
+            await penalizarSiCorresponde(domicilio[0].domiciliario_id, req.negocio.id);
+        }
+
+        res.json({ success: true, message: resultado === 'robo_confirmado' ? 'Incidente marcado como robo, domiciliario penalizado' : 'Incidente resuelto' });
+    } catch (error) {
+        console.error('[Domicilios] Error resolviendo incidente:', error);
+        res.status(500).json({ error: 'Error al resolver incidente' });
+    }
+});
+
 router.post('/crear', verificarAuth, async (req, res) => {
     try {
-        const { pedido_id, tarifa_envio = 5000 } = req.body;
+        const { pedido_id, tarifa_envio } = req.body;
 
         if (!pedido_id) {
             return res.status(400).json({ error: 'pedido_id requerido' });
@@ -744,17 +1054,34 @@ router.post('/crear', verificarAuth, async (req, res) => {
         }
 
         const tracking_token = generarTrackingToken();
+        const codigo_confirmacion = String(Math.floor(1000 + Math.random() * 9000));
+
+        // Misma lógica que el bot: tarifa por km real si el negocio la configuró
+        // (una tarifa_envio explícita en el body sigue mandando, por compatibilidad).
+        let config = {};
+        try {
+            const [modulos] = await db.execute(
+                `SELECT config FROM negocio_modulos WHERE negocio_id = ? AND modulo_name = 'domicilios'`,
+                [req.negocio.id]
+            );
+            if (modulos.length > 0) {
+                config = typeof modulos[0].config === 'string' ? JSON.parse(modulos[0].config) : (modulos[0].config || {});
+            }
+        } catch (e) { config = {}; }
+
+        const cond = await calcularCondicionesDomicilio(req.negocio.id, pedido_id, config);
+        const tarifaFinal = tarifa_envio !== undefined ? tarifa_envio : cond.tarifa;
 
         const [result] = await db.execute(
-            `INSERT INTO domicilios (negocio_id, pedido_id, estado, tarifa_envio, tracking_token)
-             VALUES (?, ?, 'pendiente', ?, ?)`,
-            [req.negocio.id, pedido_id, tarifa_envio, tracking_token]
+            `INSERT INTO domicilios (negocio_id, pedido_id, estado, tarifa_envio, km_recorridos, tiempo_minutos, ruta_coords, tracking_token, codigo_confirmacion)
+             VALUES (?, ?, 'pendiente', ?, ?, ?, ?, ?, ?)`,
+            [req.negocio.id, pedido_id, tarifaFinal, cond.km, cond.tiempo, cond.ruta_coords, tracking_token, codigo_confirmacion]
         );
 
         res.status(201).json({
             success: true,
             message: 'Domicilio creado para seguimiento',
-            data: { id: result.insertId, tracking_token, tracking_url: `${TRACKING_BASE_URL}/${tracking_token}` }
+            data: { id: result.insertId, tracking_token, codigo_confirmacion, tracking_url: `${TRACKING_BASE_URL}/${tracking_token}` }
         });
     } catch (error) {
         console.error('[Domicilios] Error creating domicilio:', error);

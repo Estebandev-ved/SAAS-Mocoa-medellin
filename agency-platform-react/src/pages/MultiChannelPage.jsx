@@ -127,15 +127,15 @@ const MultiChannelPage = () => {
                     className="glass rounded-3xl p-6 border border-border mb-6"
                 >
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                            <Smartphone className="w-5 h-5 text-green-500" />
+                        <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
+                            <Smartphone className="w-5 h-5 text-success" />
                         </div>
                         <div>
                             <h2 className="font-bold">WhatsApp Business</h2>
                             <p className="text-sm text-muted">Canal principal activo</p>
                         </div>
                         <div className="ml-auto">
-                            <span className="flex items-center gap-1 text-xs text-green-500 bg-green-500/10 px-3 py-1 rounded-full">
+                            <span className="flex items-center gap-1 text-xs text-success bg-success/10 px-3 py-1 rounded-full">
                                 <CheckCircle size={12} /> ACTIVO
                             </span>
                         </div>
@@ -150,8 +150,8 @@ const MultiChannelPage = () => {
                     className="glass rounded-3xl p-6 border border-border mb-6"
                 >
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                            <Send className="w-5 h-5 text-blue-500" />
+                        <div className="w-10 h-10 rounded-xl bg-info/10 flex items-center justify-center">
+                            <Send className="w-5 h-5 text-info-text" />
                         </div>
                         <div>
                             <h2 className="font-bold">Telegram Bot</h2>
@@ -159,7 +159,7 @@ const MultiChannelPage = () => {
                         </div>
                         <div className="ml-auto">
                             {telegram.connected ? (
-                                <span className="flex items-center gap-1 text-xs text-green-500 bg-green-500/10 px-3 py-1 rounded-full">
+                                <span className="flex items-center gap-1 text-xs text-success bg-success/10 px-3 py-1 rounded-full">
                                     <CheckCircle size={12} /> {telegram.bot_nombre}
                                 </span>
                             ) : (
@@ -176,13 +176,13 @@ const MultiChannelPage = () => {
                                 href={`https://t.me/${telegram.bot_nombre?.replace('@', '')}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-500 rounded-xl text-sm hover:bg-blue-500/20 transition-all"
+                                className="flex items-center gap-2 px-4 py-2 bg-info/10 text-info-text rounded-xl text-sm hover:bg-info/20 transition-all"
                             >
                                 <ExternalLink size={14} /> Abrir Bot
                             </a>
                             <button
                                 onClick={disconnectTelegram}
-                                className="px-4 py-2 bg-red-500/10 text-red-500 rounded-xl text-sm hover:bg-red-500/20 transition-all"
+                                className="px-4 py-2 bg-danger/10 text-danger-text rounded-xl text-sm hover:bg-danger/20 transition-all"
                             >
                                 Desconectar
                             </button>
@@ -196,17 +196,17 @@ const MultiChannelPage = () => {
                                     value={telegramToken}
                                     onChange={(e) => setTelegramToken(e.target.value)}
                                     placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-                                    className="w-full bg-bg3/50 border border-border rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-blue-500"
+                                    className="w-full bg-bg3/50 border border-border rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-info"
                                 />
                             </div>
                             <div className="flex items-center gap-2 text-xs text-muted">
                                 <Bot size={14} />
-                                <span>Crea tu bot en <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">@BotFather</a></span>
+                                <span>Crea tu bot en <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-info-text hover:underline">@BotFather</a></span>
                             </div>
                             <button
                                 onClick={connectTelegram}
                                 disabled={!telegramToken || connecting === 'telegram'}
-                                className="w-full py-2.5 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="w-full py-2.5 bg-info text-white rounded-xl text-sm font-medium hover:bg-info transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {connecting === 'telegram' ? (
                                     <><Loader2 className="animate-spin" size={16} /> Conectando...</>
@@ -235,7 +235,7 @@ const MultiChannelPage = () => {
                         </div>
                         <div className="ml-auto">
                             {instagram.connected ? (
-                                <span className="flex items-center gap-1 text-xs text-green-500 bg-green-500/10 px-3 py-1 rounded-full">
+                                <span className="flex items-center gap-1 text-xs text-success bg-success/10 px-3 py-1 rounded-full">
                                     <CheckCircle size={12} /> {instagram.nombre}
                                 </span>
                             ) : (
@@ -250,7 +250,7 @@ const MultiChannelPage = () => {
                         <div className="flex gap-2">
                             <button
                                 onClick={disconnectInstagram}
-                                className="px-4 py-2 bg-red-500/10 text-red-500 rounded-xl text-sm hover:bg-red-500/20 transition-all"
+                                className="px-4 py-2 bg-danger/10 text-danger-text rounded-xl text-sm hover:bg-danger/20 transition-all"
                             >
                                 Desconectar
                             </button>

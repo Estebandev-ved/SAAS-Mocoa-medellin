@@ -25,7 +25,7 @@ const Ticker = () => {
         {duplicatedItems.map((item, i) => (
           <div 
             key={i} 
-            className="flex items-center gap-4 px-12 border-r border-border/30 font-mono text-[10px] text-muted uppercase tracking-[0.3em] font-bold"
+            className="flex items-center gap-4 px-12 border-r border-border/30 text-xs text-muted uppercase tracking-[0.04em] font-bold"
           >
             <span className="w-1 h-1 rounded-full bg-accent" />
             {item}

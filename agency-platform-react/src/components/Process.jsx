@@ -158,7 +158,7 @@ const Process = () => {
                   <div className={`md:px-8 ${i % 2 === 0 ? 'md:text-left' : 'md:text-right'}`}>
                     <div className="inline-flex items-center gap-2 mb-2">
                        <Clock size={14} className="text-accent" />
-                       <span className="font-mono text-xs font-bold text-accent uppercase tracking-widest">{step.time}</span>
+                       <span className="text-xs font-bold text-accent uppercase tracking-[0.04em]">{step.time}</span>
                     </div>
                     <h4 className="font-head text-2xl font-bold mb-3">{step.title}</h4>
                     <p className="text-muted leading-relaxed text-sm">{step.desc}</p>
@@ -169,7 +169,7 @@ const Process = () => {
                 <div className="relative z-10">
                   <motion.div 
                     whileHover={{ scale: 1.2, rotate: 5 }}
-                    className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-bg border border-border flex items-center justify-center text-accent shadow-[0_0_20px_rgba(229,57,53,0.1)] relative"
+                    className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-bg border border-border flex items-center justify-center text-accent relative"
                   >
                     <div className="absolute inset-0 bg-accent/5 rounded-2xl animate-pulse" />
                     <step.icon size={24} className="md:w-8 md:h-8" />
@@ -188,9 +188,8 @@ const Process = () => {
           initial={{ opacity: 0, scale: 0.9 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="mt-40 p-12 bg-bg2 rounded-[32px] border border-border text-center relative overflow-hidden group shadow-2xl"
+          className="mt-40 p-12 bg-bg2 rounded-[32px] border border-border text-center relative overflow-hidden group"
         >
-          <div className="absolute -top-24 -right-24 w-64 h-64 bg-accent opacity-5 blur-[100px] group-hover:opacity-10 transition-opacity" />
           <h3 className="font-head text-4xl font-black mb-6">¿Listo para las próximas 48 horas?</h3>
           <p className="text-muted mb-10 max-w-xl mx-auto italic text-lg leading-relaxed">
             "La diferencia entre un negocio que sobrevive y uno que escala es la velocidad con la que implementa tecnología."
@@ -199,7 +198,7 @@ const Process = () => {
              whileHover={{ scale: 1.05 }}
              whileTap={{ scale: 0.95 }}
              onClick={() => document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })}
-             className="bg-accent text-bg px-12 py-5 rounded-2xl font-mono text-xs font-black uppercase tracking-widest shadow-[0_0_30px_rgba(229,57,53,0.3)] border-none cursor-pointer"
+             className="bg-accent text-bg px-12 py-5 rounded-2xl text-xs font-black uppercase tracking-[0.04em] border-none cursor-pointer"
           >
              Iniciar Onboarding Ahora
           </motion.button>

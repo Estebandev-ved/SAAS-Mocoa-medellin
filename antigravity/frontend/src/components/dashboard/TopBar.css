@@ -1,11 +1,11 @@
 .topbar {
-  height: 56px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
+  height: var(--navbar-height);
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 var(--margin-desktop);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -16,47 +16,57 @@
 }
 
 .topbar-title {
-  font-size: 18px;
-  font-weight: 600;
+  font-family: var(--font-heading);
+  font-size: var(--type-headline-sm-size);
+  line-height: var(--type-headline-sm-line);
+  font-weight: var(--type-headline-sm-weight);
+  color: var(--color-text);
 }
 
 .topbar-center {
   flex: 2;
   max-width: 480px;
-  padding: 0 24px;
+  padding: 0 var(--space-6);
 }
 
 .search-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-muted);
+  gap: var(--space-3);
+  height: var(--control-height);
+  padding: 0 var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+}
+
+.search-bar:focus-within {
+  border-color: var(--color-primary);
+  background: var(--color-surface-raised);
 }
 
 .search-bar input {
   flex: 1;
   background: none;
   border: none;
-  color: var(--text-primary);
-  font-size: 14px;
+  color: var(--color-text);
+  font-size: var(--type-body-sm-size);
   outline: none;
+  box-shadow: none;
 }
 
 .search-bar input::placeholder {
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 .search-shortcut {
   font-family: var(--font-mono);
   font-size: 11px;
   padding: 2px 6px;
-  background: var(--surface-hover);
-  border-radius: 4px;
-  color: var(--text-muted);
+  background: var(--color-gray-100);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-muted);
 }
 
 .topbar-right {
@@ -64,44 +74,49 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .trial-banner {
-  font-size: 12px;
-  color: var(--warning);
-  padding: 4px 12px;
-  background: rgba(255, 179, 0, 0.1);
-  border-radius: 100px;
+  font-size: var(--type-label-sm-size);
+  font-weight: var(--type-label-sm-weight);
+  color: color-mix(in srgb, var(--color-warning) 40%, black);
+  padding: var(--space-1) var(--space-3);
+  background: color-mix(in srgb, var(--color-warning) 18%, white);
+  border-radius: var(--radius-full);
 }
 
 .notification-btn {
   position: relative;
   background: none;
   border: none;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  width: var(--control-height);
+  height: var(--control-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .notification-btn:hover {
-  background: var(--surface-hover);
-  color: var(--text-primary);
+  background: var(--color-gray-100);
+  color: var(--color-text);
 }
 
 .notification-badge {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 16px;
+  top: var(--space-2);
+  right: var(--space-2);
+  min-width: 16px;
   height: 16px;
-  background: var(--error);
-  color: white;
+  background: var(--color-primary-strong);
+  color: var(--color-on-primary);
   font-size: 10px;
   font-weight: 600;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -112,89 +127,94 @@
 }
 
 .user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--accent-primary);
-  color: var(--bg-primary);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-strong);
+  color: var(--color-on-primary);
   border: none;
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--type-label-lg-size);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .user-avatar:hover {
-  transform: scale(1.05);
+  background: var(--color-primary-deep);
 }
 
 .user-dropdown {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + var(--space-2));
   right: 0;
   width: 240px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-3);
   overflow: hidden;
   animation: fadeIn 0.2s ease;
 }
 
 .user-dropdown-header {
-  padding: 16px;
-  border-bottom: 1px solid var(--border);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .user-dropdown-name {
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--color-text);
 }
 
 .user-dropdown-email {
-  font-size: 13px;
-  color: var(--text-muted);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-text-muted);
 }
 
 .user-dropdown-items {
-  padding: 8px;
+  padding: var(--space-2);
 }
 
 .user-dropdown-items button {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
-  padding: 10px 12px;
+  min-height: 40px;
+  padding: 0 var(--space-3);
   background: none;
   border: none;
-  border-radius: 8px;
-  color: var(--text-secondary);
-  font-size: 14px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--type-body-sm-size);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .user-dropdown-items button:hover {
-  background: var(--surface-hover);
-  color: var(--text-primary);
+  background: var(--color-gray-100);
+  color: var(--color-text);
 }
 
 .user-dropdown-items button.logout:hover {
-  background: rgba(255, 82, 82, 0.1);
-  color: var(--error);
+  background: color-mix(in srgb, var(--color-error) 12%, white);
+  color: color-mix(in srgb, var(--color-error) 75%, black);
 }
 
 .user-dropdown-divider {
   height: 1px;
-  background: var(--border);
-  margin: 8px 0;
+  background: var(--color-border);
+  margin: var(--space-2) 0;
 }
 
 @media (max-width: 768px) {
+  .topbar {
+    padding: 0 var(--margin-mobile);
+  }
+
   .topbar-center {
     display: none;
   }

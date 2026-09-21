@@ -1,6 +1,9 @@
 const db = require('../../db/config');
+const crypto = require('crypto');
 const gemini = require('./gemini');
 const { checkLimit } = require('../../config/planConfig');
+const { geocodificarDireccion } = require('../services/geocoding');
+const { calcularCondicionesDomicilio } = require('../services/domicilioTarifa');
 
 const LIMITES_POR_PLAN = {
     starter: { mensajes_por_minuto: 10, mensajes_por_hora: 100, tokens_por_dia: 50000 },
@@ -269,7 +272,7 @@ async function crearPedido(negocioId, clienteId, datos) {
 
         // Get payment info
         const [negocios] = await db.execute(
-            'SELECT numero_nequi, numero_bancolombia, nombre FROM negocios WHERE id = ?',
+            'SELECT numero_nequi, numero_bancolombia, nombre, ciudad FROM negocios WHERE id = ?',
             [negocioId]
         );
         const negocio = negocios[0] || {};
@@ -323,6 +326,31 @@ async function crearPedido(negocioId, clienteId, datos) {
 
         console.log(`[Orchestrator] Pedido ${numeroPedido} creado para cliente ${clienteId}`);
 
+        let domicilio = null;
+        if (direccionEntrega) {
+            // Geocodificar no debe bloquear ni tumbar la creación del pedido —
+            // si falla o no hay coordenadas, el domicilio se crea igual, solo
+            // sin lat/lng (la calculadora de tarifa por km y el trazado de ruta
+            // simplemente no van a poder usar este pedido hasta que se resuelva
+            // manualmente o el cliente reintente con una dirección más clara).
+            try {
+                const coords = await geocodificarDireccion(direccionEntrega, negocio.ciudad);
+                if (coords) {
+                    await db.execute(
+                        'UPDATE pedidos SET direccion_lat = ?, direccion_lng = ? WHERE id = ?',
+                        [coords.lat, coords.lng, result.insertId]
+                    );
+                    console.log(`[Orchestrator] Dirección geocodificada para pedido ${numeroPedido}: ${coords.lat}, ${coords.lng}`);
+                } else {
+                    console.warn(`[Orchestrator] No se pudo geocodificar la dirección del pedido ${numeroPedido}: "${direccionEntrega}"`);
+                }
+            } catch (e) {
+                console.error('[Orchestrator] Error geocodificando dirección:', e.message);
+            }
+
+            domicilio = await crearDomicilioAutomatico(negocioId, result.insertId);
+        }
+
         return {
             pedido_id: result.insertId,
             numero_pedido: numeroPedido,
@@ -332,10 +360,57 @@ async function crearPedido(negocioId, clienteId, datos) {
             nequi: negocio.numero_nequi || null,
             bancolombia: negocio.numero_bancolombia || null,
             negocio_nombre: negocio.nombre || '',
+            codigo_confirmacion: domicilio?.codigo_confirmacion || null,
+            tracking_url: domicilio?.tracking_url || null,
         };
 
     } catch (error) {
         console.error('[Orchestrator] Error creando pedido:', error);
+        return null;
+    }
+}
+
+// Convierte el pedido recién creado en un domicilio "pendiente" listo para
+// que un domiciliario lo acepte, sin que nadie del dashboard tenga que
+// crearlo a mano. Se genera acá (y no solo en /domicilios/crear) porque el
+// dueño del negocio nunca ve ese endpoint — el pedido nace por WhatsApp.
+async function crearDomicilioAutomatico(negocioId, pedidoId) {
+    try {
+        const [modulos] = await db.execute(
+            `SELECT config FROM negocio_modulos WHERE negocio_id = ? AND modulo_name = 'domicilios' AND activo = 1`,
+            [negocioId]
+        );
+        if (modulos.length === 0) return null;
+
+        let config = {};
+        try {
+            config = typeof modulos[0].config === 'string' ? JSON.parse(modulos[0].config) : (modulos[0].config || {});
+        } catch (e) { config = {}; }
+
+        const trackingToken = crypto.randomBytes(32).toString('hex');
+        const codigoConfirmacion = String(Math.floor(1000 + Math.random() * 9000));
+        const cond = await calcularCondicionesDomicilio(negocioId, pedidoId, config);
+
+        const [result] = await db.execute(
+            `INSERT INTO domicilios (negocio_id, pedido_id, estado, tarifa_envio, km_recorridos, tiempo_minutos, ruta_coords, tracking_token, codigo_confirmacion)
+             VALUES (?, ?, 'pendiente', ?, ?, ?, ?, ?, ?)`,
+            [negocioId, pedidoId, cond.tarifa, cond.km, cond.tiempo, cond.ruta_coords, trackingToken, codigoConfirmacion]
+        );
+
+        const trackingBase = process.env.TRACKING_BASE_URL || 'http://localhost:5177/delivery/track';
+
+        try {
+            const { emitDomicilioNuevo } = require('../socketEmitter');
+            emitDomicilioNuevo(negocioId, { id: result.insertId, pedido_id: pedidoId });
+        } catch (e) { /* si el bridge de sockets no está listo, no bloquea la creación */ }
+
+        return {
+            id: result.insertId,
+            codigo_confirmacion: codigoConfirmacion,
+            tracking_url: `${trackingBase}/${trackingToken}`,
+        };
+    } catch (error) {
+        console.error('[Orchestrator] Error creando domicilio automático:', error.message);
         return null;
     }
 }

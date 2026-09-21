@@ -1,22 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Layers, Menu, X, ArrowRight, User } from 'lucide-react';
+import { Menu, X, User } from 'lucide-react';
 import { useBranding } from '../context/BrandingContext';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 
+// Navegación (design.md): barra superior de 64px en black con texto claro.
+const btnPrimary = 'inline-flex items-center justify-center h-11 px-5 rounded-xl bg-accent text-white font-semibold text-sm no-underline cursor-pointer border-none transition-colors hover:bg-accent2';
+const btnSecondaryInverse = 'hidden sm:inline-flex items-center justify-center h-11 px-5 rounded-xl bg-transparent text-inverse-text font-semibold text-sm cursor-pointer border border-white/20 transition-colors hover:bg-white/10';
+
 const Navbar = () => {
   const { branding } = useBranding();
-  const { isAuthenticated, user } = useAuth();
-  const [isScrolled, setIsScrolled] = useState(false);
+  const { isAuthenticated } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const navLinks = [
     { name: 'Ecosistema', href: '/#ecosistema' },
@@ -26,34 +23,30 @@ const Navbar = () => {
     { name: 'Precios', href: '/#pricing' },
   ];
 
+  const scrollToContact = () => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
+
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${
-      isScrolled ? 'h-16 bg-bg/85 backdrop-blur-lg border-b border-border' : 'h-20 bg-transparent'
-    }`}>
+    <nav className="fixed top-0 left-0 right-0 z-[100] h-16 bg-inverse text-inverse-text border-b border-white/10">
       <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
         {/* Logo */}
-        <Link 
-          to="/" 
-          className="flex items-center gap-3 no-underline"
-        >
-          <motion.div 
-            whileHover={{ scale: 1.05 }}
-            className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shadow-[0_0_20px_rgba(229,57,53,0.3)]"
-          >
-            <Layers size={18} className="text-bg fill-bg" />
-          </motion.div>
-          <span className="font-mono text-sm font-bold tracking-[0.25em] text-text uppercase">
+        <Link to="/" className="flex items-center gap-3 no-underline">
+          <svg width="32" height="32" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <circle cx="24" cy="24" r="24" fill="var(--color-primary)" />
+            <path d="M24 12L32 20L24 28L16 20L24 12Z" fill="var(--inverse)" />
+            <path d="M24 20L32 28L24 36L16 28L24 20Z" fill="var(--inverse)" opacity="0.6" />
+          </svg>
+          <span className="font-head text-base font-extrabold tracking-[0.08em] text-inverse-text uppercase">
             {branding.name}
           </span>
         </Link>
 
         {/* Desktop Links */}
-        <ul className="hidden md:flex items-center gap-8 list-none m-0">
+        <ul className="hidden md:flex items-center gap-8 list-none m-0 p-0">
           {navLinks.map((link) => (
             <li key={link.name}>
-              <a 
+              <a
                 href={link.href}
-                className="text-muted hover:text-text transition-colors text-sm font-medium no-underline"
+                className="text-[#A0A0A0] hover:text-inverse-text transition-colors text-sm font-medium no-underline"
               >
                 {link.name}
               </a>
@@ -62,56 +55,30 @@ const Navbar = () => {
         </ul>
 
         {/* Right Actions */}
-        <div className="flex items-center gap-6">
-          <div className="hidden lg:flex items-center gap-2 text-[11px] font-mono text-muted">
-            <div className="w-2 h-2 rounded-full bg-accent pulse-glow" />
-            SISTEMA ACTIVO
-          </div>
-          
+        <div className="flex items-center gap-3">
           {isAuthenticated ? (
-            <motion.button
-                whileHover={{ y: -2, backgroundColor: 'rgba(229,57,53,0.1)' }}
-                onClick={() => navigate('/dashboard')}
-                className="hidden sm:flex items-center gap-2 bg-transparent border border-accent/30 text-accent px-4 py-2 rounded-lg font-mono text-[11px] font-bold tracking-wider cursor-pointer transition-all duration-300"
-            >
-                <User size={14} /> DASHBOARD
-            </motion.button>
+            <button onClick={() => navigate('/dashboard')} className={btnPrimary}>
+              <User size={16} className="mr-2" /> Ir al panel
+            </button>
           ) : (
-            <div className="hidden sm:flex items-center gap-4">
-                <Link 
-                    to="/login"
-                    className="no-underline"
-                >
-                    <span className="text-[11px] font-mono font-bold tracking-wider text-muted hover:text-accent transition-colors">LOGIN</span>
-                </Link>
-                <Link 
-                    to="/register"
-                    className="no-underline"
-                >
-                    <motion.span
-                        whileHover={{ y: -2, boxShadow: '0 8px 25px rgba(229,57,53,0.3)' }}
-                        whileTap={{ scale: 0.98 }}
-                        className="bg-accent text-bg px-4 py-2 rounded-lg font-mono text-[11px] font-bold tracking-wider cursor-pointer inline-block"
-                    >
-                        CREAR CUENTA
-                    </motion.span>
-                </Link>
-            </div>
+            <>
+              <Link to="/login" className="hidden sm:inline-flex items-center h-11 px-3 text-[#A0A0A0] hover:text-inverse-text text-sm font-semibold no-underline transition-colors">
+                Iniciar sesión
+              </Link>
+              <button onClick={scrollToContact} className={btnSecondaryInverse}>
+                Contactar
+              </button>
+              <Link to="/register" className={`hidden sm:inline-flex ${btnPrimary}`}>
+                Crear cuenta
+              </Link>
+            </>
           )}
 
-          <motion.button
-            whileHover={{ y: -2, boxShadow: '0 8px 25px rgba(229,57,53,0.3)' }}
-            whileTap={{ scale: 0.98 }}
-            className="hidden sm:flex bg-accent text-bg px-5 py-2 rounded-lg font-mono text-[11px] font-bold tracking-wider cursor-pointer border-none items-center gap-2"
-            onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            CONTACTAR <ArrowRight size={14} />
-          </motion.button>
-
           {/* Mobile Menu Toggle */}
-          <button 
-            className="md:hidden text-text bg-transparent border-none cursor-pointer p-2"
+          <button
+            className="md:hidden text-inverse-text bg-transparent border-none cursor-pointer w-11 h-11 flex items-center justify-center"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label={isMobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -122,59 +89,57 @@ const Navbar = () => {
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="absolute top-full left-0 right-0 bg-bg2 border-b border-border p-6 flex flex-col gap-4 md:hidden"
+            exit={{ opacity: 0, y: -12 }}
+            className="absolute top-full left-0 right-0 bg-inverse border-b border-white/10 p-6 flex flex-col gap-2 md:hidden"
           >
             {navLinks.map((link) => (
-              <a 
+              <a
                 key={link.name}
                 href={link.href}
-                className="text-text no-underline font-medium text-lg py-2"
+                className="text-inverse-text no-underline font-medium text-lg py-3 border-b border-white/10"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 {link.name}
-                <div className="h-px w-full bg-border mt-2" />
               </a>
             ))}
-            
-            {isAuthenticated ? (
-                <Link 
-                    to="/dashboard" 
-                    className="text-accent no-underline font-bold text-lg py-2"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                >
-                    IR AL PANEL
-                </Link>
-            ) : (
-                <div className="flex flex-col gap-3">
-                    <Link 
-                        to="/login"
-                        className="text-text no-underline font-medium text-lg py-2"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                        INICIAR SESIÓN
-                    </Link>
-                    <Link 
-                        to="/register"
-                        className="bg-accent text-bg text-center py-3 rounded-xl font-bold font-mono tracking-widest"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                        CREAR CUENTA
-                    </Link>
-                </div>
-            )}
 
-            <button
-              className="bg-accent text-bg py-4 rounded-xl font-bold font-mono tracking-widest mt-2"
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            >
-              CONTACTAR AHORA
-            </button>
+            {isAuthenticated ? (
+              <Link
+                to="/dashboard"
+                className={`${btnPrimary} mt-4`}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Ir al panel
+              </Link>
+            ) : (
+              <div className="flex flex-col gap-3 mt-4">
+                <Link
+                  to="/login"
+                  className="text-inverse-text no-underline font-semibold text-base py-2 text-center"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Iniciar sesión
+                </Link>
+                <button
+                  className={`${btnSecondaryInverse} !inline-flex w-full`}
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    scrollToContact();
+                  }}
+                >
+                  Contactar
+                </button>
+                <Link
+                  to="/register"
+                  className={`${btnPrimary} w-full`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Crear cuenta
+                </Link>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

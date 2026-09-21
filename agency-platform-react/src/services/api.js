@@ -25,8 +25,22 @@ export const authService = {
         const response = await api.post('/auth/login', { email, password });
         return response.data;
     },
-    register: async (name, email, password, phone) => {
-        const response = await api.post('/auth/registro', { nombre: name, email_dueno: email, password, whatsapp: phone });
+    register: async (name, email, password, phone, avatar, terminos) => {
+        const response = await api.post('/auth/registro', {
+            nombre: name, email_dueno: email, password, whatsapp: phone, avatar, terminos_aceptados: !!terminos
+        });
+        return response.data;
+    }
+};
+
+// Onboarding progresivo: se piden solo los datos mínimos al registrarse y el resto se completa en el panel.
+export const businessService = {
+    saveOnboardingStep: async (paso, datos) => {
+        const response = await api.put(`/business/onboarding/${paso}`, datos);
+        return response.data;
+    },
+    aplicarPlantilla: async (tipoNegocio) => {
+        const response = await api.post('/business/plantilla', { tipo_negocio: tipoNegocio });
         return response.data;
     }
 };

@@ -1,11 +1,14 @@
+/* Navegación (design.md > Components > Navegación): superficie black con texto claro,
+   elemento activo marcado por una línea de 2px en primary. En móvil, barra inferior. */
 .sidebar {
   position: fixed;
   top: 0;
   left: 0;
   height: 100vh;
   width: 64px;
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border);
+  background: var(--color-black);
+  color: var(--color-text-inverse);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease;
@@ -18,56 +21,61 @@
 }
 
 .sidebar-header {
-  padding: 16px;
-  border-bottom: 1px solid var(--border);
+  padding: var(--space-4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .sidebar-logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   white-space: nowrap;
 }
 
 .sidebar-logo span {
   font-family: var(--font-heading);
   font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: 1px;
+  font-weight: 800;
+  color: var(--color-text-inverse);
+  letter-spacing: 0.08em;
+}
+
+/* El logo es un círculo primary con rombo: el rombo toma el color del fondo oscuro */
+.sidebar-logo svg path {
+  fill: var(--color-black);
 }
 
 .sidebar-business {
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid var(--border);
+  gap: var(--space-3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .business-avatar {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  color: var(--bg-primary);
+  color: var(--color-on-primary);
   flex-shrink: 0;
 }
 
 .business-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   overflow: hidden;
 }
 
 .business-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-size: var(--type-label-lg-size);
+  font-weight: var(--type-label-lg-weight);
+  color: var(--color-text-inverse);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -75,50 +83,57 @@
 
 .sidebar-nav {
   flex: 1;
-  padding: 16px 8px;
+  padding: var(--space-4) var(--space-2);
   overflow-y: auto;
 }
 
 .nav-item-wrapper {
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .nav-item-wrapper.locked {
-  opacity: 0.4;
+  opacity: 0.45;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  color: var(--text-secondary);
+  gap: var(--space-3);
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-gray-400);
+  font-size: var(--type-label-lg-size);
+  font-weight: var(--type-label-lg-weight);
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
   position: relative;
 }
 
 .nav-item:hover {
-  background: var(--surface-hover);
-  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-inverse);
 }
 
 .nav-item.active {
-  background: var(--accent-glow);
-  color: var(--accent-primary);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-inverse);
+}
+
+.nav-item.active .nav-icon {
+  color: var(--color-primary);
 }
 
 .nav-item.active::before {
   content: '';
   position: absolute;
-  left: 0;
+  left: calc(-1 * var(--space-2));
   top: 50%;
   transform: translateY(-50%);
-  width: 3px;
+  width: 2px;
   height: 24px;
-  background: var(--accent-primary);
-  border-radius: 0 2px 2px 0;
+  background: var(--color-primary);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
 }
 
 .nav-icon {
@@ -135,92 +150,72 @@
 
 .nav-lock {
   margin-left: auto;
-  color: var(--warning);
+  color: var(--color-gray-400);
 }
 
-.nav-item.highlight {
-  background: linear-gradient(135deg, rgba(37, 211, 102, 0.15), rgba(37, 211, 102, 0.05));
-  border: 1px solid rgba(37, 211, 102, 0.3);
-}
-
-.nav-item.highlight:hover {
-  background: linear-gradient(135deg, rgba(37, 211, 102, 0.25), rgba(37, 211, 102, 0.1));
-  border-color: rgba(37, 211, 102, 0.5);
-}
-
-.nav-item.highlight.active {
-  background: linear-gradient(135deg, rgba(37, 211, 102, 0.3), rgba(37, 211, 102, 0.15));
-  border-color: rgba(37, 211, 102, 0.5);
-  color: #25D366;
-}
-
+/* WhatsApp ya no lleva color propio: sigue la paleta cerrada de NOMA */
 .nav-item.highlight .nav-icon {
-  color: #25D366;
+  color: var(--color-text-inverse);
 }
 
 .whatsapp-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: var(--space-2);
+  right: var(--space-2);
   width: 8px;
   height: 8px;
-  background: #25D366;
+  background: var(--color-primary);
   border-radius: 50%;
-  animation: pulse-green 2s infinite;
-}
-
-@keyframes pulse-green {
-  0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.4); }
-  70% { box-shadow: 0 0 0 6px rgba(37, 211, 102, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
 }
 
 .sidebar-footer {
-  padding: 16px;
-  border-top: 1px solid var(--border);
+  padding: var(--space-4);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .bot-status {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: var(--text-secondary);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+  font-size: var(--type-body-sm-size);
+  color: var(--color-gray-400);
 }
 
-.status-dot {
+.bot-status .status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--error);
+  background: var(--color-error);
   flex-shrink: 0;
 }
 
-.status-dot.active {
-  background: var(--success);
+.bot-status .status-dot.active {
+  background: var(--color-success);
   animation: pulse 2s ease-in-out infinite;
 }
 
 .logout-btn {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   width: 100%;
-  padding: 12px;
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
   background: none;
   border: none;
-  border-radius: 8px;
-  color: var(--text-secondary);
-  font-size: 14px;
+  border-radius: var(--radius-md);
+  color: var(--color-gray-400);
+  font-size: var(--type-label-lg-size);
+  font-weight: var(--type-label-lg-weight);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .logout-btn:hover {
-  background: rgba(255, 82, 82, 0.1);
-  color: var(--error);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text-inverse);
 }
 
 @media (max-width: 768px) {
@@ -231,7 +226,7 @@
     height: 64px;
     flex-direction: row;
     border-right: none;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .sidebar.expanded {
@@ -246,9 +241,10 @@
   }
 
   .sidebar-nav {
+    display: flex;
     flex-direction: row;
     justify-content: space-around;
-    padding: 8px;
+    padding: var(--space-2);
     width: 100%;
     overflow-x: auto;
   }
@@ -259,8 +255,18 @@
 
   .nav-item {
     flex-direction: column;
-    gap: 4px;
-    padding: 8px;
+    justify-content: center;
+    gap: var(--space-1);
+    padding: var(--space-2);
+  }
+
+  .nav-item.active::before {
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 2px;
+    border-radius: 0 0 var(--radius-xs) var(--radius-xs);
   }
 
   .nav-label {

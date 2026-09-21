@@ -446,6 +446,14 @@ Tus datos no serán usados para marketing. ¿En qué puedo ayudarte?`;
                 msgPedido += `📍 Entrega: ${p.direccion_entrega}\n`;
             }
 
+            if (p.codigo_confirmacion) {
+                msgPedido += `\n🔑 *Código de entrega: ${p.codigo_confirmacion}*\n`;
+                msgPedido += `Guárdalo y dáselo al domiciliario cuando llegue — sin ese código no puede marcar tu pedido como entregado.\n`;
+                if (p.tracking_url) {
+                    msgPedido += `📲 Sigue tu pedido en vivo aquí: ${p.tracking_url}\n`;
+                }
+            }
+
             msgPedido += `\n💳 *Métodos de pago:*\n`;
             if (p.nequi) msgPedido += `📱 Nequi: *${p.nequi}*\n`;
             if (p.bancolombia) msgPedido += `🏦 Bancolombia: *${p.bancolombia}*\n`;

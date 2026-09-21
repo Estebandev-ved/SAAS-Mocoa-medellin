@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool = require('../../db/config');
+const { sanitizeAvatar, parseAvatar } = require('../services/avatar');
 
 const router = express.Router();
 
@@ -12,6 +13,16 @@ const { loginRateLimit, sanitizeLog, blacklistToken, checkBlacklist } = require(
 
 function getClientIP(req) {
     return req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+}
+
+// Lee el avatar guardado. Tolerante: si la migración (avatar_config) aún no se corrió, devuelve null.
+async function leerAvatar(negocioId) {
+    try {
+        const [rows] = await pool.query('SELECT avatar_config FROM negocios WHERE id = ?', [negocioId]);
+        return parseAvatar(rows[0] && rows[0].avatar_config);
+    } catch (e) {
+        return null;
+    }
 }
 
 router.post('/registro', [
@@ -38,14 +49,26 @@ router.post('/registro', [
 
         const bcrypt = require('bcryptjs');
         const passwordHash = bcrypt.hashSync(password, 12);
-        const trialFin = new Date();
-        trialFin.setDate(trialFin.getDate() + 7);
+        // La prueba de 7 días NO empieza al registrarse: empieza la primera vez que el negocio
+        // conecta su WhatsApp (ver InstanceManager.markConnected). Hasta entonces suscripcion_fin queda en NULL.
 
         const [result] = await pool.query(
             `INSERT INTO negocios (nombre, email_dueno, whatsapp, password, plan, suscripcion_fin, suscripcion_activa, terminos_aceptados, terminos_fecha, color_principal) 
              VALUES (?, ?, ?, ?, 'starter', ?, true, ?, NOW(), '#00D9FF')`,
-            [nombre, email_dueno, whatsapp, passwordHash, trialFin, terminos_aceptados || false]
+            [nombre, email_dueno, whatsapp, passwordHash, null, terminos_aceptados || false]
         );
+
+        // Avatar elegido en el registro (opcional). Se valida contra lista blanca antes de guardarlo.
+        let avatar = null;
+        if (req.body.avatar) {
+            avatar = sanitizeAvatar(req.body.avatar);
+            try {
+                await pool.query('UPDATE negocios SET avatar_config = ? WHERE id = ?', [JSON.stringify(avatar), result.insertId]);
+            } catch (e) {
+                console.error('[Auth] No se pudo guardar el avatar (¿migración pendiente?):', e.message);
+                avatar = null;
+            }
+        }
 
         const token = jwt.sign(
             { negocio_id: result.insertId, email: email_dueno, plan: 'starter', nombre },
@@ -62,7 +85,8 @@ router.post('/registro', [
                 email: email_dueno,
                 plan: 'starter',
                 color_principal: '#00D9FF',
-                onboarding_completado: false
+                onboarding_completado: false,
+                avatar
             }
         });
 
@@ -155,7 +179,8 @@ router.post('/login', [
                 onboarding_completado: Boolean(negocio.onboarding_completado),
                 trial_hasta: negocio.trial_hasta,
                 suscripcion_activa: Boolean(negocio.suscripcion_activa),
-                modulos_activos: modulosActivos
+                modulos_activos: modulosActivos,
+                avatar: parseAvatar(negocio.avatar_config)
             }
         });
 
@@ -224,7 +249,8 @@ router.get('/verify', checkBlacklist, async (req, res) => {
                 onboarding_completado: Boolean(negocio.onboarding_completado),
                 trial_hasta: negocio.trial_hasta,
                 suscripcion_activa: Boolean(negocio.suscripcion_activa),
-                modulos_activos: modulosActivos
+                modulos_activos: modulosActivos,
+                avatar: await leerAvatar(negocio.id)
             }
         });
     } catch (error) {

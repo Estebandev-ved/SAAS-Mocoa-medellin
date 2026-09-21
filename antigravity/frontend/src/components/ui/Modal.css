@@ -1,11 +1,9 @@
+/* Modales (design.md > Components > Modales): radio xl, relleno 32px,
+   ancho máx 480px, elevación 4 con velo. */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  inset: 0;
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19,23 +17,24 @@
 }
 
 .modal-container {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--elevation-4);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  animation: modalSlideIn 0.3s ease;
+  animation: modalSlideIn 0.25s ease;
 }
 
 @keyframes modalSlideIn {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(20px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
   }
 }
 
@@ -45,10 +44,11 @@
 }
 
 .modal-md {
-  width: 560px;
+  width: 480px;
   max-width: 90vw;
 }
 
+/* lg queda para detalles con tablas o formularios extensos */
 .modal-lg {
   width: 720px;
   max-width: 90vw;
@@ -63,32 +63,34 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border);
+  padding: var(--space-8) var(--space-8) 0;
 }
 
 .modal-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-size: var(--type-headline-sm-size);
+  line-height: var(--type-headline-sm-line);
+  font-weight: var(--type-headline-sm-weight);
+  color: var(--color-text);
 }
 
 .modal-close {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--color-text-muted);
   cursor: pointer;
-  padding: 4px;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .modal-close:hover {
-  color: var(--text-primary);
-  background: var(--surface-hover);
+  color: var(--color-text);
+  background: var(--color-gray-100);
 }
 
 .modal-close svg {
@@ -97,15 +99,14 @@
 }
 
 .modal-body {
-  padding: 24px;
+  padding: var(--space-6) var(--space-8) var(--space-8);
   overflow-y: auto;
   flex: 1;
 }
 
 .modal-footer {
-  padding: 16px 24px;
-  border-top: 1px solid var(--border);
+  padding: var(--space-4) var(--space-8) var(--space-8);
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--space-3);
 }

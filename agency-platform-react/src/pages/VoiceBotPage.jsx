@@ -151,12 +151,12 @@ const VoiceBotPage = () => {
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {/* Clonar-voz */}
-                        <div className={`p-4 rounded-xl ${status?.clonarVoz?.online ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
+                        <div className={`p-4 rounded-xl ${status?.clonarVoz?.online ? 'bg-success/10 border border-success/30' : 'bg-danger/10 border border-danger/30'}`}>
                             <div className="flex items-center gap-2 mb-2">
                                 {status?.clonarVoz?.online ? (
-                                    <CheckCircle className="text-green-500" size={18} />
+                                    <CheckCircle className="text-success" size={18} />
                                 ) : (
-                                    <XCircle className="text-red-500" size={18} />
+                                    <XCircle className="text-danger-text" size={18} />
                                 )}
                                 <span className="font-medium">Clonar-voz</span>
                             </div>
@@ -166,12 +166,12 @@ const VoiceBotPage = () => {
                         </div>
 
                         {/* Twilio */}
-                        <div className={`p-4 rounded-xl ${status?.twilio?.configured ? 'bg-green-500/10 border border-green-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'}`}>
+                        <div className={`p-4 rounded-xl ${status?.twilio?.configured ? 'bg-success/10 border border-success/30' : 'bg-warn/10 border border-warn/30'}`}>
                             <div className="flex items-center gap-2 mb-2">
                                 {status?.twilio?.configured ? (
-                                    <CheckCircle className="text-green-500" size={18} />
+                                    <CheckCircle className="text-success" size={18} />
                                 ) : (
-                                    <AlertTriangle className="text-yellow-500" size={18} />
+                                    <AlertTriangle className="text-warn-text" size={18} />
                                 )}
                                 <span className="font-medium">Twilio</span>
                             </div>
@@ -181,12 +181,12 @@ const VoiceBotPage = () => {
                         </div>
 
                         {/* STT Provider */}
-                        <div className={`p-4 rounded-xl ${status?.stt?.configured ? 'bg-green-500/10 border border-green-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'}`}>
+                        <div className={`p-4 rounded-xl ${status?.stt?.configured ? 'bg-success/10 border border-success/30' : 'bg-warn/10 border border-warn/30'}`}>
                             <div className="flex items-center gap-2 mb-2">
                                 {status?.stt?.configured ? (
-                                    <CheckCircle className="text-green-500" size={18} />
+                                    <CheckCircle className="text-success" size={18} />
                                 ) : (
-                                    <AlertTriangle className="text-yellow-500" size={18} />
+                                    <AlertTriangle className="text-warn-text" size={18} />
                                 )}
                                 <span className="font-medium">STT ({status?.stt?.provider || 'whisper_local'})</span>
                             </div>
@@ -212,7 +212,7 @@ const VoiceBotPage = () => {
                             onClick={() => setConfig(prev => ({ ...prev, habilitado: !prev.habilitado }))}
                             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                                 config.habilitado 
-                                    ? 'bg-green-500 text-white' 
+                                    ? 'bg-success text-white' 
                                     : 'bg-bg3 text-muted'
                             }`}
                         >

@@ -22,7 +22,7 @@ const FeatureCard = ({ icon: Icon, title, desc, tags }) => (
       <p className="text-muted text-sm leading-relaxed mb-6">{desc}</p>
       <div className="flex flex-wrap gap-2">
         {tags.map(tag => (
-          <span key={tag} className="font-mono text-[10px] uppercase tracking-wider bg-accent-dim text-accent border border-border px-3 py-1 rounded-full">
+          <span key={tag} className="text-xs uppercase tracking-[0.04em] bg-accent-dim text-accent border border-border px-3 py-1 rounded-full">
             {tag}
           </span>
         ))}

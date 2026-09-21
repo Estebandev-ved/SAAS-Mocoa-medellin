@@ -1,5 +1,10 @@
+import Toast from '../components/Toast';
+import AvatarEditor from '../components/avatar/AvatarEditor';
+import OwnerAvatar from '../components/avatar/OwnerAvatar';
+import Illustration from '../components/Illustration';
+import { sanitizeAvatar } from '../components/avatar/avatarConfig';
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import {
@@ -41,10 +46,12 @@ import {
   Key,
   Info,
   ArrowLeft,
+  Smile,
 } from 'lucide-react';
 
 const TABS = [
   { id: 'negocio', label: 'Negocio', icon: Store },
+  { id: 'avatar', label: 'Avatar', icon: Smile },
   { id: 'bot', label: 'Bot', icon: Bot },
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
   { id: 'pago', label: 'Pago', icon: CreditCard },
@@ -52,60 +59,29 @@ const TABS = [
   { id: 'seguridad', label: 'Seguridad', icon: Shield },
 ];
 
-function Toast({ type, message, onClose }) {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 4000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  const icons = {
-    success: <CheckCircle2 className="w-5 h-5 text-green-500" />,
-    error: <AlertCircle className="w-5 h-5 text-red-400" />,
-  };
-
-  return (
-    <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-top-4">
-      <div
-        className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl border shadow-2xl backdrop-blur-xl ${
-          type === 'success'
-            ? 'bg-green-500/10 border-green-500/30'
-            : 'bg-red-500/10 border-red-500/30'
-        }`}
-      >
-        {icons[type]}
-        <span className="text-sm font-body text-text">{message}</span>
-      </div>
-    </div>
-  );
-}
-
 function LoadingSpinner() {
   return (
-    <div className="flex items-center justify-center py-32">
-      <Loader2 className="w-10 h-10 text-accent animate-spin" />
+    <div className="flex items-center justify-center py-24">
+      <Illustration name="carga" size={170} alt="Cargando" />
     </div>
   );
 }
 
+// Tarjeta (design.md): blanca, radio lg, borde 1px, relleno 32px
 function GlassCard({ children, className = '' }) {
   return (
-    <div
-      className={`bg-bg2 backdrop-blur-xl rounded-2xl border border-border p-8 ${className}`}
-    >
+    <div className={`bg-white rounded-2xl border border-border p-8 ${className}`}>
       {children}
     </div>
   );
 }
 
-function FormField({ label, icon: Icon, children, mono = false }) {
+// Etiqueta arriba en label-lg con 8px de separación
+function FormField({ label, icon: Icon, children }) {
   return (
     <div className="space-y-2">
-      <label
-        className={`flex items-center gap-2 text-sm ${
-          mono ? 'font-mono' : 'font-head'
-        } text-muted uppercase tracking-wider`}
-      >
-        {Icon && <Icon className="w-4 h-4 text-accent" />}
+      <label className="flex items-center gap-2 text-sm font-semibold text-text">
+        {Icon && <Icon className="w-4 h-4 text-muted" />}
         {label}
       </label>
       {children}
@@ -113,18 +89,16 @@ function FormField({ label, icon: Icon, children, mono = false }) {
   );
 }
 
+const CONTROL =
+  'w-full h-11 bg-white border border-[#C9C9C9] rounded-xl px-4 text-text text-sm placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors';
+
 function InputField({ icon: Icon, ...props }) {
   return (
     <div className="relative">
       {Icon && (
         <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
       )}
-      <input
-        className={`w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all ${
-          Icon ? 'pl-11' : ''
-        }`}
-        {...props}
-      />
+      <input className={`${CONTROL} ${Icon ? 'pl-11' : ''}`} {...props} />
     </div>
   );
 }
@@ -135,14 +109,9 @@ function SelectField({ icon: Icon, options, ...props }) {
       {Icon && (
         <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
       )}
-      <select
-        className={`w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all appearance-none ${
-          Icon ? 'pl-11' : ''
-        }`}
-        {...props}
-      >
+      <select className={`${CONTROL} appearance-none ${Icon ? 'pl-11' : ''}`} {...props}>
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value}               className="bg-bg">
+          <option key={opt.value} value={opt.value}>
             {opt.label}
           </option>
         ))}
@@ -154,17 +123,20 @@ function SelectField({ icon: Icon, options, ...props }) {
 function ToggleSwitch({ checked, onChange, label }) {
   return (
     <div className="flex items-center justify-between py-3">
-      <span className="text-sm font-body text-text/70">{label}</span>
+      <span className="text-sm text-text">{label}</span>
       <button
         type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
         onClick={() => onChange(!checked)}
-        className={`relative w-12 h-6 rounded-full transition-colors ${
-          checked ? 'bg-accent' : 'bg-bg3'
+        className={`relative w-12 h-7 rounded-full border-none cursor-pointer transition-colors ${
+          checked ? 'bg-accent' : 'bg-[#C9C9C9]'
         }`}
       >
         <span
-          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-lg transition-transform ${
-            checked ? 'translate-x-6' : ''
+          className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform ${
+            checked ? 'translate-x-5' : ''
           }`}
         />
       </button>
@@ -233,7 +205,7 @@ function NegocioTab() {
       )}
       <GlassCard>
         <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
-          <Building2 className="w-5 h-5 text-green-500" />
+          <Building2 className="w-5 h-5 text-accent" />
           Información del Negocio
         </h3>
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -344,7 +316,7 @@ function NegocioTab() {
               onChange={handleChange}
               rows={3}
               placeholder="Describe tu negocio..."
-              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+              className="w-full bg-white border border-[#C9C9C9] rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all resize-none"
             />
           </FormField>
           <div className="flex justify-end pt-2">
@@ -362,6 +334,53 @@ function NegocioTab() {
             </button>
           </div>
         </form>
+      </GlassCard>
+    </div>
+  );
+}
+
+function AvatarTab() {
+  const { user, updateUser } = useAuth();
+  const [avatar, setAvatar] = useState(() => sanitizeAvatar(user?.avatar));
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await api.put('/business/avatar', { avatar });
+      updateUser({ avatar: res.data.avatar });
+      setToast({ type: 'success', message: 'Avatar actualizado' });
+    } catch {
+      setToast({ type: 'error', message: 'Error al guardar el avatar' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
+      <GlassCard>
+        <h3 className="font-head text-xl text-text mb-2 flex items-center gap-3">
+          <Smile className="w-5 h-5 text-accent" />
+          Tu personaje
+        </h3>
+        <p className="text-muted text-sm mb-8 max-w-xl">
+          Es la cara que te saluda en el panel. Hazlo parecido a ti: cuerpo, piel, pelo, barba, gafas, tatuajes y ropa.
+        </p>
+        <AvatarEditor value={avatar} onChange={setAvatar} />
+        <div className="flex justify-end mt-8">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="h-11 px-6 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold inline-flex items-center gap-2 border-none cursor-pointer transition-colors disabled:bg-[#F0F0F0] disabled:text-muted disabled:cursor-not-allowed"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Guardar avatar
+          </button>
+        </div>
       </GlassCard>
     </div>
   );
@@ -434,7 +453,7 @@ function BotTab() {
       )}
       <GlassCard>
         <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
-          <Bot className="w-5 h-5 text-green-500" />
+          <Bot className="w-5 h-5 text-accent" />
           Configuración del Bot
         </h3>
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -467,7 +486,7 @@ function BotTab() {
               onChange={handleChange}
               rows={3}
               placeholder="¡Hola! Bienvenido a nuestro negocio. ¿En qué puedo ayudarte?"
-              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+              className="w-full bg-white border border-[#C9C9C9] rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all resize-none"
             />
           </FormField>
           <FormField label="Mensaje Fuera de Horario" icon={Clock}>
@@ -477,7 +496,7 @@ function BotTab() {
               onChange={handleChange}
               rows={3}
               placeholder="Gracias por escribirnos. Nuestro horario de atención es de 9am a 6pm..."
-              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+              className="w-full bg-white border border-[#C9C9C9] rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all resize-none"
             />
           </FormField>
 
@@ -498,7 +517,7 @@ function BotTab() {
               onChange={handleChange}
               rows={2}
               placeholder="Ej: Empresa de contabilidad y asesoría tributaria..."
-              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+              className="w-full bg-white border border-[#C9C9C9] rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all resize-none"
             />
           </FormField>
           <FormField label="Productos y Servicios" icon={FileText}>
@@ -508,8 +527,11 @@ function BotTab() {
               onChange={handleChange}
               rows={3}
               placeholder="Ej: Servicios contables, Declaración de renta, Asesoría tributaria..."
-              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+              className="w-full bg-white border border-[#C9C9C9] rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all resize-none"
             />
+            <p className="text-xs text-muted font-body">
+              Solo se usa si tu pestaña "Productos" está vacía — si ya cargaste tu catálogo ahí, el bot usa esos productos y este texto se ignora.
+            </p>
           </FormField>
           <FormField label="Información de Pagos" icon={CreditCard}>
             <textarea
@@ -518,7 +540,7 @@ function BotTab() {
               onChange={handleChange}
               rows={2}
               placeholder="Ej: Nequi: 3001234567, Bancolombia: 1234567890..."
-              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+              className="w-full bg-white border border-[#C9C9C9] rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all resize-none"
             />
           </FormField>
           <FormField label="Políticas" icon={Shield}>
@@ -528,7 +550,7 @@ function BotTab() {
               onChange={handleChange}
               rows={2}
               placeholder="Ej: Delivery en 30 min, Garantía 7 días, Factura electrónica..."
-              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all resize-none"
+              className="w-full bg-white border border-[#C9C9C9] rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all resize-none"
             />
           </FormField>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -568,7 +590,7 @@ function BotTab() {
 
       <GlassCard>
         <h3 className="font-head text-xl text-text mb-2 flex items-center gap-3">
-          <Shield className="w-5 h-5 text-yellow-500" />
+          <Shield className="w-5 h-5 text-warn-text" />
           Control de Chats
         </h3>
         <p className="text-sm text-muted mb-6 font-body">
@@ -596,7 +618,7 @@ function BotTab() {
                     value={newNumber}
                     onChange={(e) => setNewNumber(e.target.value)}
                     placeholder="Ej: 573208303600 (sin + ni espacios)"
-                    className="flex-1 bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all"
+                    className="flex-1 bg-white border border-[#C9C9C9] rounded-xl px-4 py-3 text-text text-sm font-body placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -627,16 +649,16 @@ function BotTab() {
                   {whitelistNumbers.map((num, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between bg-bg border border-border rounded-xl px-4 py-3"
+                      className="flex items-center justify-between bg-white border border-[#C9C9C9] rounded-xl px-4 py-3"
                     >
                       <div className="flex items-center gap-3">
-                        <Phone className="w-4 h-4 text-green-500" />
+                        <Phone className="w-4 h-4 text-muted" />
                         <span className="text-text text-sm font-body">+{num}</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setWhitelistNumbers(whitelistNumbers.filter((_, i) => i !== idx))}
-                        className="text-red-400 hover:text-red-300 text-xs font-body transition-colors"
+                        className="text-danger-text hover:text-danger-text text-xs font-body transition-colors"
                       >
                         Quitar
                       </button>
@@ -644,7 +666,7 @@ function BotTab() {
                   ))}
                 </div>
               ) : (
-                <div className="bg-bg border border-border rounded-xl px-4 py-3 text-center">
+                <div className="bg-white border border-[#C9C9C9] rounded-xl px-4 py-3 text-center">
                   <p className="text-muted text-sm font-body">Sin números. El bot no responderá a nadie.</p>
                 </div>
               )}
@@ -748,15 +770,15 @@ function WhatsAppTab() {
       )}
       <GlassCard>
         <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
-          <MessageSquare className="w-5 h-5 text-green-500" />
+          <MessageSquare className="w-5 h-5 text-accent" />
           Estado de WhatsApp
         </h3>
         <div className="space-y-6">
-          <div className="flex items-center gap-4 p-5 rounded-xl bg-bg border border-border">
+          <div className="flex items-center gap-4 p-5 rounded-xl bg-white border border-[#C9C9C9]">
             {isConnected ? (
-              <Wifi className="w-8 h-8 text-green-500" />
+              <Wifi className="w-8 h-8 text-success" />
             ) : (
-              <WifiOff className="w-8 h-8 text-red-400" />
+              <WifiOff className="w-8 h-8 text-danger-text" />
             )}
             <div>
               <p className="font-head text-text">
@@ -771,14 +793,14 @@ function WhatsAppTab() {
             <div className="ml-auto">
               <span
                 className={`inline-block w-3 h-3 rounded-full ${
-                  isConnected ? 'bg-[#4CAF50] animate-pulse' : 'bg-[#FF4D6A]'
+                  isConnected ? 'bg-success animate-pulse' : 'bg-danger'
                 }`}
               />
             </div>
           </div>
 
           {!isConnected && status?.qr && (
-            <div className="flex flex-col items-center gap-4 p-8 rounded-xl bg-bg border border-border">
+            <div className="flex flex-col items-center gap-4 p-8 rounded-xl bg-white border border-[#C9C9C9]">
               <QrCode className="w-6 h-6 text-muted" />
               <p className="font-head text-sm text-text/70">
                 Escanea el código QR con tu WhatsApp
@@ -812,7 +834,7 @@ function WhatsAppTab() {
               <button
                 onClick={handleDisconnect}
                 disabled={actionLoading}
-                className="flex items-center gap-2 px-6 py-3 bg-bg3 hover:bg-bg disabled:opacity-50 text-[#FF4D6A] border border-[#FF4D6A]/30 font-head font-semibold rounded-xl transition-colors"
+                className="flex items-center gap-2 px-6 py-3 bg-bg3 hover:bg-bg disabled:opacity-50 text-danger-text border border-danger/30 font-head font-semibold rounded-xl transition-colors"
               >
                 {actionLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -853,12 +875,12 @@ function PagoTab() {
     <div className="space-y-8">
       <GlassCard>
         <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
-          <CreditCard className="w-5 h-5 text-green-500" />
+          <CreditCard className="w-5 h-5 text-accent" />
           Plan Actual
         </h3>
         {plan ? (
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-5 rounded-xl bg-accent/20 border border-green-500/20">
+            <div className="flex items-center justify-between p-5 rounded-xl bg-[#FDECEA] border border-accent/20">
               <div>
                 <p className="font-head text-2xl text-text">
                   {plan.nombre || 'Plan Básico'}
@@ -868,7 +890,7 @@ function PagoTab() {
                 </p>
               </div>
               <div className="text-right">
-                <p className="font-mono text-3xl text-green-500 font-bold">
+                <p className="font-mono text-3xl text-accent font-bold">
                   ${plan.precio || '49.990'}
                 </p>
                 <p className="text-sm font-body text-muted">/mes</p>
@@ -876,13 +898,13 @@ function PagoTab() {
             </div>
             {plan.limite_mensajes && (
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl bg-bg border border-border">
+                <div className="p-4 rounded-xl bg-white border border-[#C9C9C9]">
                   <p className="text-sm font-body text-muted">Mensajes usados</p>
                   <p className="font-mono text-text text-lg mt-1">
                     {plan.mensajes_usados || 0} / {plan.limite_mensajes}
                   </p>
                 </div>
-                <div className="p-4 rounded-xl bg-bg border border-border">
+                <div className="p-4 rounded-xl bg-white border border-[#C9C9C9]">
                   <p className="text-sm font-body text-muted">Próxima facturación</p>
                   <p className="font-mono text-text text-lg mt-1">
                     {plan.fecha_renovacion || '01/10/2026'}
@@ -899,12 +921,12 @@ function PagoTab() {
       <GlassCard>
         <div className="flex items-center justify-between mb-6">
           <h3 className="font-head text-xl text-text flex items-center gap-3">
-            <CreditCardIcon className="w-5 h-5 text-green-500" />
+            <CreditCardIcon className="w-5 h-5 text-accent" />
             Métodos de Pago
           </h3>
           <button
             onClick={() => navigate('/suscripcion')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-500 border border-green-500/30 font-head text-sm rounded-xl transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg2 text-text border border-[#C9C9C9] text-sm font-semibold rounded-xl transition-colors"
           >
             <ExternalLink className="w-4 h-4" />
             Gestionar Suscripción
@@ -914,7 +936,7 @@ function PagoTab() {
           {mockMethods.map((m) => (
             <div
               key={m.id}
-              className="flex items-center justify-between p-4 rounded-xl bg-bg border border-border"
+              className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#C9C9C9]"
             >
               <div className="flex items-center gap-3">
                 <CreditCard className="w-5 h-5 text-muted" />
@@ -1004,15 +1026,15 @@ function NotificacionesTab() {
       )}
       <GlassCard>
         <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
-          <Bell className="w-5 h-5 text-green-500" />
+          <Bell className="w-5 h-5 text-accent" />
           Preferencias de Notificación
         </h3>
         <div className="space-y-8">
           {groups.map((group) => (
             <div key={group.title}>
               <div className="flex items-center gap-2 mb-3">
-                <group.icon className="w-4 h-4 text-green-500/70" />
-                <h4 className="font-mono text-sm text-muted uppercase tracking-wider">
+                <group.icon className="w-4 h-4 text-accent" />
+                <h4 className="text-xs font-semibold tracking-[0.04em] text-muted uppercase">
                   {group.title}
                 </h4>
               </div>
@@ -1033,7 +1055,7 @@ function NotificacionesTab() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-black font-head font-semibold rounded-xl transition-colors"
+            className="flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent disabled:bg-[#F0F0F0] disabled:text-muted disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-colors"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -1113,7 +1135,7 @@ function SeguridadTab() {
       )}
       <GlassCard>
         <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
-          <Lock className="w-5 h-5 text-green-500" />
+          <Lock className="w-5 h-5 text-accent" />
           Cambiar Contraseña
         </h3>
         <form onSubmit={handleSubmit} className="space-y-5 max-w-md">
@@ -1200,9 +1222,9 @@ function SeguridadTab() {
         </form>
       </GlassCard>
 
-      <GlassCard className="border-red-500/20">
+      <GlassCard className="border-danger/20">
         <h3 className="font-head text-xl text-text mb-4 flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-400" />
+          <AlertTriangle className="w-5 h-5 text-danger-text" />
           Zona de Peligro
         </h3>
         <p className="text-sm font-body text-muted mb-6">
@@ -1210,7 +1232,7 @@ function SeguridadTab() {
         </p>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 px-6 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 font-head font-semibold rounded-xl transition-colors"
+          className="flex items-center gap-2 px-6 py-3 bg-danger/20 hover:bg-danger/30 text-danger-text border border-danger/30 font-head font-semibold rounded-xl transition-colors"
         >
           <LogOut className="w-4 h-4" />
           Cerrar Sesión
@@ -1222,6 +1244,7 @@ function SeguridadTab() {
 
 const TAB_COMPONENTS = {
   negocio: NegocioTab,
+  avatar: AvatarTab,
   bot: BotTab,
   whatsapp: WhatsAppTab,
   pago: PagoTab,
@@ -1230,52 +1253,75 @@ const TAB_COMPONENTS = {
 };
 
 export default function AjustesPage() {
-  const [activeTab, setActiveTab] = useState('negocio');
+  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(TABS.some((t) => t.id === tabParam) ? tabParam : 'negocio');
   const navigate = useNavigate();
   const ActiveComponent = TAB_COMPONENTS[activeTab];
 
+  const selectTab = (id) => {
+    setActiveTab(id);
+    setSearchParams({ tab: id }, { replace: true });
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-6 lg:p-10">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-10 flex items-center gap-3">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="p-2 rounded-xl bg-bg2 border border-border hover:border-accent/30 hover:bg-accent/10 transition-all"
-          >
-            <ArrowLeft className="w-5 h-5 text-muted" />
-          </button>
-          <div>
-            <h1 className="font-head text-3xl lg:text-4xl text-text tracking-tight">
-              Ajustes
-            </h1>
-            <p className="font-body text-muted mt-2">
-              Configura tu negocio, bot y preferencias
-            </p>
+    <div className="min-h-screen bg-bg2 p-6 lg:p-10">
+      <div className="max-w-6xl mx-auto">
+        <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/dashboard')}
+              aria-label="Volver al panel"
+              className="w-11 h-11 rounded-xl bg-white border border-border flex items-center justify-center cursor-pointer hover:border-[#C9C9C9] transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-muted" />
+            </button>
+            <div>
+              <h1 className="font-head text-3xl font-bold text-text tracking-tight">Ajustes</h1>
+              <p className="text-muted text-sm mt-1">Configura tu negocio, bot y preferencias</p>
+            </div>
           </div>
-        </div>
 
-        <div className="flex flex-wrap gap-2 mb-8 p-1.5 bg-bg2 backdrop-blur-xl rounded-2xl border border-border">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-head transition-all ${
-                  isActive
-                    ? 'bg-green-500 text-black shadow-lg shadow-green-500/20'
-                    : 'text-muted hover:text-text hover:bg-bg2'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
+          <div className="flex items-center gap-3 bg-white border border-border rounded-2xl pl-2 pr-5 py-2">
+            <div className="w-12 h-12 rounded-full bg-[#FDECEA] overflow-hidden flex items-end justify-center shrink-0">
+              <OwnerAvatar config={user?.avatar} variant="busto" height={56} label="Tu avatar" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-text leading-5 truncate max-w-[200px]">{user?.nombre || 'Tu negocio'}</p>
+              <p className="text-xs text-muted truncate max-w-[200px]">{user?.email}</p>
+            </div>
+          </div>
+        </header>
 
-        <ActiveComponent />
+        <div className="grid lg:grid-cols-[240px_1fr] gap-8 items-start">
+          <nav
+            aria-label="Secciones de ajustes"
+            className="bg-white border border-border rounded-2xl p-3 flex lg:flex-col gap-1 overflow-x-auto lg:sticky lg:top-6"
+          >
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => selectTab(tab.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`flex items-center gap-3 h-11 px-4 rounded-xl text-sm font-semibold whitespace-nowrap border-none cursor-pointer transition-colors ${
+                    isActive ? 'bg-[#FDECEA] text-accent' : 'bg-transparent text-muted hover:bg-bg2 hover:text-text'
+                  }`}
+                >
+                  <Icon className="w-[18px] h-[18px] shrink-0" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          <main className="min-w-0">
+            <ActiveComponent />
+          </main>
+        </div>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
+import Illustration from '../../components/ui/Illustration';
 import './OrdersPage.css';
 
 const ESTADOS = ['pendiente_pago', 'pago_enviado', 'pago_confirmado', 'en_preparacion', 'enviado', 'entregado', 'cancelado'];
@@ -163,9 +164,7 @@ export default function OrdersPage() {
               <tr>
                 <td colSpan={9} className="empty-state">
                   <div className="empty-content">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                    </svg>
+                    <Illustration name="vacio-pedidos" size={160} />
                     <p>Aún no tienes pedidos</p>
                     <span>Cuando tu bot reciba el primero, aparecerá aquí.</span>
                   </div>

@@ -24,20 +24,20 @@ export const AuthProvider = ({ children }) => {
         setUser(response.negocio);
         localStorage.setItem('antigravity_token', response.token);
         localStorage.setItem('antigravity_user', JSON.stringify(response.negocio));
-        return { success: true };
+        return { success: true, negocio: response.negocio };
       }
       return { success: false, error: response.error };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.error || 'Error de conexión con el servidor' 
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Error de conexión con el servidor'
       };
     }
   };
 
-  const register = async (name, email, password, phone) => {
+  const register = async (name, email, password, phone, avatar, terminos) => {
     try {
-      const response = await authService.register(name, email, password, phone);
+      const response = await authService.register(name, email, password, phone, avatar, terminos);
       if (response.token) {
         setToken(response.token);
         setUser(response.negocio);

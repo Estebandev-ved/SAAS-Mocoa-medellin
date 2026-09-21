@@ -6,9 +6,9 @@
   "scripts": {
     "start": "node api/index.js",
     "bot": "node instance-manager/index.js",
-    "brain": "node brain/index.js",
-    "dev": "node instance-manager/index.js",
-    "dev:all": "concurrently \"npm run brain\" \"npm run dev\"",
+    "dev:api": "nodemon --watch api --watch db --watch config api/index.js",
+    "dev:bot": "nodemon --watch instance-manager --watch db --watch config instance-manager/index.js",
+    "dev:all": "concurrently \"npm run dev:api\" \"npm run dev:bot\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -47,6 +47,7 @@
     "xss": "^1.0.15"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.1.14"
   }
 }

@@ -1,3 +1,4 @@
+import FeedbackMessage from '../components/FeedbackMessage';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -51,7 +52,7 @@ const AI_SUGGESTIONS = {
 function SuggestionBadge({ text, emoji }) {
   return (
     <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-accent/5 border border-accent/20 rounded-xl">
-      <Lightbulb className="w-3.5 h-3.5 text-[#FFB840] flex-shrink-0" />
+      <Lightbulb className="w-3.5 h-3.5 text-warn-text flex-shrink-0" />
       <span className="text-xs text-muted">{emoji} {text}</span>
     </div>
   );
@@ -86,7 +87,7 @@ function TestBotModal({ onClose }) {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
         className="bg-bg2 border border-border rounded-3xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
@@ -109,7 +110,7 @@ function TestBotModal({ onClose }) {
             {loading ? <Loader2 size={14} className="animate-spin" /> : <><Zap size={14} /> Enviar</>}
           </button>
           {respuesta && (
-            <div className={`rounded-2xl p-3 border ${respuesta.error ? 'bg-[#FF4D6A]/10 border-[#FF4D6A]/30' : 'bg-[#4CAF50]/10 border-[#4CAF50]/30'}`}>
+            <div className={`rounded-2xl p-3 border ${respuesta.error ? 'bg-danger/10 border-danger/30' : 'bg-success/10 border-success/30'}`}>
               <span className="font-mono text-xs text-muted">Bot:</span>
               <p className="text-sm text-text mt-1">{respuesta.respuesta || respuesta.error}</p>
               {respuesta.agente_usado && (
@@ -229,10 +230,8 @@ export default function AutomatizacionesPage() {
       {/* Messages */}
       <AnimatePresence>
         {message && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className={`flex items-center gap-3 p-4 rounded-2xl border ${message.type === 'success' ? 'bg-[#4CAF50]/10 border-[#4CAF50]/30 text-[#4CAF50]' : 'bg-[#FF4D6A]/10 border-[#FF4D6A]/30 text-[#FF4D6A]'}`}>
-            {message.type === 'success' ? <Check size={18} /> : <AlertTriangle size={18} />}
-            <span className="font-mono text-sm">{message.text}</span>
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <FeedbackMessage type={message.type}>{message.text}</FeedbackMessage>
           </motion.div>
         )}
       </AnimatePresence>
@@ -363,7 +362,7 @@ export default function AutomatizacionesPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-text font-medium text-sm">{agente.label}</span>
-                      {sugerido && <span className="font-mono text-[10px] bg-[#FFB840]/10 text-[#FFB840] px-1.5 py-0.5 rounded">Sugerido</span>}
+                      {sugerido && <span className="font-mono text-[10px] bg-warn/10 text-warn-text px-1.5 py-0.5 rounded">Sugerido</span>}
                       {needsUpgrade && <Lock className="w-3 h-3 text-muted" />}
                     </div>
                     <p className="text-muted text-xs">{agente.desc}</p>

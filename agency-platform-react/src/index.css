@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @theme {
   --color-bg: var(--bg);
@@ -12,7 +12,16 @@
   --color-text: var(--text);
   --color-muted: var(--muted);
   --color-glass: var(--glass);
-  
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --color-info: var(--info);
+  --color-danger-text: var(--danger-text);
+  --color-warn-text: var(--warn-text);
+  --color-info-text: var(--info-text);
+  --color-inverse: var(--inverse);
+  --color-inverse-text: var(--inverse-text);
+
   /* Ecosystem Series */
   --color-comm: #E53935;
   --color-ops: #C62828;
@@ -28,20 +37,44 @@
 
 
 :root {
-  --bg: #080C10;
-  --bg2: #0D1117;
-  --bg3: #131820;
-  --accent: #E53935;
-  --accent2: #C62828;
-  --accent-dim: rgba(229,57,53,0.12);
-  --border: rgba(229,57,53,0.15);
-  --text: #E8F0F7;
-  --muted: #5A7080;
-  --card: rgba(255,255,255,0.03);
-  --glass: rgba(229,57,53,0.05);
-  --danger: #FF4D6A;
-  --warn: #FFB840;
-  --success: #4CAF50;
+  /* Tokens NOMA (fuente de verdad: design.md). Tema claro por defecto. */
+  --color-primary: #E53935;
+  --color-primary-strong: #C62828;
+  --color-primary-deep: #8E1B1B;
+  --color-primary-soft: #FDECEA;
+  --color-black: #0A0A0A;
+  --color-ink: #111111;
+  --color-charcoal: #1A1A1A;
+  --color-gray-600: #666666;
+  --color-gray-300: #C9C9C9;
+  --color-gray-200: #E4E4E4;
+  --color-gray-100: #F0F0F0;
+  --color-gray-50: #F8F8F8;
+
+  /* Roles que consumen los componentes (bg-bg, text-text, text-muted...) */
+  --bg: #FFFFFF;
+  --bg2: #F8F8F8;
+  --bg3: #F0F0F0;
+  --accent: var(--color-primary-strong);
+  --accent2: var(--color-primary-deep);
+  --accent-dim: var(--color-primary-soft);
+  --border: #E4E4E4;
+  --text: #1A1A1A;
+  --muted: #666666;
+  --card: #FFFFFF;
+  --glass: #FFFFFF;
+  --danger: #EF5350;
+  --warn: #F9A825;
+  --success: #2E7D32;
+  --info: #0288D1;
+  /* Tonos de texto de los estados funcionales (contraste AA sobre blanco) */
+  --danger-text: color-mix(in srgb, #EF5350 75%, black);
+  --warn-text: color-mix(in srgb, #F9A825 55%, black);
+  --info-text: color-mix(in srgb, #0288D1 85%, black);
+
+  /* Superficie inversa (navbar, franjas y tarjetas de contraste) */
+  --inverse: #0A0A0A;
+  --inverse-text: #F5F5F5;
 
   /* Ecosystem Variables */
   --comm: #E53935;
@@ -51,9 +84,9 @@
   --int: #FFB840;
   --pers: #A78BFA;
 
-  --font-head: 'Syne', sans-serif;
+  --font-head: 'Plus Jakarta Sans', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-  --font-body: 'DM Sans', sans-serif;
+  --font-body: 'Inter', sans-serif;
 }
 
 @layer base {
@@ -104,11 +137,11 @@
   }
 
   .section-label {
-    @apply inline-block font-mono text-[11px] tracking-[0.2em] text-accent uppercase bg-accent-dim border border-border px-3.5 py-1.5 rounded-full mb-6;
+    @apply inline-block text-xs font-semibold tracking-[0.04em] text-accent uppercase bg-accent-dim border border-border px-3.5 py-1.5 rounded-full mb-6;
   }
 
   .section-title {
-    @apply font-head text-[clamp(32px,4.5vw,56px)] font-extrabold leading-[1.1] mb-4;
+    @apply font-head text-[clamp(28px,4.5vw,48px)] font-extrabold leading-[1.15] tracking-[-0.02em] mb-4;
   }
 
   .section-sub {

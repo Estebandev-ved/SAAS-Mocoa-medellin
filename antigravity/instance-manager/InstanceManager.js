@@ -123,6 +123,20 @@ class InstanceManager {
       `UPDATE negocios SET whatsapp_conectado = true, whatsapp_ultima_conexion = NOW(), numero_whatsapp = ? WHERE id = ?`,
       [phone, negocioId]
     ).catch(() => {});
+
+    // La prueba gratuita de 7 días empieza en la PRIMERA conexión de WhatsApp (no al registrarse).
+    // Solo aplica a negocios (no admins) que aún no tienen fecha de fin ni de prueba: las cuentas pagadas o ya iniciadas no se tocan.
+    db.execute(
+      `UPDATE negocios
+       SET trial_inicio = NOW(),
+           trial_hasta = DATE_ADD(NOW(), INTERVAL 7 DAY),
+           suscripcion_fin = DATE_ADD(NOW(), INTERVAL 7 DAY)
+       WHERE id = ? AND suscripcion_activa = 1 AND suscripcion_fin IS NULL AND trial_hasta IS NULL
+         AND (rol IS NULL OR rol = 'negocio')`,
+      [negocioId]
+    ).then(([r]) => {
+      if (r && r.affectedRows) console.log(`[InstanceManager] Prueba de 7 días iniciada para negocio ${negocioId}`);
+    }).catch(() => {});
   }
 
   markDisconnected(negocioId) {

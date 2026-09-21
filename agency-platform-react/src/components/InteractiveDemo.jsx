@@ -136,7 +136,7 @@ const InteractiveDemo = () => {
 
         <div className="grid lg:grid-cols-2 gap-8 items-stretch">
           {/* Chat Window */}
-          <div className="bg-bg3 border border-border rounded-3xl overflow-hidden flex flex-col shadow-2xl">
+          <div className="bg-bg3 border border-border rounded-3xl overflow-hidden flex flex-col">
             <div className="bg-bg2/80 backdrop-blur-md p-5 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-accent-dim border border-border flex items-center justify-center text-accent">
@@ -144,12 +144,12 @@ const InteractiveDemo = () => {
                 </div>
                 <div>
                   <div className="font-bold text-sm">Bot Activo — {branding.name}</div>
-                  <div className="text-[11px] text-muted flex items-center gap-1.5">
+                  <div className="text-xs text-muted flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-accent pulse-glow" /> Respondiendo pedidos
                   </div>
                 </div>
               </div>
-              <div className="bg-bg3 px-3 py-1 rounded-full border border-border text-[10px] font-mono text-accent">LIVE</div>
+              <div className="bg-bg3 px-3 py-1 rounded-full border border-border text-xs font-mono text-accent">LIVE</div>
             </div>
 
             <div ref={scrollRef} className="h-[400px] overflow-y-auto p-6 flex flex-col gap-4">
@@ -199,7 +199,7 @@ const InteractiveDemo = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleSend}
-                className="bg-accent text-bg p-3 rounded-xl cursor-pointer border-none shadow-[0_0_15px_rgba(229,57,53,0.2)]"
+                className="bg-accent text-bg p-3 rounded-xl cursor-pointer border-none"
               >
                 <Send size={20} />
               </motion.button>
@@ -207,26 +207,26 @@ const InteractiveDemo = () => {
           </div>
 
           {/* Orders Panel */}
-          <div className="bg-bg3 border border-border rounded-3xl overflow-hidden flex flex-col shadow-2xl">
+          <div className="bg-bg3 border border-border rounded-3xl overflow-hidden flex flex-col">
             <div className="bg-bg2/80 backdrop-blur-md p-5 border-b border-border flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-accent-dim flex items-center justify-center text-accent">
                 <Search size={18} />
               </div>
-              <span className="font-mono text-[11px] font-bold tracking-[0.1em] uppercase">Panel de Pedidos en Vivo</span>
+              <span className="text-xs font-bold tracking-[0.04em] uppercase">Panel de Pedidos en Vivo</span>
             </div>
 
             <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
               <div className="p-6 text-center">
                 <div className="text-xl font-mono font-bold text-accent">${Math.round(stats.revenue/1000)}K</div>
-                <div className="text-[10px] text-muted font-mono uppercase mt-1">Ventas Hoy</div>
+                <div className="text-xs text-muted font-mono uppercase mt-1">Ventas Hoy</div>
               </div>
               <div className="p-6 text-center">
                 <div className="text-xl font-mono font-bold text-accent">{stats.orders}</div>
-                <div className="text-[10px] text-muted font-mono uppercase mt-1">Pedidos</div>
+                <div className="text-xs text-muted font-mono uppercase mt-1">Pedidos</div>
               </div>
               <div className="p-6 text-center">
                 <div className="text-xl font-mono font-bold text-accent">{stats.pending}</div>
-                <div className="text-[10px] text-muted font-mono uppercase mt-1">Pendientes</div>
+                <div className="text-xs text-muted font-mono uppercase mt-1">Pendientes</div>
               </div>
             </div>
 
@@ -249,7 +249,7 @@ const InteractiveDemo = () => {
                         <div className="font-bold text-sm group-hover:text-accent transition-colors">
                           {order.cliente_nombre || `#${order.numero_pedido}`}
                         </div>
-                        <div className="text-[11px] text-muted">
+                        <div className="text-xs text-muted">
                           {order.items?.length > 0 
                             ? `${order.items[0].producto_nombre}${order.items.length > 1 ? ` +${order.items.length-1}` : ''}`
                             : order.detail || 'Pedido sin items'}
@@ -260,7 +260,7 @@ const InteractiveDemo = () => {
                       <div className="font-mono text-sm font-bold text-accent">
                         ${parseFloat(order.total).toLocaleString('es-CO')}
                       </div>
-                      <div className={`text-[9px] font-mono px-2 py-0.5 rounded-full border ${
+                      <div className={`text-xs font-mono px-2 py-0.5 rounded-full border ${
                         order.estado === 'entregado' 
                           ? 'border-accent/30 text-accent bg-accent/5' 
                           : order.estado === 'cancelado'

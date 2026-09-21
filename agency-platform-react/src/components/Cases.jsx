@@ -41,12 +41,12 @@ const CaseCard = ({ c, index }) => (
     className="bg-bg2 border border-border p-8 rounded-3xl hover:border-accent/40 transition-all group"
   >
     <div className="flex items-center gap-4 mb-8">
-      <div className="w-14 h-14 rounded-2xl bg-accent text-bg flex items-center justify-center font-head font-bold text-xl shadow-[0_0_20px_rgba(229,57,53,0.2)]">
+      <div className="w-14 h-14 rounded-2xl bg-accent text-bg flex items-center justify-center font-head font-bold text-xl">
         {c.avatar}
       </div>
       <div>
         <h4 className="font-head text-lg font-bold text-text">{c.name}</h4>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-accent">{c.tag}</span>
+        <span className="text-xs uppercase tracking-[0.04em] text-accent">{c.tag}</span>
       </div>
     </div>
 
@@ -57,11 +57,11 @@ const CaseCard = ({ c, index }) => (
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-bg/40 p-4 rounded-2xl border border-border/50">
-          <p className="font-mono text-[9px] uppercase tracking-widest text-muted mb-1">ANTES</p>
+          <p className="text-xs uppercase tracking-[0.04em] text-muted mb-1">ANTES</p>
           <p className="text-sm font-semibold opacity-60">{c.before}</p>
         </div>
         <div className="bg-accent-dim p-4 rounded-2xl border border-accent/20">
-          <p className="font-mono text-[9px] uppercase tracking-widest text-accent mb-1">AHORA</p>
+          <p className="text-xs uppercase tracking-[0.04em] text-accent mb-1">AHORA</p>
           <p className="text-sm font-bold text-accent">{c.after}</p>
         </div>
       </div>
@@ -123,19 +123,19 @@ const Cases = () => {
              <div className="w-12 h-12 rounded-full border border-border flex items-center justify-center bg-bg2">
                 <CheckCircle2 size={24} className="text-accent" />
              </div>
-             <p className="font-mono text-sm uppercase tracking-tighter"><span className="text-accent font-bold">+500k</span> Chats gestionados</p>
+             <p className="text-sm uppercase tracking-tighter"><span className="text-accent font-bold">+500k</span> Chats gestionados</p>
           </div>
           <div className="flex items-center gap-4">
              <div className="w-12 h-12 rounded-full border border-border flex items-center justify-center bg-bg2">
                 <CheckCircle2 size={24} className="text-accent" />
              </div>
-             <p className="font-mono text-sm uppercase tracking-tighter"><span className="text-accent font-bold">100%</span> Pagos seguros</p>
+             <p className="text-sm uppercase tracking-tighter"><span className="text-accent font-bold">100%</span> Pagos seguros</p>
           </div>
           <div className="flex items-center gap-4">
              <div className="w-12 h-12 rounded-full border border-border flex items-center justify-center bg-bg2">
                 <CheckCircle2 size={24} className="text-accent" />
              </div>
-             <p className="font-mono text-sm uppercase tracking-tighter"><span className="text-accent font-bold">48hs</span> Promedio onboarding</p>
+             <p className="text-sm uppercase tracking-tighter"><span className="text-accent font-bold">48hs</span> Promedio onboarding</p>
           </div>
         </motion.div>
       </div>
