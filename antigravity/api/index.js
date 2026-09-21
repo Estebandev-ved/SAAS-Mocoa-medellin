@@ -229,9 +229,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// routes/all.js queda deprecado (ver el propio archivo) y ya no se
-// requiere ni se monta: duplicaba, con su propio pool de MySQL, rutas que
-// ahora viven consolidadas en un solo archivo por recurso.
 const authRoutes = require('./routes/auth');
 const automationsRoutes = require('./routes/automations');
 const automationsToggleRoutes = require('./routes/automations-toggle');
