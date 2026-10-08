@@ -174,7 +174,7 @@ function HitoCard({ id, onClose }) {
         <button
           onClick={onClose}
           aria-label="Cerrar"
-          className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-transparent border-none text-muted hover:bg-bg2 cursor-pointer flex items-center justify-center"
+          className="absolute top-3 right-3 w-11 h-11 sm:w-8 sm:h-8 rounded-lg bg-transparent border-none text-muted hover:bg-bg2 cursor-pointer flex items-center justify-center"
         >
           <X size={16} />
         </button>
@@ -187,14 +187,14 @@ function HitoCard({ id, onClose }) {
           {hito.accion && (
             <button
               onClick={ir}
-              className="h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors"
+              className="h-11 sm:h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors"
             >
               {hito.accion.label}
             </button>
           )}
           <button
             onClick={onClose}
-            className="h-10 px-4 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold border border-[#C9C9C9] cursor-pointer transition-colors"
+            className="h-11 sm:h-10 px-4 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold border border-[#C9C9C9] cursor-pointer transition-colors"
           >
             {hito.accion ? 'Más tarde' : 'Entendido'}
           </button>

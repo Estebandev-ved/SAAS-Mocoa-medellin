@@ -132,7 +132,7 @@ export default function ActivationChecklist({ user, onActivando }) {
                 {esSiguiente && (
                   <button
                     onClick={() => navigate(p.to)}
-                    className="h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold inline-flex items-center gap-2 border-none cursor-pointer transition-colors shrink-0"
+                    className="h-11 sm:h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold inline-flex items-center gap-2 border-none cursor-pointer transition-colors shrink-0"
                   >
                     {p.cta} <ArrowRight size={16} />
                   </button>
@@ -140,7 +140,7 @@ export default function ActivationChecklist({ user, onActivando }) {
                 {!p.hecho && !esSiguiente && (
                   <button
                     onClick={() => navigate(p.to)}
-                    className="h-10 px-4 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold border border-[#C9C9C9] cursor-pointer transition-colors shrink-0"
+                    className="h-11 sm:h-10 px-4 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold border border-[#C9C9C9] cursor-pointer transition-colors shrink-0"
                   >
                     {p.cta}
                   </button>

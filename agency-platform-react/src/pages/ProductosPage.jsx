@@ -203,25 +203,25 @@ export default function ProductosPage() {
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
 
       <header className="sticky top-0 z-40 bg-bg2/80 backdrop-blur-xl border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-bg3 rounded-xl transition-colors">
+        <div className="max-w-4xl mx-auto px-4 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={() => navigate('/dashboard')} className="tap-44 shrink-0 hover:bg-bg3 rounded-xl transition-colors" aria-label="Volver al dashboard">
               <ArrowLeft className="w-5 h-5 text-muted" />
             </button>
             <div>
               <h1 className="font-head text-xl text-text">Productos y Servicios</h1>
-              <p className="text-xs text-muted">Gestiona lo que vendes. El bot usará esta info para responder.</p>
+              <p className="text-xs text-muted hidden sm:block">Gestiona lo que vendes. El bot usará esta info para responder.</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg2 text-text text-sm font-semibold rounded-xl border border-[#C9C9C9] transition-colors cursor-pointer">
+            <label className="flex-1 sm:flex-none justify-center min-h-[44px] flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg2 text-text text-sm font-semibold rounded-xl border border-[#C9C9C9] transition-colors cursor-pointer">
               {leyendoCarta ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
               {leyendoCarta ? 'Leyendo tu carta…' : 'Importar carta con foto'}
               <input type="file" accept="image/*" className="hidden" onChange={handleFotoCarta} disabled={leyendoCarta} />
             </label>
             <button
               onClick={() => { setEditando(null); setForm({ nombre: '', descripcion: '', precio: '', stock: '', categoria: '', imagen_url: '' }); setShowForm(true); }}
-              className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-text text-sm font-semibold rounded-xl transition-colors"
+              className="min-h-[44px] flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-text text-sm font-semibold rounded-xl transition-colors"
             >
               <Plus className="w-4 h-4" /> Agregar
             </button>
@@ -248,10 +248,10 @@ export default function ProductosPage() {
         )}
 
         {itemsImportados && (
-          <div className="bg-bg2 border border-border rounded-2xl p-6 mb-6">
+          <div className="bg-bg2 border border-border rounded-2xl p-4 sm:p-6 mb-6">
             <div className="flex items-center justify-between mb-1">
               <h3 className="font-head text-lg text-text">Revisa lo que encontramos en tu carta</h3>
-              <button onClick={() => setItemsImportados(null)} className="p-1 hover:bg-bg3 rounded-lg">
+              <button onClick={() => setItemsImportados(null)} className="tap-44 hover:bg-bg3 rounded-lg" aria-label="Cerrar">
                 <X className="w-4 h-4 text-muted" />
               </button>
             </div>
@@ -277,12 +277,12 @@ export default function ProductosPage() {
               {itemsImportados.map((it) => (
                 <div
                   key={it.id}
-                  className={`grid grid-cols-[auto_1fr_120px_140px] gap-2 items-center rounded-xl p-2 ${it.incluir ? 'bg-bg' : 'bg-bg opacity-50'}`}
+                  className={`grid grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_120px_140px] gap-2 items-center rounded-xl p-2 ${it.incluir ? 'bg-bg' : 'bg-bg opacity-50'}`}
                 >
                   <button
                     type="button"
                     onClick={() => actualizarItemImportado(it.id, 'incluir', !it.incluir)}
-                    className={`w-6 h-6 rounded-md border flex items-center justify-center flex-shrink-0 ${it.incluir ? 'bg-accent border-accent' : 'border-border'}`}
+                    className={`w-11 h-11 sm:w-6 sm:h-6 row-span-3 sm:row-span-1 self-start sm:self-center rounded-md border flex items-center justify-center flex-shrink-0 ${it.incluir ? 'bg-accent border-accent' : 'border-border'}`}
                     aria-label={it.incluir ? 'Quitar de la importación' : 'Incluir en la importación'}
                   >
                     {it.incluir && <Check className="w-4 h-4 text-white" />}
@@ -292,34 +292,34 @@ export default function ProductosPage() {
                     value={it.nombre}
                     onChange={(e) => actualizarItemImportado(it.id, 'nombre', e.target.value)}
                     placeholder="Nombre"
-                    className="w-full bg-transparent border-b border-border px-1 py-1 text-sm text-text focus:outline-none focus:border-accent"
+                    className="w-full col-start-2 sm:col-auto min-h-[44px] sm:min-h-0 bg-transparent border-b border-border px-1 py-1 text-sm text-text focus:outline-none focus:border-accent"
                   />
                   <input
                     type="number"
                     value={it.precio}
                     onChange={(e) => actualizarItemImportado(it.id, 'precio', e.target.value)}
                     placeholder="Precio"
-                    className="w-full bg-transparent border-b border-border px-1 py-1 text-sm text-text focus:outline-none focus:border-accent"
+                    className="w-full col-start-2 sm:col-auto min-h-[44px] sm:min-h-0 bg-transparent border-b border-border px-1 py-1 text-sm text-text focus:outline-none focus:border-accent"
                   />
                   <input
                     type="text"
                     value={it.categoria || ''}
                     onChange={(e) => actualizarItemImportado(it.id, 'categoria', e.target.value)}
                     placeholder="Categoría"
-                    className="w-full bg-transparent border-b border-border px-1 py-1 text-sm text-muted focus:outline-none focus:border-accent"
+                    className="w-full col-start-2 sm:col-auto min-h-[44px] sm:min-h-0 bg-transparent border-b border-border px-1 py-1 text-sm text-muted focus:outline-none focus:border-accent"
                   />
                 </div>
               ))}
             </div>
 
-            <div className="flex items-center justify-between pt-4 mt-2 border-t border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 mt-2 border-t border-border">
               <span className="text-xs text-muted">
                 {itemsImportados.filter((it) => it.incluir).length} de {itemsImportados.length} seleccionados
               </span>
               <button
                 onClick={confirmarImportacion}
                 disabled={guardandoImport}
-                className="flex items-center gap-2 px-6 py-2 bg-accent hover:bg-accent/90 disabled:opacity-50 text-text text-sm font-semibold rounded-xl transition-colors"
+                className="min-h-[44px] justify-center flex items-center gap-2 px-6 py-2 bg-accent hover:bg-accent/90 disabled:opacity-50 text-text text-sm font-semibold rounded-xl transition-colors"
               >
                 {guardandoImport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 Agregar a mi catálogo
@@ -329,10 +329,10 @@ export default function ProductosPage() {
         )}
 
         {showForm && (
-          <div className="bg-bg2 border border-border rounded-2xl p-6 mb-6">
+          <div className="bg-bg2 border border-border rounded-2xl p-4 sm:p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-head text-lg text-text">{editando ? 'Editar Producto' : 'Nuevo Producto'}</h3>
-              <button onClick={() => { setShowForm(false); setEditando(null); }} className="p-1 hover:bg-bg3 rounded-lg">
+              <button onClick={() => { setShowForm(false); setEditando(null); }} className="tap-44 hover:bg-bg3 rounded-lg" aria-label="Cerrar">
                 <X className="w-4 h-4 text-muted" />
               </button>
             </div>
@@ -417,7 +417,7 @@ export default function ProductosPage() {
                   Cancelar
                 </button>
                 <button type="submit" disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2 bg-accent hover:bg-accent/90 disabled:opacity-50 text-text text-sm font-semibold rounded-xl transition-colors">
+                  className="min-h-[44px] flex items-center gap-2 px-6 py-2 bg-accent hover:bg-accent/90 disabled:opacity-50 text-text text-sm font-semibold rounded-xl transition-colors">
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   {editando ? 'Actualizar' : 'Crear'}
                 </button>
@@ -446,7 +446,7 @@ export default function ProductosPage() {
                 )}
                 <div className="space-y-3">
                   {grupo.items.map(p => (
-                    <div key={p.id} className="bg-bg2 border border-border rounded-2xl p-5 flex items-start justify-between gap-4">
+                    <div key={p.id} className="bg-bg2 border border-border rounded-2xl p-4 sm:p-5 flex items-start justify-between gap-3 sm:gap-4">
                       {p.imagen_url && (
                         <img
                           src={p.imagen_url}
@@ -455,8 +455,8 @@ export default function ProductosPage() {
                           onError={(e) => { e.target.style.display = 'none'; }}
                         />
                       )}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0 break-words">
+                        <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-head text-text font-semibold">{p.nombre}</h3>
                           {hayRestaurantes && p.restaurante_id && (
                             <span className="text-[11px] px-2 py-0.5 bg-bg3 text-muted rounded-full">{nombreRestaurante(p.restaurante_id)}</span>
@@ -465,11 +465,11 @@ export default function ProductosPage() {
                         {p.descripcion && <p className="text-sm text-muted mt-1">{p.descripcion}</p>}
                         <p className="text-accent font-head font-bold mt-2">{formatPrice(p.precio)}</p>
                       </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <button onClick={() => handleEdit(p)} className="p-2 hover:bg-bg3 rounded-lg transition-colors">
+                      <div className="flex items-center sm:gap-1 shrink-0">
+                        <button onClick={() => handleEdit(p)} className="tap-44 hover:bg-bg3 rounded-lg transition-colors" aria-label="Editar producto">
                           <Edit3 className="w-4 h-4 text-muted" />
                         </button>
-                        <button onClick={() => handleDelete(p.id)} className="p-2 hover:bg-danger/10 rounded-lg transition-colors">
+                        <button onClick={() => handleDelete(p.id)} className="tap-44 hover:bg-danger/10 rounded-lg transition-colors" aria-label="Eliminar producto">
                           <Trash2 className="w-4 h-4 text-danger-text" />
                         </button>
                       </div>

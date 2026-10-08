@@ -35,7 +35,7 @@ export default function TipNova({ id, children, className = '' }) {
       <button
         onClick={descartar}
         aria-label="Entendido, cerrar consejo"
-        className="absolute top-2 right-2 w-8 h-8 rounded-lg bg-transparent border-none text-muted hover:bg-white cursor-pointer flex items-center justify-center"
+        className="absolute top-2 right-2 w-11 h-11 sm:w-8 sm:h-8 rounded-lg bg-transparent border-none text-muted hover:bg-white cursor-pointer flex items-center justify-center"
       >
         <X size={16} />
       </button>

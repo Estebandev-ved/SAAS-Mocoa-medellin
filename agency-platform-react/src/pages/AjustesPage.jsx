@@ -74,7 +74,7 @@ function LoadingSpinner() {
 // Tarjeta (design.md): blanca, radio lg, borde 1px, relleno 32px
 function GlassCard({ children, className = '' }) {
   return (
-    <div className={`bg-white rounded-2xl border border-border p-8 ${className}`}>
+    <div className={`bg-white rounded-2xl border border-border p-5 sm:p-8 ${className}`}>
       {children}
     </div>
   );
@@ -126,7 +126,7 @@ function SelectField({ icon: Icon, options, ...props }) {
 
 function ToggleSwitch({ checked, onChange, label }) {
   return (
-    <div className="flex items-center justify-between py-3">
+    <div className="flex items-center justify-between gap-4 py-3 min-h-[44px]">
       <span className="text-sm text-text">{label}</span>
       <button
         type="button"
@@ -134,7 +134,7 @@ function ToggleSwitch({ checked, onChange, label }) {
         aria-checked={checked}
         aria-label={label}
         onClick={() => onChange(!checked)}
-        className={`relative w-12 h-7 rounded-full border-none cursor-pointer transition-colors ${
+        className={`relative shrink-0 w-12 h-7 rounded-full border-none cursor-pointer transition-colors before:content-[''] before:absolute before:-inset-y-2 before:-inset-x-1 ${
           checked ? 'bg-accent' : 'bg-[#C9C9C9]'
         }`}
       >
@@ -847,7 +847,7 @@ function WhatsAppTab() {
             </div>
           )}
 
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 [&>button]:justify-center">
             {!isConnected ? (
               <button
                 onClick={handleConnect}
@@ -1230,7 +1230,7 @@ function SeguridadTab() {
               <button
                 type="button"
                 onClick={() => toggleShow('actual')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-text/70"
+                className="tap-44 absolute right-1 top-1/2 -translate-y-1/2 text-muted hover:text-text/70" aria-label="Mostrar u ocultar contraseña"
               >
                 {showPasswords.actual ? (
                   <EyeOff className="w-4 h-4" />
@@ -1252,7 +1252,7 @@ function SeguridadTab() {
               <button
                 type="button"
                 onClick={() => toggleShow('nueva')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-text/70"
+                className="tap-44 absolute right-1 top-1/2 -translate-y-1/2 text-muted hover:text-text/70" aria-label="Mostrar u ocultar contraseña"
               >
                 {showPasswords.nueva ? (
                   <EyeOff className="w-4 h-4" />
@@ -1274,7 +1274,7 @@ function SeguridadTab() {
               <button
                 type="button"
                 onClick={() => toggleShow('confirmar')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted hover:text-text/70"
+                className="tap-44 absolute right-1 top-1/2 -translate-y-1/2 text-muted hover:text-text/70" aria-label="Mostrar u ocultar contraseña"
               >
                 {showPasswords.confirmar ? (
                   <EyeOff className="w-4 h-4" />
@@ -1345,7 +1345,7 @@ export default function AjustesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg2 p-6 lg:p-10">
+    <div className="min-h-screen bg-bg2 p-4 sm:p-6 lg:p-10">
       <div className="max-w-6xl mx-auto">
         <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -1357,17 +1357,17 @@ export default function AjustesPage() {
               <ArrowLeft className="w-5 h-5 text-muted" />
             </button>
             <div>
-              <h1 className="font-head text-3xl font-bold text-text tracking-tight">Ajustes</h1>
+              <h1 className="font-head text-2xl sm:text-3xl font-bold text-text tracking-tight">Ajustes</h1>
               <p className="text-muted text-sm mt-1">Configura tu negocio, bot y preferencias</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 bg-white border border-border rounded-2xl pl-2 pr-5 py-2">
+          <div className="flex items-center gap-3 bg-white border border-border rounded-2xl pl-2 pr-5 py-2 w-full sm:w-auto min-w-0">
             <div className="w-12 h-12 rounded-full bg-[#FDECEA] overflow-hidden flex items-end justify-center shrink-0">
               <OwnerAvatar config={user?.avatar} variant="busto" height={56} label="Tu avatar" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-text leading-5 truncate max-w-[200px]">{user?.nombre || 'Tu negocio'}</p>
+              <p className="text-sm font-semibold text-text leading-5 truncate max-w-[220px] sm:max-w-[200px]">{user?.nombre || 'Tu negocio'}</p>
               <p className="text-xs text-muted truncate max-w-[200px]">{user?.email}</p>
             </div>
           </div>

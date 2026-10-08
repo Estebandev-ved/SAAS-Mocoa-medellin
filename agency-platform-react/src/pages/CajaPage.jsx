@@ -54,7 +54,7 @@ export default function CajaPage() {
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
             onClick={() => navigate('/dashboard')}
-            className="p-2 hover:bg-bg3 rounded-xl transition-colors"
+            className="tap-44 shrink-0 hover:bg-bg3 rounded-xl transition-colors"
             aria-label="Volver al dashboard"
           >
             <ArrowLeft className="w-5 h-5 text-muted" />

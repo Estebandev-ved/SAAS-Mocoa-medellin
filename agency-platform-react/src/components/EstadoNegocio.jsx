@@ -103,7 +103,7 @@ export default function EstadoNegocio({ plan, activando = false, domicilios = fa
               </p>
               <button
                 onClick={() => navigate('/whatsapp')}
-                className="h-10 px-4 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold border border-[#C9C9C9] cursor-pointer transition-colors inline-flex items-center gap-2"
+                className="h-11 sm:h-10 px-4 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold border border-[#C9C9C9] cursor-pointer transition-colors inline-flex items-center gap-2"
               >
                 Conectar WhatsApp <ArrowRight size={16} />
               </button>
@@ -135,8 +135,8 @@ export default function EstadoNegocio({ plan, activando = false, domicilios = fa
                 onClick={() => navigate('/suscripcion')}
                 className={
                   trialPorVencer
-                    ? 'h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors inline-flex items-center gap-2'
-                    : 'h-10 px-4 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold border border-[#C9C9C9] cursor-pointer transition-colors inline-flex items-center gap-2'
+                    ? 'h-11 sm:h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors inline-flex items-center gap-2'
+                    : 'h-11 sm:h-10 px-4 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold border border-[#C9C9C9] cursor-pointer transition-colors inline-flex items-center gap-2'
                 }
               >
                 Ver planes <ArrowRight size={16} />
@@ -162,7 +162,7 @@ export default function EstadoNegocio({ plan, activando = false, domicilios = fa
             </p>
             <button
               onClick={() => navigate('/pedidos')}
-              className="h-10 px-4 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold border border-[#C9C9C9] cursor-pointer transition-colors inline-flex items-center gap-2"
+              className="h-11 sm:h-10 px-4 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold border border-[#C9C9C9] cursor-pointer transition-colors inline-flex items-center gap-2"
             >
               Revisar pedidos <ArrowRight size={16} />
             </button>
@@ -189,7 +189,7 @@ export default function EstadoNegocio({ plan, activando = false, domicilios = fa
             </p>
             <button
               onClick={() => navigate('/domicilios')}
-              className="h-10 px-4 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold border border-[#C9C9C9] cursor-pointer transition-colors inline-flex items-center gap-2"
+              className="h-11 sm:h-10 px-4 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold border border-[#C9C9C9] cursor-pointer transition-colors inline-flex items-center gap-2"
             >
               Ir a domicilios <ArrowRight size={16} />
             </button>

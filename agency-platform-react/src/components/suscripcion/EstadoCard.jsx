@@ -90,7 +90,7 @@ export default function EstadoCard({ sub, onElegirPlan, onReactivar, onCancelar,
         <div className="mt-5 flex items-center gap-4 flex-wrap">
           {accion}
           {sub.puede_cancelar && (
-            <button onClick={onCancelar} className="text-sm text-muted hover:text-danger-text underline underline-offset-2 transition-colors">
+            <button onClick={onCancelar} className="min-h-[44px] text-sm text-muted hover:text-danger-text underline underline-offset-2 transition-colors">
               Cancelar suscripción
             </button>
           )}

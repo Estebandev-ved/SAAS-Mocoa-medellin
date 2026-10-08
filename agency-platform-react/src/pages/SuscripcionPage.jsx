@@ -200,18 +200,18 @@ export default function SuscripcionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg p-6 lg:p-10">
+    <div className="min-h-screen bg-bg p-4 sm:p-6 lg:p-10">
       <div className="max-w-6xl mx-auto">
         <header className="flex items-center gap-3 mb-8">
           <button
             onClick={() => navigate('/dashboard')}
             aria-label="Volver al dashboard"
-            className="p-2 rounded-xl bg-bg2 border border-border hover:border-accent/30 hover:bg-accent/10 transition-all"
+            className="tap-44 shrink-0 rounded-xl bg-bg2 border border-border hover:border-accent/30 hover:bg-accent/10 transition-all"
           >
             <ArrowLeft className="w-5 h-5 text-muted" />
           </button>
           <div>
-            <h1 className="font-head text-3xl font-bold mb-1">Suscripción</h1>
+            <h1 className="font-head text-2xl sm:text-3xl font-bold mb-1">Suscripción</h1>
             <p className="text-muted">Tu plan, tu uso y tu facturación en un solo lugar</p>
           </div>
         </header>
@@ -250,7 +250,7 @@ export default function SuscripcionPage() {
               <p className="text-muted text-sm mb-6">
                 Precios en pesos colombianos, por mes. Puedes cambiar de plan cuando quieras.
               </p>
-              <div className="grid gap-6 md:grid-cols-3 pt-3">
+              <div className="grid gap-4 sm:gap-6 md:grid-cols-3 pt-3">
                 {planes.map((plan) => (
                   <PlanCard
                     key={plan.id}

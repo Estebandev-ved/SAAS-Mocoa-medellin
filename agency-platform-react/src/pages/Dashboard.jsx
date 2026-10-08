@@ -541,7 +541,7 @@ export default function Dashboard() {
               </div>
               <button
                 onClick={() => navigate('/automatizaciones')}
-                className="font-mono text-xs text-accent hover:text-accent/80 transition-colors"
+                className="font-mono text-xs text-accent hover:text-accent/80 transition-colors inline-flex items-center min-h-[44px]"
               >
                 Ver todos →
               </button>
@@ -598,7 +598,7 @@ export default function Dashboard() {
               </div>
               <button
                 onClick={() => navigate('/automatizaciones')}
-                className="font-mono text-xs text-accent hover:text-accent/80 transition-colors"
+                className="font-mono text-xs text-accent hover:text-accent/80 transition-colors inline-flex items-center min-h-[44px]"
               >
                 Configurar →
               </button>

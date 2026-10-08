@@ -30,7 +30,7 @@ export default function Modal({ titulo, onClose, children, ancho = 'max-w-lg' })
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
@@ -39,7 +39,7 @@ export default function Modal({ titulo, onClose, children, ancho = 'max-w-lg' })
         aria-modal="true"
         aria-label={titulo}
         tabIndex={-1}
-        className={`w-full ${ancho} max-h-[90vh] overflow-y-auto bg-white rounded-2xl border border-border p-6 outline-none`}
+        className={`w-full ${ancho} max-h-[90dvh] overflow-y-auto overscroll-contain bg-white rounded-t-2xl sm:rounded-2xl border border-border p-5 sm:p-6 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-6 outline-none`}
       >
         <div className="flex items-start justify-between gap-4 mb-4">
           <h2 className="font-head text-xl font-bold text-text">{titulo}</h2>
@@ -47,7 +47,7 @@ export default function Modal({ titulo, onClose, children, ancho = 'max-w-lg' })
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="p-1 -mr-1 rounded-lg text-muted hover:text-text hover:bg-bg3 transition-colors"
+            className="tap-44 -mr-2 -mt-2 rounded-lg text-muted hover:text-text hover:bg-bg3 transition-colors"
           >
             <X size={20} />
           </button>

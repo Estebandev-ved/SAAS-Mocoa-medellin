@@ -85,7 +85,7 @@ export default function MonitoreoPage() {
       <header className="sticky top-0 z-40 bg-bg2/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-bg3 rounded-xl transition-colors">
+            <button aria-label="Volver al dashboard" onClick={() => navigate('/dashboard')} className="tap-44 shrink-0 hover:bg-bg3 rounded-xl transition-colors">
               <ArrowLeft className="w-5 h-5 text-muted" />
             </button>
             <div>
