@@ -21,6 +21,7 @@ import Footer from './components/Footer';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import InfoPage from './pages/InfoPage';
+import ProspectosPage from './pages/ProspectosPage';
 import Dashboard from './pages/Dashboard';
 import ConversacionesPage from './pages/ConversacionesPage';
 import PedidosPage from './pages/PedidosPage';
@@ -115,6 +116,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/info" element={<InfoPage />} />
+              <Route path="/prospectos" element={<ProspectosPage />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/conversaciones" element={<ConversacionesPage />} />
               <Route path="/pedidos" element={<PedidosPage />} />

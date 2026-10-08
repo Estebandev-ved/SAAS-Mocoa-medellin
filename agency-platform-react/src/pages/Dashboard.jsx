@@ -208,7 +208,10 @@ export default function Dashboard() {
       locked: domiciliosLocked,
       lockTooltip: 'Mejora tu plan para acceder a Domicilios'
     },
-    { icon: CreditCard, label: 'Suscripcion', path: '/suscripcion' }
+    { icon: CreditCard, label: 'Suscripcion', path: '/suscripcion' },
+    ...(user?.rol === 'admin' || user?.rol === 'superadmin'
+      ? [{ icon: Users, label: 'Prospectos', path: '/prospectos' }]
+      : [])
   ]
 
   const bottomItems = [
