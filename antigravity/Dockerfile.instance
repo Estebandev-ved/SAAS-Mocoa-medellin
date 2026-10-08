@@ -5,6 +5,10 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 
+# El instance-manager tiene su propio package.json (baileys, qrcode, boom, socket.io-client).
+COPY instance-manager/package.json instance-manager/package-lock.json* ./instance-manager/
+RUN cd instance-manager && npm ci --omit=dev
+
 COPY instance-manager/ ./instance-manager/
 COPY api/ ./api/
 COPY db/ ./db/
