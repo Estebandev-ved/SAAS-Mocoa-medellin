@@ -109,18 +109,30 @@ function secureErrorHandler(err, req, res, next) {
     });
 }
 
+// Cualquier puerto localhost es válido en dev: los distintos frontends
+// (landing, dashboard) terminan en puertos variables (5173, 5174, 5177...)
+// porque Vite incrementa el puerto cuando el anterior ya está ocupado.
+// Antes esta lista estaba fija a 5173/5174 y cualquier otro puerto
+// quedaba bloqueado por CORS sin ningún error visible para el usuario.
+const DEV_LOCALHOST_ORIGIN = /^http:\/\/localhost:\d+$/;
+
+function isAllowedOrigin(origin) {
+    if (!origin) return false;
+    if (process.env.NODE_ENV === 'production') {
+        const allowed = [
+            'https://antigravity.co',
+            'https://app.antigravity.co',
+            process.env.FRONTEND_URL
+        ].filter(Boolean);
+        return allowed.includes(origin);
+    }
+    return DEV_LOCALHOST_ORIGIN.test(origin) || origin === process.env.FRONTEND_URL;
+}
+
 // CORS production
 function corsConfig(req, res, next) {
-    const allowedOrigins = [
-        'http://localhost:5173',
-        'http://localhost:5174',
-        'http://localhost:3000',
-        'http://localhost:3002',
-        process.env.FRONTEND_URL
-    ].filter(Boolean);
-
     const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
     }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH');
@@ -172,6 +184,7 @@ module.exports = {
     secureErrorHandler,
     getAuditLog,
     corsConfig,
+    isAllowedOrigin,
     compressionMiddleware,
     blacklistToken,
     checkBlacklist,

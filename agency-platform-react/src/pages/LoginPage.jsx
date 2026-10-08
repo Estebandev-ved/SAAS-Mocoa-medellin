@@ -19,8 +19,14 @@ const LoginPage = () => {
         setError('');
 
         const result = await login(email, password);
-        
+
         if (result.success) {
+            const rol = result.negocio?.rol;
+            if (rol === 'admin' || rol === 'superadmin') {
+                const antigravityUrl = import.meta.env.VITE_ANTIGRAVITY_URL || 'http://localhost:5174';
+                window.location.href = `${antigravityUrl}/login?email=${encodeURIComponent(email)}`;
+                return;
+            }
             navigate('/dashboard');
         } else {
             setError(result.error);
@@ -59,7 +65,7 @@ const LoginPage = () => {
                         <motion.div 
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
-                            className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-center gap-3 text-red-500 text-sm"
+                            className="bg-danger/10 border border-danger/20 p-4 rounded-xl flex items-center gap-3 text-danger-text text-sm"
                         >
                             <AlertCircle size={18} />
                             <span>{error}</span>
@@ -75,7 +81,7 @@ const LoginPage = () => {
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-bg2/50 border border-border rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-accent transition-all duration-300"
+                                className="w-full bg-white border border-border rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-accent transition-all duration-300"
                                 placeholder="tu@email.com"
                             />
                         </div>
@@ -90,7 +96,7 @@ const LoginPage = () => {
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-bg2/50 border border-border rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-accent transition-all duration-300"
+                                className="w-full bg-white border border-border rounded-xl py-3.5 pl-12 pr-4 text-white focus:outline-none focus:border-accent transition-all duration-300"
                                 placeholder="••••••••"
                             />
                         </div>

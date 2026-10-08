@@ -22,17 +22,16 @@ const {
     sanitizeLog,
     auditLogger,
     compressionMiddleware,
-    corsConfig
+    corsConfig,
+    isAllowedOrigin
 } = require('./middleware/security');
 
 const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-    cors: { 
-        origin: process.env.NODE_ENV === 'production' 
-            ? ['https://antigravity.co', 'https://app.antigravity.co'] 
-            : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:*'],
+    cors: {
+        origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
         methods: ['GET', 'POST'],
         credentials: true
     }
@@ -145,9 +144,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
 });
 
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-        ? ['https://antigravity.co', 'https://app.antigravity.co'] 
-        : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:*'],
+    origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
     credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
@@ -232,9 +229,6 @@ app.use((req, res, next) => {
     next();
 });
 
-// routes/all.js queda deprecado (ver el propio archivo) y ya no se
-// requiere ni se monta: duplicaba, con su propio pool de MySQL, rutas que
-// ahora viven consolidadas en un solo archivo por recurso.
 const authRoutes = require('./routes/auth');
 const automationsRoutes = require('./routes/automations');
 const automationsToggleRoutes = require('./routes/automations-toggle');
@@ -261,9 +255,6 @@ const instagramRoutes = require('./routes/instagram');
 const voiceRoutes = require('./routes/voice');
 
 app.use('/api/auth', authRoutes);
-// automationsRoutes define sus propios prefijos internos (/automatizaciones,
-// /campañas), por eso se monta en la raíz /api tal como estaba antes.
-app.use('/api', automationsRoutes);
 app.use('/api/automations', automationsToggleRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
@@ -286,6 +277,15 @@ app.use('/api/analytics', analyticsAdvancedRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/instagram', instagramRoutes);
 app.use('/api/voice', voiceRoutes);
+// automationsRoutes define sus propios prefijos internos (/automatizaciones,
+// /campañas) y se monta en la raíz /api, pero su router aplica
+// `router.use(verificarAuth)` SIN restringir la ruta — eso exigía login de
+// negocio para CUALQUIER endpoint de /api/* registrado después de este,
+// incluidos los públicos (login del domiciliario, tracking del cliente).
+// Va al final para que los routers específicos (ya montados arriba) atiendan
+// primero sus propias rutas, y este solo actúe como fallback para
+// /automatizaciones y /campañas.
+app.use('/api', automationsRoutes);
 
 app.get('/health', async (req, res) => {
     try {
@@ -427,7 +427,12 @@ io.on('connection', (socket) => {
             const room = `negocio_${data.negocio_id}`;
             io.to(room).emit('nuevo_mensaje', data);
         });
-        
+
+        socket.on('domicilio_nuevo', (data) => {
+            const room = `negocio_${data.negocio_id}`;
+            io.to(room).emit('domicilio_nuevo', data);
+        });
+
         return;
     }
     

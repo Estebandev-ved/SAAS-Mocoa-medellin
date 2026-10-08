@@ -17,6 +17,7 @@ import {
     X
 } from 'lucide-react';
 import { api } from '../services/api';
+import Illustration from '../components/Illustration';
 
 const PedidosPage = () => {
     const navigate = useNavigate();
@@ -59,13 +60,13 @@ const PedidosPage = () => {
 
     const getEstadoBadge = (estado) => {
         const badges = {
-            'pendiente_pago': { bg: 'bg-yellow-500/10', text: 'text-yellow-500', icon: Clock, label: 'PENDIENTE PAGO' },
-            'pago_enviado': { bg: 'bg-blue-500/10', text: 'text-blue-500', icon: CreditCard, label: 'PAGO ENVIADO' },
-            'pago_confirmado': { bg: 'bg-green-500/10', text: 'text-green-500', icon: CheckCircle, label: 'PAGO CONFIRMADO' },
-            'confirmado': { bg: 'bg-blue-500/10', text: 'text-blue-500', icon: CheckCircle, label: 'CONFIRMADO' },
+            'pendiente_pago': { bg: 'bg-warn/10', text: 'text-warn-text', icon: Clock, label: 'PENDIENTE PAGO' },
+            'pago_enviado': { bg: 'bg-info/10', text: 'text-info-text', icon: CreditCard, label: 'PAGO ENVIADO' },
+            'pago_confirmado': { bg: 'bg-success/10', text: 'text-success', icon: CheckCircle, label: 'PAGO CONFIRMADO' },
+            'confirmado': { bg: 'bg-info/10', text: 'text-info-text', icon: CheckCircle, label: 'CONFIRMADO' },
             'enviado': { bg: 'bg-purple-500/10', text: 'text-purple-500', icon: Package, label: 'ENVIADO' },
-            'entregado': { bg: 'bg-green-500/10', text: 'text-green-500', icon: CheckCircle, label: 'ENTREGADO' },
-            'cancelado': { bg: 'bg-red-500/10', text: 'text-red-500', icon: XCircle, label: 'CANCELADO' }
+            'entregado': { bg: 'bg-success/10', text: 'text-success', icon: CheckCircle, label: 'ENTREGADO' },
+            'cancelado': { bg: 'bg-danger/10', text: 'text-danger-text', icon: XCircle, label: 'CANCELADO' }
         };
         const badge = badges[estado] || badges['pendiente_pago'];
         const Icon = badge.icon;
@@ -129,20 +130,20 @@ const PedidosPage = () => {
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div className="glass rounded-2xl p-4 border border-border">
-                        <p className="text-xs font-mono text-muted mb-1">TOTAL PEDIDOS</p>
+                    <div className="bg-white rounded-2xl p-4 border border-border">
+                        <p className="text-xs font-semibold tracking-[0.04em] text-muted mb-1">TOTAL PEDIDOS</p>
                         <p className="text-2xl font-bold">{stats.total}</p>
                     </div>
-                    <div className="glass rounded-2xl p-4 border border-yellow-500/30">
-                        <p className="text-xs font-mono text-muted mb-1">PENDIENTES</p>
-                        <p className="text-2xl font-bold text-yellow-500">{stats.pendientes}</p>
+                    <div className="bg-white rounded-2xl p-4 border border-border">
+                        <p className="text-xs font-semibold tracking-[0.04em] text-muted mb-1">PENDIENTES</p>
+                        <p className="text-2xl font-bold text-warn-text">{stats.pendientes}</p>
                     </div>
-                    <div className="glass rounded-2xl p-4 border border-green-500/30">
-                        <p className="text-xs font-mono text-muted mb-1">PAGOS CONFIRMADOS</p>
-                        <p className="text-2xl font-bold text-green-500">{stats.pagosConfirmados}</p>
+                    <div className="bg-white rounded-2xl p-4 border border-border">
+                        <p className="text-xs font-semibold tracking-[0.04em] text-muted mb-1">PAGOS CONFIRMADOS</p>
+                        <p className="text-2xl font-bold text-success">{stats.pagosConfirmados}</p>
                     </div>
-                    <div className="glass rounded-2xl p-4 border border-accent/30">
-                        <p className="text-xs font-mono text-muted mb-1">TOTAL VENTAS</p>
+                    <div className="bg-white rounded-2xl p-4 border border-border">
+                        <p className="text-xs font-semibold tracking-[0.04em] text-muted mb-1">TOTAL VENTAS</p>
                         <p className="text-2xl font-bold text-accent">{formatCurrency(stats.totalVentas)}</p>
                     </div>
                 </div>
@@ -157,7 +158,7 @@ const PedidosPage = () => {
                                 value={buscar}
                                 onChange={(e) => setBuscar(e.target.value)}
                                 placeholder="Buscar por número, cliente o teléfono..."
-                                className="w-full bg-bg2/50 border border-border rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-accent"
+                                className="w-full bg-white border border-[#C9C9C9] rounded-xl h-11 pl-10 pr-4 text-sm focus:outline-none focus:border-accent"
                             />
                         </div>
                     </form>
@@ -166,10 +167,10 @@ const PedidosPage = () => {
                             <button
                                 key={estado}
                                 onClick={() => setFiltroEstado(estado)}
-                                className={`px-3 py-2 rounded-lg text-xs font-mono transition-all ${
+                                className={`h-7 px-3 rounded-full text-xs font-semibold tracking-[0.04em] border-none cursor-pointer transition-colors ${
                                     filtroEstado === estado 
-                                        ? 'bg-accent text-bg' 
-                                        : 'bg-bg2 text-muted hover:text-white'
+                                        ? 'bg-accent-dim text-accent' 
+                                        : 'bg-bg3 text-muted hover:text-text'
                                 }`}
                             >
                                 {estado === 'todos' ? 'TODOS' : estado.toUpperCase().replace('_', ' ')}
@@ -184,25 +185,25 @@ const PedidosPage = () => {
                         <Loader2 className="animate-spin text-accent" size={24} />
                     </div>
                 ) : pedidosFiltrados.length === 0 ? (
-                    <div className="text-center py-12 glass rounded-3xl">
-                        <ShoppingCart className="mx-auto mb-4 text-muted" size={48} />
+                    <div className="text-center py-12 bg-white border border-border rounded-3xl flex flex-col items-center">
+                        <Illustration name="vacio-pedidos" size={160} alt="Lucía sostiene una caja vacía: aún no hay pedidos" style={{ marginBottom: 24 }} />
                         <h3 className="text-xl font-bold mb-2">No hay pedidos</h3>
                         <p className="text-muted">Los pedidos aparecerán aquí cuando los clientes compren</p>
                     </div>
                 ) : (
-                    <div className="glass rounded-3xl border border-border overflow-hidden">
+                    <div className="bg-white rounded-2xl border border-border overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-border">
-                                        <th className="text-left p-4 text-xs font-mono text-muted">PEDIDO</th>
-                                        <th className="text-left p-4 text-xs font-mono text-muted">CLIENTE</th>
-                                        <th className="text-left p-4 text-xs font-mono text-muted">PRODUCTOS</th>
-                                        <th className="text-left p-4 text-xs font-mono text-muted">TOTAL</th>
-                                        <th className="text-left p-4 text-xs font-mono text-muted">PAGO</th>
-                                        <th className="text-left p-4 text-xs font-mono text-muted">ESTADO</th>
-                                        <th className="text-left p-4 text-xs font-mono text-muted">FECHA</th>
-                                        <th className="text-left p-4 text-xs font-mono text-muted">DETALLE</th>
+                                        <th className="text-left p-4 text-xs font-semibold tracking-[0.04em] text-muted bg-bg2">PEDIDO</th>
+                                        <th className="text-left p-4 text-xs font-semibold tracking-[0.04em] text-muted bg-bg2">CLIENTE</th>
+                                        <th className="text-left p-4 text-xs font-semibold tracking-[0.04em] text-muted bg-bg2">PRODUCTOS</th>
+                                        <th className="text-left p-4 text-xs font-semibold tracking-[0.04em] text-muted bg-bg2">TOTAL</th>
+                                        <th className="text-left p-4 text-xs font-semibold tracking-[0.04em] text-muted bg-bg2">PAGO</th>
+                                        <th className="text-left p-4 text-xs font-semibold tracking-[0.04em] text-muted bg-bg2">ESTADO</th>
+                                        <th className="text-left p-4 text-xs font-semibold tracking-[0.04em] text-muted bg-bg2">FECHA</th>
+                                        <th className="text-left p-4 text-xs font-semibold tracking-[0.04em] text-muted bg-bg2">DETALLE</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -211,7 +212,7 @@ const PedidosPage = () => {
                                             key={pedido.id}
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
-                                            className="border-b border-border hover:bg-white/2 transition-colors cursor-pointer"
+                                            className="border-b border-border hover:bg-bg2 transition-colors cursor-pointer"
                                             onClick={() => setPedidoSeleccionado(pedido)}
                                         >
                                             <td className="p-4">
@@ -232,7 +233,7 @@ const PedidosPage = () => {
                                             <td className="p-4">
                                                 <div className="flex items-center gap-2">
                                                     {pedido.metodo_pago ? (
-                                                        <span className="flex items-center gap-1 text-xs text-green-500">
+                                                        <span className="flex items-center gap-1 text-xs text-success">
                                                             {pedido.metodo_pago?.toLowerCase().includes('nequi') ? <Smartphone size={12} /> : <Building size={12} />}
                                                             {pedido.metodo_pago}
                                                         </span>
@@ -240,7 +241,7 @@ const PedidosPage = () => {
                                                         <span className="text-xs text-muted">Sin pago                                                        </span>
                                                     )}
                                                     {pedido.tiene_imagen_pago && (
-                                                        <span className="text-xs bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded">📸</span>
+                                                        <span className="text-xs bg-info/10 text-info-text px-1.5 py-0.5 rounded">📸</span>
                                                     )}
                                                 </div>
                                             </td>
@@ -251,7 +252,7 @@ const PedidosPage = () => {
                                                 <span className="text-xs text-muted">{formatFecha(pedido.created_at)}</span>
                                             </td>
                                             <td className="p-4">
-                                                <button className="text-accent hover:text-white transition-colors">
+                                                <button className="text-accent hover:text-text transition-colors">
                                                     <Eye size={18} />
                                                 </button>
                                             </td>
@@ -271,14 +272,14 @@ const PedidosPage = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
                         onClick={() => { setPedidoSeleccionado(null); setImagenPago(null); }}
                     >
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="glass rounded-3xl border border-border p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto"
+                            className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-[0_16px_48px_rgba(10,10,10,0.2)] max-h-[80vh] overflow-y-auto"
                             onClick={e => e.stopPropagation()}
                         >
                             <div className="flex items-center justify-between mb-6">

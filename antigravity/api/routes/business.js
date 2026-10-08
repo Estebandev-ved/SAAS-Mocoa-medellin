@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
 const { checkPlan } = require('../middleware/tenant');
+const { sanitizeAvatar, parseAvatar } = require('../services/avatar');
 const { getPlan, getPlanFeatures, checkLimit, getNextPlan, getPlanPrice, getIncludedFeatureLabels, getUpgradeBenefits, getAllPlans } = require('../../config/planConfig');
 
 // Router canónico para /api/business (antes montado en /api/negocio, que
@@ -13,6 +14,28 @@ const { getPlan, getPlanFeatures, checkLimit, getNextPlan, getPlanPrice, getIncl
 const router = express.Router();
 
 router.use(verificarAuth);
+
+// Avatar del dueño (personaje personalizable). Siempre se valida contra lista blanca.
+router.get('/avatar', async (req, res) => {
+    try {
+        const [rows] = await db.execute('SELECT avatar_config FROM negocios WHERE id = ?', [req.negocio.id]);
+        res.json({ avatar: parseAvatar(rows[0] && rows[0].avatar_config) });
+    } catch (error) {
+        console.error('[Business] Error getting avatar:', error);
+        res.status(500).json({ error: 'Error al obtener el avatar' });
+    }
+});
+
+router.put('/avatar', async (req, res) => {
+    try {
+        const avatar = sanitizeAvatar(req.body && req.body.avatar);
+        await db.execute('UPDATE negocios SET avatar_config = ? WHERE id = ?', [JSON.stringify(avatar), req.negocio.id]);
+        res.json({ avatar });
+    } catch (error) {
+        console.error('[Business] Error saving avatar:', error);
+        res.status(500).json({ error: 'Error al guardar el avatar' });
+    }
+});
 
 router.get('/perfil', async (req, res) => {
     try {

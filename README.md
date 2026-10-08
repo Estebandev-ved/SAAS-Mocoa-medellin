@@ -1,673 +1,428 @@
-# ?? ANTIGRAVITY ó Bot WhatsApp con IA para Negocios (SaaS)
+<div align="center">
 
-> Sistema multi-agente de automatizaciÛn de ventas por WhatsApp. Plataforma SaaS que permite a negocios conectar su WhatsApp, configurar un bot IA y gestionar pedidos, domicilios y conversaciones desde un dashboard.
+# ANTIGRAVITY ¬∑ NOMA
 
----
+**Un vendedor con IA en el WhatsApp de tu negocio.**
+Plataforma SaaS multi-tenant que conecta el WhatsApp de un negocio a un bot con Gemini que atiende clientes, toma pedidos, cobra y despacha domicilios, todo administrado desde un panel web.
 
-## ?? Arquitectura General del Sistema
+![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=nodedotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)
+![Gemini](https://img.shields.io/badge/IA-Google%20Gemini-8E75B2?logo=googlegemini&logoColor=white)
+![WhatsApp](https://img.shields.io/badge/WhatsApp-Baileys-25D366?logo=whatsapp&logoColor=white)
+![Licencia](https://img.shields.io/badge/Licencia-MIT-green)
 
-```
-+-----------------------------------------------------------------+
-¶                     CLIENTE FINAL (WhatsApp)                    ¶
-+-----------------------------------------------------------------+
-                                ¶ Mensaje de texto
-                                ?
-+-----------------------------------------------------------------+
-¶          INSTANCE MANAGER (Node.js ó puerto 3001)               ¶
-¶  Baileys: gestiona m˙ltiples conexiones WhatsApp simult·neas    ¶
-¶  Un BotInstance por cada negocio registrado                     ¶
-+----------------------------------------------------------------+
-            ¶ HTTP POST /procesar                  ¶ Socket.io
-            ?                                      ?
-+-----------------------+              +---------------------------+
-¶   BRAIN IA (Python    ¶              ¶   API REST (Node.js ó     ¶
-¶   FastAPI ó p. 8000)  ¶              ¶   puerto 3002)            ¶
-¶                       ¶              ¶                           ¶
-¶  orchestrator.py      ¶              ¶  auth, negocios,          ¶
-¶  9 Agentes IA (GPT)   ¶              ¶  productos, pedidos,      ¶
-¶  context_manager.py   ¶              ¶  domicilios, admin...     ¶
-¶  prompt_builder.py    ¶              ¶                           ¶
-+-----------------------+              +---------------------------+
-            ¶                                       ¶
-            +---------------------------------------+
-                              ¶
-                    +-------------------+
-                    ¶   MySQL + Redis    ¶
-                    ¶  (datos + cachÈ)  ¶
-                    +-------------------+
-                              ¶
-                              ?
-+-----------------------------------------------------------------+
-¶           FRONTEND ó DOS PROYECTOS REACT                        ¶
-¶                                                                 ¶
-¶  1. agency-platform-react/ (puerto 5173)                        ¶
-¶     Landing page p˙blica: Hero, Features, Precios, Contacto     ¶
-¶                                                                 ¶
-¶  2. antigravity/frontend/ (puerto 5174/5177)                    ¶
-¶     Dashboard SaaS: Login, Register, Panel de AdministraciÛn    ¶
-+-----------------------------------------------------------------+
-```
+<img src="docs/screenshots/landing-hero.png" alt="Landing de Antigravity" width="100%">
+
+</div>
 
 ---
 
-## ??? Estructura de Carpetas
+## Contenido
+
+- [Qu√© hace](#qu√©-hace)
+- [Capturas](#capturas)
+- [El equipo NOMA](#el-equipo-noma)
+- [Arquitectura](#arquitectura)
+- [Estructura del repositorio](#estructura-del-repositorio)
+- [Puesta en marcha](#puesta-en-marcha)
+- [Variables de entorno](#variables-de-entorno)
+- [Planes](#planes)
+- [API](#api)
+- [Seguridad](#seguridad)
+- [Estado del proyecto](#estado-del-proyecto)
+- [Soluci√≥n de problemas](#soluci√≥n-de-problemas)
+
+---
+
+## Qu√© hace
+
+| | |
+|---|---|
+| **Bot de ventas por WhatsApp** | Un `BotInstance` (Baileys) por negocio. El bot usa el cat√°logo, los medios de pago y las pol√≠ticas que el due√±o carga en el panel; si no hay cat√°logo, no inventa uno. |
+| **Pedidos y pagos** | Crea pedidos desde la conversaci√≥n, recibe el comprobante de pago y lo deja en `pago_enviado` para que el due√±o lo confirme. |
+| **Domicilios con mapa** | El bot **confirma la direcci√≥n con el cliente** antes de crear el pedido, la geocodifica, calcula la ruta por calles y la tarifa por kil√≥metro, y dibuja la ruta en el mapa. Incluye portal del domiciliario y tracking p√∫blico para el cliente. |
+| **Onboarding guiado** | Cuenta m√≠nima + checklist de activaci√≥n (cat√°logo ‚Üí c√≥mo cobras ‚Üí conectar WhatsApp). La prueba gratis de **7 d√≠as** empieza en la primera conexi√≥n de WhatsApp. |
+| **Panel del negocio** | Dashboard, pedidos, productos, clientes, conversaciones, analytics, automatizaciones, domicilios, suscripci√≥n y ajustes. |
+| **Automatizaciones** | Re-engagement, rese√±as, reporte semanal, recordatorios y campa√±as masivas (cola Bull + Redis). |
+| **Bot de llamadas** | Voz con Twilio + [Clonar-voz](Clonar-voz/README.md), mismo cerebro que WhatsApp, solo plan Enterprise. |
+| **Panel de administraci√≥n** | Gesti√≥n de negocios, WhatsApps, suscripciones y logs para el superadmin. |
+
+---
+
+## Capturas
+
+### Landing y acceso
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/landing-equipo.png" alt="Secci√≥n Conoce al equipo"><br><sub><b>Landing</b> ¬∑ ¬´Conoce al equipo¬ª</sub></td>
+    <td width="50%"><img src="docs/screenshots/landing-precios.png" alt="Planes y precios"><br><sub><b>Landing</b> ¬∑ planes y precios</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/login.png" alt="Inicio de sesi√≥n"><br><sub><b>Inicio de sesi√≥n</b></sub></td>
+    <td width="50%"><img src="docs/screenshots/registro.png" alt="Registro en 3 pasos"><br><sub><b>Registro</b> ¬∑ 3 pasos, con creaci√≥n del personaje del due√±o</sub></td>
+  </tr>
+</table>
+
+### Panel del negocio
+
+<img src="docs/screenshots/dashboard.png" alt="Dashboard" width="100%">
+
+<sub><b>Dashboard</b> ¬∑ saludo con el avatar del due√±o, checklist de activaci√≥n guiado por Nova, aviso de comprobantes por revisar y m√©tricas del d√≠a.</sub>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/pedidos.png" alt="Pedidos"><br><sub><b>Pedidos</b> ¬∑ estados de pago, filtros y totales</sub></td>
+    <td width="50%"><img src="docs/screenshots/domicilios.png" alt="Domicilios"><br><sub><b>Domicilios</b> ¬∑ mapa en vivo y centro de despacho</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/productos.png" alt="Productos"><br><sub><b>Productos</b> ¬∑ el cat√°logo que el bot usa para cotizar</sub></td>
+    <td width="50%"><img src="docs/screenshots/ajustes-bot.png" alt="Ajustes del bot"><br><sub><b>Ajustes ‚Üí Bot</b> ¬∑ nombre, tono y mensajes del bot</sub></td>
+  </tr>
+</table>
+
+> Las capturas usan la cuenta demo del `seed.sql` (datos ficticios). Se generan con Chrome headless contra el entorno local.
+
+---
+
+## El equipo NOMA
+
+La interfaz tiene personajes ilustrados con un rol fijo: son la voz visual de la marca (definida en [`design.md`](design.md)).
+
+<table>
+  <tr>
+    <td align="center" width="25%"><img src="agency-platform-react/src/assets/illustrations/personaje-sofia.svg" alt="Sof√≠a" height="230"><br><b>Sof√≠a</b><br><sub>Ventas y logros</sub></td>
+    <td align="center" width="25%"><img src="agency-platform-react/src/assets/illustrations/personaje-nova.svg" alt="Nova" height="230"><br><b>Nova</b><br><sub>IA en WhatsApp ¬∑ gu√≠a</sub></td>
+    <td align="center" width="25%"><img src="agency-platform-react/src/assets/illustrations/personaje-lucia.svg" alt="Luc√≠a" height="230"><br><b>Luc√≠a</b><br><sub>Atenci√≥n y conversaciones</sub></td>
+    <td align="center" width="25%"><img src="agency-platform-react/src/assets/illustrations/personaje-mateo.svg" alt="Mateo" height="230"><br><b>Mateo</b><br><sub>Domicilios y despacho</sub></td>
+  </tr>
+</table>
+
+Adem√°s, cada due√±o crea **su propio avatar** (cuerpo, piel, peinado, barba, gafas, tatuajes y ropa) al registrarse; aparece en el saludo del dashboard, en los avisos de √©xito y en Ajustes.
+
+**Sistema de dise√±o:** tema claro por defecto, base neutra en negro/gris/blanco y rojo `#E53935` como √∫nico color de acci√≥n (tokens en `agency-platform-react/src/index.css`).
+
+---
+
+## Arquitectura
+
+```mermaid
+flowchart LR
+    C[Cliente final<br/>WhatsApp] -->|mensaje| IM
+
+    subgraph Backend["antigravity/ (Node.js)"]
+        IM["Instance Manager :3001<br/>Baileys ¬∑ 1 bot por negocio"]
+        BRAIN["Cerebro IA<br/>gemini.js ¬∑ orchestrator.js<br/>salesTraining.js"]
+        API["API REST + Socket.io :3002<br/>Express"]
+        Q["Cola de campa√±as<br/>Bull"]
+        IM --> BRAIN
+        BRAIN -->|acciones: pedido, pago,<br/>domicilio| API
+        IM <-->|eventos QR / estado| API
+    end
+
+    BRAIN -.-> G[(Google Gemini)]
+    BRAIN -.-> TT[(TravelTime<br/>geocoding y rutas)]
+    API --- DB[(MySQL 8)]
+    Q --- R[(Redis)]
+    API --- Q
+
+    D["Panel web :5173<br/>agency-platform-react"] <-->|HTTP + Socket.io| API
+    A["Admin ¬∑ Portal domiciliario<br/>Tracking p√∫blico :5177<br/>antigravity/frontend"] <-->|HTTP + Socket.io| API
+```
+
+**C√≥mo fluye un pedido:** el cliente escribe ‚Üí el Instance Manager entrega el mensaje al cerebro (Gemini) con el prompt armado desde el cat√°logo del negocio ‚Üí el bot detecta la compra, confirma la direcci√≥n con el cliente y ejecuta la acci√≥n (crear pedido y domicilio) ‚Üí la API guarda, geocodifica, calcula ruta y tarifa, y emite el evento por Socket.io ‚Üí el dashboard lo muestra en tiempo real.
+
+> El antiguo `brain/` en Python (FastAPI + OpenAI) **fue retirado**: hoy hay un solo cerebro, en Node, dentro de `instance-manager/`.
+
+### Dos frontends, dos prop√≥sitos
+
+| Carpeta | Puerto | Para qu√© sirve |
+|---|---|---|
+| `agency-platform-react/` | **5173** | **Landing p√∫blica + dashboard del negocio** (el que se usa en el d√≠a a d√≠a). |
+| `antigravity/frontend/` | **5177** | **Panel admin** (`/admin/*`), **portal del domiciliario** (`/delivery/*`) y **tracking p√∫blico** (`/delivery/track/:token`). Sus rutas `/dashboard/*` son heredadas y las reemplaz√≥ `agency-platform-react`. |
+
+---
+
+## Estructura del repositorio
 
 ```
 Bot NOMA/
-¶
-+-- agency-platform-react/        # LANDING PAGE P⁄BLICA (React + Vite)
-¶   +-- src/
-¶   ¶   +-- components/           # Navbar, Hero, Features, Pricing, etc.
-¶   ¶   +-- pages/                # (solo LoginPage ó auth redirige al dashboard)
-¶   ¶   +-- context/              # AuthContext, BrandingContext
-¶   ¶   +-- App.jsx               # Rutas: solo "/" (landing)
-¶   +-- .env.local                # VITE_ANTIGRAVITY_URL=http://localhost:5174
-¶   +-- package.json
-¶
-+-- antigravity/                  # NUCLEO DEL SISTEMA (Backend + Dashboard)
-¶   ¶
-¶   +-- api/                      # API REST (Express, puerto 3002)
-¶   ¶   +-- index.js              # Servidor Express + Socket.io
-¶   ¶   +-- middleware/           # security.js, auth.js, admin.js, rateLimit.js
-¶   ¶   +-- routes/               # 14 archivos de rutas
-¶   ¶       +-- auth.js           # Login, registro, verify, reset-password
-¶   ¶       +-- business.js       # Perfil de negocio, config del bot
-¶   ¶       +-- products.js       # CRUD cat·logo de productos
-¶   ¶       +-- orders.js         # Pedidos del negocio
-¶   ¶       +-- conversaciones.js # Historial de chats
-¶   ¶       +-- whatsapp.js       # Conectar/desconectar/QR
-¶   ¶       +-- domicilios.js     # Sistema de delivery y tracking
-¶   ¶       +-- admin.js          # Panel superadmin
-¶   ¶       +-- agentes.js        # EstadÌsticas de agentes IA
-¶   ¶       +-- automations.js    # Flujos de automatizaciÛn
-¶   ¶       +-- analytics.js      # MÈtricas y reportes
-¶   ¶       +-- bot-config.js     # ConfiguraciÛn personalizable del bot
-¶   ¶
-¶   +-- brain/                    # MOTOR IA (Python FastAPI, puerto 8000)
-¶   ¶   +-- main.py               # Servidor FastAPI + endpoints
-¶   ¶   +-- orchestrator.py       # Clasifica la intenciÛn del mensaje
-¶   ¶   +-- context_manager.py    # Memoria de conversaciÛn por cliente
-¶   ¶   +-- prompt_builder.py     # Construye el prompt para GPT
-¶   ¶   +-- router.py             # Enruta al agente correcto
-¶   ¶   +-- agents/               # 9 agentes especializados
-¶   ¶       +-- ventas.py         # Detecta compras, cierra ventas
-¶   ¶       +-- pagos.py          # Instrucciones de pago + OCR comprobantes
-¶   ¶       +-- pedidos.py        # Estado, cancelaciÛn, modificaciones
-¶   ¶       +-- faq.py            # Info del negocio, horarios, productos
-¶   ¶       +-- reclamos.py       # Quejas con escalado humano
-¶   ¶       +-- retencion.py      # Anti-churn, ofertas de retenciÛn
-¶   ¶       +-- seguimiento.py    # Estado de domicilios en tiempo real
-¶   ¶       +-- escalacion.py     # Traspaso a agente humano
-¶   ¶       +-- campanas.py       # CampaÒas de mensajerÌa masiva
-¶   ¶
-¶   +-- instance-manager/         # GESTOR DE BOTS WHATSAPP (Node.js, p. 3001)
-¶   ¶   +-- index.js              # Entrada: arranca todos los bots
-¶   ¶   +-- InstanceManager.js    # Crea/destruye instancias de bot
-¶   ¶   +-- BotInstance.js        # ConexiÛn Baileys por negocio
-¶   ¶   +-- socketEmitter.js      # Emite eventos al dashboard en tiempo real
-¶   ¶   +-- monitor.js            # Monitoreo de salud 24/7
-¶   ¶   +-- handlers/
-¶   ¶       +-- messageHandler.js # Procesa mensajes entrantes
-¶   ¶
-¶   +-- db/                       # BASE DE DATOS
-¶   ¶   +-- schema.sql            # Schema completo (USAR ESTE para crear tablas)
-¶   ¶   +-- schema_simple.sql     # Schema simplificado (para pruebas)
-¶   ¶   +-- seed.sql              # Datos de prueba / demo
-¶   ¶   +-- config.js             # ConexiÛn MySQL (mysql2)
-¶   ¶   +-- queries/              # Queries especÌficas
-¶   ¶
-¶   +-- frontend/                 # DASHBOARD + AUTH (React + Vite, p. 5174)
-¶   ¶   +-- src/
-¶   ¶       +-- pages/
-¶   ¶       ¶   +-- LoginPage.jsx
-¶   ¶       ¶   +-- RegisterPage.jsx   # Wizard de 5 pasos
-¶   ¶       ¶   +-- dashboard/
-¶   ¶       ¶   ¶   +-- OverviewPage.jsx       # Panel principal
-¶   ¶       ¶   ¶   +-- WhatsAppPage.jsx       # Conectar WhatsApp / QR
-¶   ¶       ¶   ¶   +-- OrdersPage.jsx         # GestiÛn de pedidos
-¶   ¶       ¶   ¶   +-- ConversationsPage.jsx  # Historial de chats
-¶   ¶       ¶   ¶   +-- ProductsPage.jsx       # Cat·logo
-¶   ¶       ¶   ¶   +-- AnalyticsPage.jsx      # MÈtricas
-¶   ¶       ¶   ¶   +-- AutomationsPage.jsx    # Flujos autom·ticos
-¶   ¶       ¶   ¶   +-- CustomizePage.jsx      # Personalizar bot
-¶   ¶       ¶   ¶   +-- SettingsPage.jsx       # ConfiguraciÛn cuenta
-¶   ¶       ¶   ¶   +-- DomiciliosPage.jsx     # Sistema de domicilios
-¶   ¶       ¶   ¶   +-- PortalDomiciliario.jsx # Vista para el domiciliario
-¶   ¶       ¶   ¶   +-- TrackingCliente.jsx    # Seguimiento p˙blico
-¶   ¶       ¶   +-- admin/                     # Panel superadmin
-¶   ¶       ¶       +-- AdminResumen.jsx
-¶   ¶       ¶       +-- AdminNegocios.jsx
-¶   ¶       ¶       +-- AdminNegocio.jsx
-¶   ¶       ¶       +-- AdminWhatsApps.jsx
-¶   ¶       ¶       +-- AdminSuscripciones.jsx
-¶   ¶       ¶       +-- AdminLogs.jsx
-¶   ¶       ¶       +-- AdminConfig.jsx
-¶   ¶       +-- context/AuthContext.jsx
-¶   ¶       +-- services/
-¶   ¶
-¶   +-- .env                      # Variables de entorno (NO subir al repo)
-¶   +-- .env.example              # PLANTILLA para crear el .env
-¶   +-- package.json
-¶   +-- requirements.txt
-¶
-+-- README.md                     # Este archivo
+‚îú‚îÄ‚îÄ agency-platform-react/        # Landing + dashboard del negocio (React 19 + Vite + Tailwind 4)
+‚îÇ   ‚îî‚îÄ‚îÄ src/
+‚îÇ       ‚îú‚îÄ‚îÄ pages/                # Dashboard, Pedidos, Productos, Domicilios, Ajustes, Suscripci√≥n‚Ä¶
+‚îÇ       ‚îú‚îÄ‚îÄ components/           # Landing, Toast, EmptyState, ActivationChecklist, EstadoNegocio, TipNova‚Ä¶
+‚îÇ       ‚îÇ   ‚îî‚îÄ‚îÄ avatar/           # Editor y renderer por capas del avatar del due√±o
+‚îÇ       ‚îú‚îÄ‚îÄ context/              # AuthContext, BrandingContext, HitosContext (logros)
+‚îÇ       ‚îú‚îÄ‚îÄ assets/illustrations/ # Personajes y escenas en SVG
+‚îÇ       ‚îî‚îÄ‚îÄ services/             # api.js, socket.js
+‚îÇ
+‚îú‚îÄ‚îÄ antigravity/                  # Backend + frontend admin/domicilios
+‚îÇ   ‚îú‚îÄ‚îÄ api/                      # API REST (Express :3002) + Socket.io
+‚îÇ   ‚îÇ   ‚îú‚îÄ‚îÄ middleware/           # auth, tenant, seguridad, rate limit
+‚îÇ   ‚îÇ   ‚îú‚îÄ‚îÄ routes/               # auth, business, whatsapp, bot-config, pedidos, productos,
+‚îÇ   ‚îÇ   ‚îÇ                         # domicilios, campa√±as, suscripci√≥n, stripe, voice, admin‚Ä¶
+‚îÇ   ‚îÇ   ‚îî‚îÄ‚îÄ services/             # avatar, etc.
+‚îÇ   ‚îú‚îÄ‚îÄ instance-manager/         # Bots de WhatsApp (Baileys :3001)
+‚îÇ   ‚îÇ   ‚îú‚îÄ‚îÄ InstanceManager.js    # Crea y supervisa una instancia por negocio
+‚îÇ   ‚îÇ   ‚îú‚îÄ‚îÄ BotInstance.js        # Conexi√≥n Baileys de un negocio
+‚îÇ   ‚îÇ   ‚îú‚îÄ‚îÄ agents/               # gemini.js ¬∑ orchestrator.js ¬∑ salesTraining.js
+‚îÇ   ‚îÇ   ‚îî‚îÄ‚îÄ services/             # geocoding.js ¬∑ routing.js ¬∑ domicilioTarifa.js
+‚îÇ   ‚îú‚îÄ‚îÄ queue/                    # Workers Bull (campa√±as masivas, requiere Redis)
+‚îÇ   ‚îú‚îÄ‚îÄ db/                       # schema.sql, seed.sql y migraciones (migrate_*.js)
+‚îÇ   ‚îú‚îÄ‚îÄ config/planConfig.js      # Fuente √∫nica de verdad de planes, precios y features
+‚îÇ   ‚îú‚îÄ‚îÄ frontend/                 # Admin + portal domiciliario + tracking (React + Vite)
+‚îÇ   ‚îú‚îÄ‚îÄ infra/                    # docker-compose, PM2, nginx
+‚îÇ   ‚îî‚îÄ‚îÄ start.bat                 # Arranque de todos los servicios en Windows
+‚îÇ
+‚îú‚îÄ‚îÄ Clonar-voz/                   # Clonaci√≥n de voz local usada por el bot de llamadas
+‚îú‚îÄ‚îÄ docs/screenshots/             # Capturas que usa este README
+‚îú‚îÄ‚îÄ design.md                     # Sistema de dise√±o NOMA (tokens, tipograf√≠a, personajes)
+‚îî‚îÄ‚îÄ README.md
 ```
 
 ---
 
-## ?? Requisitos Previos
+## Puesta en marcha
 
-| Herramienta | VersiÛn mÌnima | Verificar con |
-|-------------|----------------|---------------|
-| **Node.js** | 18.x | `node --version` |
-| **Python** | 3.10 | `python --version` |
-| **MySQL** | 8.0 | `mysql --version` |
-| **Redis** | 7.x (opcional) | `redis-cli --version` |
+### Requisitos
 
-> **Nota sobre Redis:** El sistema funciona sin Redis. Si no est· instalado, el Brain usa un bypass interno autom·ticamente.
+| Herramienta | Versi√≥n | Notas |
+|---|---|---|
+| Node.js | 20+ | Backend y frontends |
+| MySQL | 8.0+ | Base de datos multi-tenant |
+| Redis | 7+ | **Opcional**: solo para campa√±as masivas |
+| Cuenta de Google AI | ‚Äî | `GEMINI_API_KEY` para el cerebro del bot |
 
----
-
-## ?? InstalaciÛn Completa (Paso a Paso)
-
-### PASO 1 ó Clonar el repositorio
+### 1. Instalar dependencias
 
 ```bash
-git clone <URL_DEL_REPO>
+git clone https://github.com/Estebandev-ved/SAAS-Mocoa-medellin.git
 cd "Bot NOMA"
+
+npm install --prefix antigravity
+npm install --prefix agency-platform-react
+npm install --prefix antigravity/frontend      # solo si vas a usar admin / portal domiciliario
 ```
 
-### PASO 2 ó Configurar variables de entorno
+### 2. Configurar el entorno
 
 ```bash
 cd antigravity
-copy .env.example .env
+cp .env.example .env        # en Windows: copy .env.example .env
 ```
 
-Abrir el archivo `antigravity/.env` y rellenar los valores:
+Completa `.env` (ver [Variables de entorno](#variables-de-entorno)). Para el dashboard crea `agency-platform-react/.env.local`:
 
 ```env
-# IA ó OpenAI
-OPENAI_API_KEY=sk-...tu-clave-aqui...
-
-# MySQL
-MYSQL_HOST=localhost
-MYSQL_USER=root
-MYSQL_PASSWORD=tu_password_de_mysql
-MYSQL_DATABASE=antigravity
-
-# Redis (opcional)
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# Seguridad ó CAMBIAR en produccion
-JWT_SECRET=una_clave_secreta_muy_larga_y_segura_aqui
-SOCKET_SECRET=otra_clave_secreta_para_sockets_aqui
-
-# Email (para notificaciones)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=tu_correo@gmail.com
-SMTP_PASS=tu_app_password_de_gmail
-
-# Puertos (dejar por defecto)
-PORT_API=3002
-PORT_BOT=3001
-PORT_BRAIN=8000
-
-# URLs
-FRONTEND_URL=http://localhost:5174
-FRONTEND_API_URL=http://localhost:3002
-FRONTEND_SOCKET_URL=http://localhost:3002
-NODE_ENV=development
+VITE_API_URL=http://localhost:3002
+VITE_SOCKET_URL=http://localhost:3002
+VITE_ANTIGRAVITY_URL=http://localhost:5177
+VITE_TRAVELTIME_APP_ID=tu_app_id      # tiles del mapa de domicilios
 ```
 
-### PASO 3 ó Configurar la Base de Datos MySQL
+### 3. Crear la base de datos
 
 ```bash
-# Opcion 1: Por consola interactiva
-mysql -u root -p
-source antigravity/db/schema.sql
-source antigravity/db/seed.sql
-exit
-
-# Opcion 2: Directo desde terminal
+mysql -u root -p -e "CREATE DATABASE antigravity CHARACTER SET utf8mb4;"
 mysql -u root -p antigravity < antigravity/db/schema.sql
-mysql -u root -p antigravity < antigravity/db/seed.sql
+mysql -u root -p antigravity < antigravity/db/seed.sql     # opcional: datos demo
+
+cd antigravity
+node run-migrations.js                                      # migraciones incrementales
 ```
 
-### PASO 4 ó Instalar dependencias Node.js
+### 4. Arrancar
+
+**Windows (todo en uno):**
 
 ```bash
-# Backend API
 cd antigravity
-npm install
+.\start.bat
+```
 
-# Instance Manager (Bot WhatsApp)
-cd instance-manager
-npm install
-cd ..
+**Manual / desarrollo** (con recarga autom√°tica v√≠a nodemon):
 
-# Dashboard (Frontend interno)
-cd frontend
-npm install
-cd ..
+```bash
+cd antigravity
+npm run dev:api        # API en :3002
+npm run dev:bot        # Instance Manager en :3001
+# o ambos:  npm run dev:all
 
-# Landing Page
 cd ../agency-platform-react
-npm install
-cd ..
+npm run dev            # Landing + dashboard en :5173
 ```
 
-### PASO 5 ó Instalar dependencias Python (Brain IA)
+> La API y el Instance Manager **no recargan solos** si los lanzas con `npm start` / `node`. Usa los scripts `dev:*` o rein√≠cialos tras cambiar c√≥digo en `api/` o `instance-manager/`.
+
+### URLs
+
+| Servicio | URL |
+|---|---|
+| Landing + dashboard | http://localhost:5173 |
+| Admin / portal domiciliario / tracking | http://localhost:5177 |
+| API REST | http://localhost:3002 |
+| Health check | http://localhost:3002/health |
+| Instance Manager | http://localhost:3001 |
+
+**Cuenta demo** (solo local, creada por `seed.sql`): `demo@antigravity.co` / `Demo2024#`. C√°mbiala antes de cualquier despliegue.
+
+### Conectar tu WhatsApp
+
+1. Inicia sesi√≥n en el dashboard ‚Üí **WhatsApp** ‚Üí **Conectar**.
+2. Escanea el QR con el tel√©fono (WhatsApp ‚Üí Dispositivos vinculados).
+3. Listo: el bot responde y arranca tu prueba gratis de 7 d√≠as.
+
+---
+
+## Variables de entorno
+
+Plantilla completa en [`antigravity/.env.example`](antigravity/.env.example). Nunca subas `.env` al repositorio.
+
+| Grupo | Variables |
+|---|---|
+| **IA** | `GEMINI_API_KEY` |
+| **MySQL** | `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE` |
+| **Redis** (opcional) | `REDIS_HOST`, `REDIS_PORT` |
+| **Seguridad** | `JWT_SECRET`, `SOCKET_SECRET` ‚Äî sin valor por defecto, def√≠nelos siempre |
+| **Correo** | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `OWNER_EMAIL` |
+| **Puertos / URLs** | `PORT_API` (3002), `PORT_INSTANCE_MANAGER` / `PORT_BOT` (3001), `FRONTEND_URL`, `FRONTEND_API_URL`, `FRONTEND_SOCKET_URL`, `NODE_ENV` |
+| **Mapas** | `TRAVELTIME_APP_ID`, `TRAVELTIME_API_KEY` (geocoding y rutas; la key nunca va al frontend) |
+| **Bot de llamadas** | `CLONAR_VOZ_URL`, `STT_PROVIDER`, `DEEPGRAM_API_KEY` / `WHISPER_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, `VOICE_PUBLIC_URL`, `TWILIO_VALIDATE_SIGNATURE` |
+
+---
+
+## Planes
+
+Definidos en un solo lugar: [`antigravity/config/planConfig.js`](antigravity/config/planConfig.js). Precios en COP por mes.
+
+| | **Starter** | **Professional** | **Enterprise** |
+|---|---|---|---|
+| Precio | $450.000 | $850.000 | $1.800.000 |
+| N√∫meros de WhatsApp | 1 | 3 | Ilimitados |
+| Clientes | 100 | 500 | Ilimitados |
+| Productos | 20 | Ilimitados | Ilimitados |
+| Mensajes / mes | 1.000 | 5.000 | Ilimitados |
+| Analytics avanzado y automatizaciones | ‚Äî | ‚úÖ | ‚úÖ |
+| Domicilios | ‚Äî | ‚úÖ | ‚úÖ |
+| Multi-sede, integraciones, OCR de pagos | ‚Äî | ‚Äî | ‚úÖ |
+| Bot de llamadas | ‚Äî | ‚Äî | ‚úÖ |
+
+---
+
+## API
+
+Todas las rutas cuelgan de `/api` y, salvo `auth` y el tracking p√∫blico, requieren JWT. Cada consulta se filtra por `negocio_id` (multi-tenant).
+
+| Prefijo | Qu√© maneja |
+|---|---|
+| `/api/auth` | Registro (con avatar y t√©rminos), login, verificaci√≥n, recuperaci√≥n de contrase√±a |
+| `/api/business` | Perfil, plan y uso, onboarding, plantillas por tipo de negocio, `GET/PUT /avatar` |
+| `/api/whatsapp` | Estado, conexi√≥n con QR y desconexi√≥n del bot |
+| `/api/bot` | Configuraci√≥n del bot (nombre, tono, mensajes, info de negocio, pagos, pol√≠ticas) y prueba sin WhatsApp |
+| `/api/conversaciones`, `/api/chat` | Historial y env√≠o manual de mensajes |
+| `/api/pedidos`, `/api/productos`, `/api/clientes` | Pedidos y estados de pago, cat√°logo, clientes |
+| `/api/domicilios` | Despacho, domiciliarios, tarifas (`PUT /modulos/config`), portal del repartidor y tracking p√∫blico (`/public/track/:token`) |
+| `/api/automations`, `/api/campanas`, `/api/horarios` | Automatizaciones, campa√±as masivas y horarios |
+| `/api/analytics`, `/api/agentes` | M√©tricas y uso del cerebro IA |
+| `/api/suscripcion`, `/api/stripe` | Suscripci√≥n, upgrade/downgrade, facturas y pagos |
+| `/api/voice`, `/api/telegram`, `/api/instagram` | Bot de llamadas y canales adicionales |
+| `/api/admin`, `/api/usuarios`, `/api/backup` | Superadmin, usuarios del negocio y respaldos |
+
+Ejemplo:
 
 ```bash
-pip install fastapi uvicorn openai python-dotenv requests python-multipart mysql-connector-python redis
+curl -X POST http://localhost:3002/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@antigravity.co","password":"Demo2024#"}'
 ```
 
 ---
 
-## ?? Como Levantar el Sistema
+## Seguridad
 
-Necesitas **4 terminales abiertas**. Arrancar en este orden:
-
-### Terminal 1 ó API REST (Backend principal)
-
-```bash
-cd antigravity
-node api/index.js
-```
-
-Debe mostrar: `[API] Servidor corriendo en puerto 3002`
-
-### Terminal 2 ó Brain IA (Python)
-
-```bash
-cd antigravity
-python -m uvicorn brain.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Debe mostrar: `Uvicorn running on http://0.0.0.0:8000`
-
-### Terminal 3 ó Instance Manager (Bot WhatsApp)
-
-```bash
-cd antigravity/instance-manager
-node index.js
-```
-
-Debe mostrar: `[InstanceManager] Sistema iniciado`
-
-### Terminal 4 ó Dashboard (Frontend)
-
-```bash
-cd antigravity/frontend
-npm run dev
-```
-
-Abrir en browser: http://localhost:5174
-
-### Terminal 5 (opcional) ó Landing Page
-
-```bash
-cd agency-platform-react
-npm run dev
-```
-
-Abrir en browser: http://localhost:5173
+- JWT en usuarios y Socket.io; `JWT_SECRET` y `SOCKET_SECRET` sin valor por defecto.
+- Aislamiento por negocio en cada query y en cada sala de socket (corregido el IDOR detectado en la auditor√≠a; ver [`antigravity/SECURITY_AUDIT.md`](antigravity/SECURITY_AUDIT.md)).
+- Helmet, CORS con lista de or√≠genes, rate limiting global y por plan, sanitizaci√≥n XSS y `express-validator`.
+- Contrase√±as con bcrypt, bloqueo por intentos fallidos y consentimiento de datos (Ley 1581).
+- Avatar validado con lista blanca en el servidor.
+- Firma de webhook de Twilio verificada en el bot de llamadas.
+- Sesiones de WhatsApp (`auth_info/`) y `.env` fuera del repositorio.
 
 ---
 
-## ?? URLs y Puertos del Sistema
+## Estado del proyecto
 
-| Servicio | URL | Descripcion |
-|----------|-----|-------------|
-| **API REST** | http://localhost:3002 | Backend principal |
-| **Brain IA** | http://localhost:8000 | Motor de IA (FastAPI) |
-| **Dashboard** | http://localhost:5174 | Panel SaaS para negocios |
-| **Landing Page** | http://localhost:5173 | Pagina publica |
-| **Health Check** | http://localhost:3002/health | Verificar que la API esta activa |
-| **Docs Brain** | http://localhost:8000/docs | Swagger automatico de FastAPI |
+Rama de trabajo actual: **`redisenio-noma`** (redise√±o visual completo con el sistema NOMA).
 
----
+**Hecho**
+- Cerebro √∫nico con Gemini dentro del Instance Manager; auditor√≠a de seguridad multi-tenant.
+- Flujo de domicilios completo: direcci√≥n confirmada, geocoding, ruta por calles, tarifa por km, portal del domiciliario y tracking.
+- Onboarding progresivo con checklist y prueba de 7 d√≠as desde la primera conexi√≥n.
+- Redise√±o NOMA: tokens, personajes, avatar del due√±o, hitos, estados vac√≠os y avisos de √©xito/error.
+- Bot de llamadas con Twilio + Clonar-voz.
 
-## ?? Credenciales de Prueba (requiere haber cargado seed.sql)
+**Pendiente**
+- Pantalla en el dashboard para configurar la **tarifa por km** (el backend ya existe).
+- Cat√°logo por categor√≠as y fotos para restaurantes.
+- UI de cancelar/downgrade/facturas en Suscripci√≥n (el backend ya existe).
+- Persistir hitos y consejos de Nova en backend (hoy en `localStorage`).
+- Probar el bot de llamadas con una llamada real (ngrok + webhook de Twilio).
+- Tests automatizados y `docker-compose` de producci√≥n completo.
 
-| Rol | Email | Password |
-|-----|-------|----------|
-| **Negocio Demo** | demo@antigravity.co | Demo2024# |
-| **Super Admin** | superadmin@antigravity.co | Admin2024# |
-
-> IMPORTANTE: Cambiar estas credenciales antes de poner en produccion.
-
----
-
-## ?? Flujo de Usuario
-
-```
-1. Visita landing (localhost:5173)
-2. Clic "Crear Cuenta" ? va a localhost:5174/register
-3. Completa wizard de 5 pasos ? /dashboard
-4. Dashboard > WhatsApp > Conectar > Escanea QR
-5. Bot activo ó clientes escriben al WhatsApp del negocio
-6. Brain IA clasifica y responde automaticamente
-7. Dashboard muestra pedidos, conversaciones y metricas en tiempo real
-```
+El detalle d√≠a a d√≠a est√° en [`.claude/DAILY_LOG.md`](.claude/DAILY_LOG.md).
 
 ---
 
-## ?? Endpoints de la API
+## Soluci√≥n de problemas
 
-### Autenticacion
-```
-POST   /api/auth/registro          ? Crear nuevo negocio
-POST   /api/auth/login             ? Iniciar sesion (devuelve JWT)
-GET    /api/auth/verify            ? Verificar token activo
-POST   /api/auth/logout            ? Cerrar sesion
-POST   /api/auth/forgot-password   ? Solicitar reset de contraseÒa
-```
+<details>
+<summary><b>No conecta a MySQL</b></summary>
 
-### Negocio / Perfil
-```
-GET    /api/negocio/perfil         ? Datos del negocio autenticado
-PUT    /api/negocio/perfil         ? Actualizar perfil
-GET    /api/negocio/productos      ? Catalogo de productos
-POST   /api/negocio/productos      ? Agregar producto
-PUT    /api/negocio/productos/:id  ? Editar producto
-DELETE /api/negocio/productos/:id  ? Eliminar producto
-```
+Verifica las credenciales de `.env` y que el servicio est√© activo (`net start mysql` en Windows). Comprueba con `mysql -u root -p -e "SHOW DATABASES;"`.
+</details>
 
-### WhatsApp
-```
-GET    /api/whatsapp/status        ? Estado de conexion
-POST   /api/whatsapp/connect       ? Iniciar conexion (genera QR)
-POST   /api/whatsapp/disconnect    ? Desconectar bot
-GET    /api/whatsapp/qr            ? Obtener imagen del QR
-```
+<details>
+<summary><b>Cambi√© c√≥digo del backend y sigo viendo el comportamiento viejo</b></summary>
 
-### Conversaciones y Pedidos
-```
-GET    /api/conversaciones                      ? Lista de conversaciones
-GET    /api/conversaciones/:id/mensajes         ? Mensajes de una conversacion
-POST   /api/conversaciones/:id/mensaje          ? Enviar mensaje manual
-GET    /api/pedidos                             ? Pedidos del negocio
-PUT    /api/pedidos/:id/estado                  ? Actualizar estado de pedido
-```
+`node api/index.js` no recarga en caliente. Reinicia el proceso o usa `npm run dev:api` / `npm run dev:bot`.
+</details>
 
-### Domicilios (Delivery)
-```
-POST   /api/domicilios                          ? Crear domicilio
-GET    /api/domicilios                          ? Listar domicilios del negocio
-GET    /api/domicilios/tracking/:token          ? Tracking publico (sin auth)
-PUT    /api/domicilios/:id/estado               ? Actualizar estado
-```
+<details>
+<summary><b>Error de CORS en el navegador</b></summary>
 
-### Bot Config
-```
-GET    /api/bot/config             ? Configuracion actual del bot
-PUT    /api/bot/config             ? Actualizar nombre, tono, mensajes
-POST   /api/bot/test               ? Probar bot sin WhatsApp real
-```
+El origen del frontend debe estar permitido (`isAllowedOrigin()` en `api/middleware/security.js`) y `NODE_ENV=development` en local.
+</details>
 
-### Admin (superadmin solamente)
-```
-GET    /api/admin/negocios                      ? Todos los negocios
-GET    /api/admin/estadisticas                  ? Metricas globales
-POST   /api/admin/negocios/:id/suspender        ? Suspender negocio
-POST   /api/admin/demo                          ? Crear cuenta demo
-```
+<details>
+<summary><b>El bot de WhatsApp no conecta</b></summary>
 
-### Brain IA (uso interno del Instance Manager)
-```
-POST   /procesar                   ? Procesar mensaje entrante
-POST   /verificar-pago             ? Verificar comprobante de pago (OCR)
-GET    /catalogo/invalidar/:id     ? Limpiar cache del catalogo
-GET    /stats/:id                  ? Estadisticas de agentes por negocio
-```
+Confirma que la API **y** el Instance Manager est√°n corriendo. Si el QR queda en bucle, borra `antigravity/auth_info/auth_info_<negocioId>/` y vuelve a conectar desde el dashboard.
+</details>
+
+<details>
+<summary><b>Las campa√±as masivas no se env√≠an</b></summary>
+
+Requieren Redis y el worker de `queue/`. `start.bat` avisa si Redis no responde en `localhost:6379`.
+</details>
+
+<details>
+<summary><b>¬´Demasiadas peticiones¬ª al iniciar sesi√≥n</b></summary>
+
+El rate limit de autenticaci√≥n se libera solo tras un minuto.
+</details>
+
+<details>
+<summary><b>El mapa de domicilios sale sin calles</b></summary>
+
+Falta `VITE_TRAVELTIME_APP_ID` en `agency-platform-react/.env.local`. Los tiles p√∫blicos de OpenStreetMap y Carto ya no sirven sin credenciales, por eso se usa TravelTime.
+</details>
 
 ---
 
-## ?? Agentes IA
+<div align="center">
 
-| Agente | Archivo | Funcion |
-|--------|---------|---------|
-| **Ventas** | agents/ventas.py | Detecta compras, extrae productos, cierra venta |
-| **Pagos** | agents/pagos.py | Instrucciones de pago, verifica comprobantes OCR |
-| **Pedidos** | agents/pedidos.py | Consulta estado, cancelacion, modificaciones |
-| **FAQ** | agents/faq.py | Info del negocio, productos, horarios, ubicacion |
-| **Reclamos** | agents/reclamos.py | Gestion de quejas con escalado a humano |
-| **Retencion** | agents/retencion.py | Detecta intencion de cancelar, ofrece descuentos |
-| **Seguimiento** | agents/seguimiento.py | Estado del domicilio en tiempo real |
-| **Escalacion** | agents/escalacion.py | Traspaso a agente humano cuando es necesario |
-| **Campanas** | agents/campanas.py | Mensajeria masiva y campanas automatizadas |
+**MIT** ¬∑ Hecho en Colombia üá®üá¥
 
----
-
-## ?? Planes del SaaS
-
-| Feature | Starter | Professional | Enterprise |
-|---------|---------|--------------|------------|
-| Mensajes/mes | 1,000 | 5,000 | Ilimitado |
-| Clientes | 100 | 1,000 | Ilimitado |
-| Agentes IA | 3 | 6 | 9 |
-| Bots WhatsApp | 1 | 2 | 5 |
-| Tokens IA/dia | 50,000 | 250,000 | Ilimitado |
-| Domicilios | NO | SI | SI |
-| Campanas | NO | SI | SI |
-| Panel Admin | NO | NO | SI |
-
----
-
-## ?? Seguridad Implementada
-
-- JWT para autenticacion de usuarios
-- Helmet.js para cabeceras HTTP seguras
-- Rate Limiting global (100 req/min por IP) y por plan
-- XSS sanitization en todos los inputs
-- express-validator en endpoints criticos
-- bcryptjs para hash de contraseÒas
-- Variables de entorno para todos los secretos
-- Roles: negocio, admin, superadmin
-- Socket.io autenticado con JWT o secret interno
-
----
-
-## ?? LO QUE FALTA ó Tareas Pendientes para el Socio
-
-### PRIORIDAD ALTA (bloquea funcionalidades clave)
-
-#### TAREA 1 ó Integracion Landing con Dashboard (Auth)
-**Problema:** Los botones "Login" y "Crear Cuenta" de la landing no redirigen al dashboard correctamente.
-
-**Que hacer:**
-- En `agency-platform-react/src/components/Navbar.jsx` verificar que los botones apuntan a `http://localhost:5174/login` y `http://localhost:5174/register`
-- O agregar en `agency-platform-react/src/App.jsx` rutas `/login` y `/register` que hagan redirect externo
-- Verificar `agency-platform-react/.env.local` tiene `VITE_ANTIGRAVITY_URL=http://localhost:5174`
-
-#### TAREA 2 ó Variables de entorno del Frontend Dashboard
-**Problema:** `antigravity/frontend/.env` puede tener URLs hardcodeadas o incorrectas.
-
-**Que hacer:**
-- Revisar `antigravity/frontend/.env` y asegurarse de que tenga:
-  ```
-  VITE_API_URL=http://localhost:3002
-  VITE_SOCKET_URL=http://localhost:3002
-  ```
-- Verificar que todos los archivos en `frontend/src/services/` usen `import.meta.env.VITE_API_URL`
-
-#### TAREA 3 ó Flujo QR de WhatsApp en el Dashboard
-**Problema:** `WhatsAppPage.jsx` debe mostrar el QR real y actualizarse via Socket.io.
-
-**Que hacer:**
-- Verificar que `WhatsAppPage.jsx` escucha el evento `qr_update` del socket
-- El evento lo emite: Instance Manager ? socketEmitter.js ? API ? cliente
-- Probar: Dashboard > WhatsApp > Conectar > Ver QR > Escanear con telefono
-
----
-
-### PRIORIDAD MEDIA (mejoras importantes)
-
-#### TAREA 4 ó Sistema de Domicilios completo
-- Conectar boton "Crear Domicilio" al endpoint `POST /api/domicilios`
-- Mostrar lista en tiempo real con Socket.io
-- Probar link de tracking al cliente: `http://localhost:5174/tracking/:token`
-- Verificar `PortalDomiciliario.jsx` (vista para el repartidor)
-
-#### TAREA 5 ó Pagina Analytics con graficas reales
-- Conectar `AnalyticsPage.jsx` al endpoint `GET /api/analytics` (o el de `routes/analytics.js`)
-- Mostrar: mensajes por dia, conversiones, productos mas pedidos
-- Puede usar `recharts` (npm install recharts en frontend/)
-
-#### TAREA 6 ó Pagina de Automatizaciones funcional
-- `AutomationsPage.jsx` actualmente solo tiene estructura base
-- Conectar al endpoint de `routes/automations.js`
-- Permitir crear/editar/eliminar automatizaciones desde el dashboard
-
-#### TAREA 7 ó Panel Admin completo
-- Verificar que `AdminNegocios.jsx` carga desde `/api/admin/negocios`
-- Verificar que `AdminWhatsApps.jsx` muestra estado de cada bot
-- `AdminSuscripciones.jsx` ó verificar si el endpoint existe en admin.js
-- `AdminLogs.jsx` ó crear o conectar al endpoint de logs
-
----
-
-### PRIORIDAD BAJA (mejoras futuras)
-
-#### TAREA 8 ó Integracion con Stripe (Pagos del SaaS)
-- La BD tiene `stripe_customer_id` en la tabla `negocios` (listo para conectar)
-- Crear webhooks de Stripe en `api/routes/`
-- Actualizar plan del negocio cuando Stripe confirme pago
-- La landing ya tiene seccion de precios (`Pricing.jsx`), conectarla a Stripe Checkout
-
-#### TAREA 9 ó Tests Automatizados
-- No hay tests en ningun modulo actualmente
-- Backend Node: usar jest (`npm install -D jest`)
-- Brain Python: usar pytest (`pip install pytest`)
-- Prioridad: tests de auth endpoints y del orchestrator
-
-#### TAREA 10 ó Docker Compose para produccion
-- No existe `docker-compose.yml` en el proyecto
-- Crear uno que levante: MySQL, Redis, API, Brain, Instance Manager
-- Documentar deploy con Nginx + Cloudflare Tunnels
-
-#### TAREA 11 ó Campanas masivas con interfaz
-- El agente `campanas.py` existe pero no tiene endpoint en la API
-- Crear `POST /api/campanas` para enviar mensajes a lista de contactos
-- Agregar interfaz en `AutomationsPage.jsx` o crear pagina dedicada
-
-#### TAREA 12 ó Reset de Contrasena funcional
-- El endpoint `POST /api/auth/forgot-password` existe en `auth.js`
-- Verificar que el email de recuperacion se envia (SMTP en .env)
-- Crear pagina en el frontend: `/reset-password?token=...`
-
----
-
-## ??? Comandos Utiles para Desarrollo
-
-```bash
-# Verificar que la API responde
-curl http://localhost:3002/health
-
-# Ver documentacion automatica del Brain (abrir en browser)
-# http://localhost:8000/docs
-
-# Crear cuenta admin manualmente
-cd antigravity
-node create-admin.js
-
-# Ejecutar migraciones de BD
-node run-migrations.js
-
-# Probar flujo de delivery completo
-node test-delivery-flow.js
-
-# Resetear cuenta demo
-cd antigravity/brain
-python reset_demo_account.py
-
-# Verificar conexion a BD desde Python
-python check_db.py
-
-# Ver usuarios en la BD
-python check_users.py
-```
-
----
-
-## ??? Queries SQL de Verificacion
-
-```sql
--- Ver todos los negocios
-SELECT id, nombre, email_dueno, plan, whatsapp_conectado, activo FROM negocios;
-
--- Ver conversaciones activas
-SELECT c.id, c.telefono_cliente, n.nombre, c.ultima_interaccion
-FROM conversaciones c JOIN negocios n ON c.negocio_id = n.id
-ORDER BY c.ultima_interaccion DESC LIMIT 20;
-
--- Ver logs de agentes IA (ultimas 24h)
-SELECT negocio_id, agente_tipo, COUNT(*) as llamadas, SUM(tokens_usados) as tokens
-FROM agente_logs
-WHERE created_at >= NOW() - INTERVAL 24 HOUR
-GROUP BY negocio_id, agente_tipo;
-
--- Ver domicilios activos
-SELECT id, tracking_token, estado, created_at
-FROM domicilios WHERE estado != 'entregado' ORDER BY created_at DESC;
-```
-
----
-
-## ?? Solucion de Problemas Comunes
-
-### "Cannot connect to MySQL"
-```bash
-mysql -u root -p -e "SHOW DATABASES;"
-# Windows: net start mysql
-# Linux/Mac: sudo service mysql start
-```
-
-### "Module not found" en Python
-```bash
-pip install fastapi uvicorn openai python-dotenv mysql-connector-python redis
-```
-
-### "CORS error" en el browser
-- Verificar que `NODE_ENV=development` en `.env`
-- El frontend debe correr en puerto 5173 o 5174 (estan en la whitelist del API)
-
-### El bot de WhatsApp no conecta
-- Verificar que Instance Manager Y la API estan corriendo
-- Borrar `antigravity/auth_info/auth_info_X/` y reconectar desde el dashboard
-
-### Sesion expira o "JWT invalid"
-- Verificar que `JWT_SECRET` en `.env` no este vacio
-- El token expira en 7 dias por defecto
-
----
-
-## ?? Archivos que NUNCA deben subirse al repositorio
-
-El `.gitignore` ya los excluye. Verificar que nunca se comitteen:
-
-```
-antigravity/.env
-antigravity/auth_info/
-antigravity/node_modules/
-antigravity/frontend/.env
-agency-platform-react/.env.local
-agency-platform-react/node_modules/
-```
-
----
-
-## ?? Flujo de Trabajo del Equipo
-
-- Usar branches por feature: `git checkout -b feature/nombre-de-la-tarea`
-- Commits descriptivos en espaÒol
-- Deploy local: Nginx + Cloudflare Tunnels
-- Secretos siempre en `.env`, nunca en el codigo
-
----
-
-*Ultima actualizacion: Junio 2026 ó Sistema en desarrollo activo*
+</div>

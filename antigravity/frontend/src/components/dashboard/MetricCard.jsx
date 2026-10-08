@@ -7,11 +7,14 @@ export default function MetricCard({
   variacionPositiva = true,
   sparklineData = [],
   icono,
+  inverso = false,
   loading = false
 }) {
+  const cardClass = `metric-card ${inverso ? 'metric-card-inverse' : ''}`;
+
   if (loading) {
     return (
-      <div className="metric-card">
+      <div className={cardClass}>
         <div className="skeleton skeleton-metric"></div>
       </div>
     );
@@ -25,7 +28,7 @@ export default function MetricCard({
   const displayValue = isCurrency && typeof valor === 'number' ? formatCOP(valor) : valor;
 
   return (
-    <div className="metric-card">
+    <div className={cardClass}>
       <div className="metric-header">
         {icono && <div className="metric-icon">{icono}</div>}
         <span className="metric-title">{titulo}</span>

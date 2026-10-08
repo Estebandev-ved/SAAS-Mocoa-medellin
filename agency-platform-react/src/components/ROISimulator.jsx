@@ -91,9 +91,9 @@ const ROISimulator = () => {
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="bg-bg2 p-10 rounded-3xl border border-border shadow-2xl relative"
+            className="bg-bg2 p-10 rounded-3xl border border-border relative"
           >
-            <div className="absolute -top-6 -left-6 w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-bg shadow-[0_0_20px_rgba(229,57,53,0.3)]">
+            <div className="absolute -top-6 -left-6 w-12 h-12 bg-accent rounded-2xl flex items-center justify-center text-bg">
               <Calculator size={24} />
             </div>
 
@@ -101,7 +101,7 @@ const ROISimulator = () => {
               {/* Orders Slider */}
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <label className="font-mono text-xs uppercase tracking-widest text-muted">Pedidos por día</label>
+                  <label className="text-xs uppercase tracking-[0.04em] text-muted">Pedidos por día</label>
                   <span className="text-2xl font-head font-bold text-accent">{orders}</span>
                 </div>
                 <input 
@@ -114,7 +114,7 @@ const ROISimulator = () => {
               {/* Ticket Slider */}
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <label className="font-mono text-xs uppercase tracking-widest text-muted">Ticket Promedio</label>
+                  <label className="text-xs uppercase tracking-[0.04em] text-muted">Ticket Promedio</label>
                   <span className="text-2xl font-head font-bold text-accent">{formatCurrency(ticket)}</span>
                 </div>
                 <input 
@@ -127,7 +127,7 @@ const ROISimulator = () => {
               {/* Automation Slider */}
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <label className="font-mono text-xs uppercase tracking-widest text-muted">Nivel de Automatización</label>
+                  <label className="text-xs uppercase tracking-[0.04em] text-muted">Nivel de Automatización</label>
                   <span className="text-2xl font-head font-bold text-accent">{automation}%</span>
                 </div>
                 <input 
@@ -181,11 +181,11 @@ const ROISimulator = () => {
           transition={{ delay: 0.5 }}
           className="mt-16 text-center"
         >
-          <p className="text-muted text-sm font-mono uppercase tracking-widest bg-bg2 d-inline-block px-8 py-3 rounded-full border border-border italic mb-8">
+          <p className="text-muted text-sm uppercase tracking-[0.04em] bg-bg2 d-inline-block px-8 py-3 rounded-full border border-border italic mb-8">
             * Cifras estimadas basadas en costos operativos estándar de comercio electrónico en LATAM.
           </p>
           <motion.button 
-            whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(229,57,53,0.2)' }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="bg-accent text-bg px-12 py-5 rounded-2xl font-head font-bold text-lg cursor-pointer border-none"
             onClick={() => document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })}
@@ -210,7 +210,7 @@ const ResultCard = ({ icon: Icon, label, value, desc, color = "text-text", delay
       <Icon size={20} />
     </div>
     <div>
-      <p className="font-mono text-[10px] uppercase tracking-widest text-muted mb-2">{label}</p>
+      <p className="text-xs uppercase tracking-[0.04em] text-muted mb-2">{label}</p>
       <h4 className={`font-head text-3xl font-bold mb-2 ${color}`}>{value}</h4>
       <p className="text-muted text-xs leading-none">{desc}</p>
     </div>

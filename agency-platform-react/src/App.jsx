@@ -14,7 +14,7 @@ import InteractiveDemo from './components/InteractiveDemo';
 import ROISimulator from './components/ROISimulator';
 import Process from './components/Process';
 import Cases from './components/Cases';
-import Customizer from './components/Customizer';
+import Personajes from './components/Personajes';
 import Pricing from './components/Pricing';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
@@ -35,21 +35,14 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import MultiChannelPage from './pages/MultiChannelPage';
 import VoiceBotPage from './pages/VoiceBotPage';
 import ErrorBoundary from './components/ErrorBoundary';
-import { Layers } from 'lucide-react';
+import Illustration from './components/Illustration';
 
 const LoadingScreen = () => (
   <motion.div 
     exit={{ opacity: 0 }}
     className="fixed inset-0 z-[1000] bg-bg flex items-center justify-center flex-col gap-6"
   >
-    <motion.div
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: [0.8, 1.1, 1], opacity: 1 }}
-      transition={{ duration: 1, repeat: Infinity, repeatType: 'reverse' }}
-      className="w-20 h-20 rounded-2xl bg-accent flex items-center justify-center shadow-[0_0_50px_rgba(0,255,209,0.4)]"
-    >
-      <Layers size={40} className="text-bg fill-bg" />
-    </motion.div>
+    <Illustration name="carga" size={160} alt="Cargando" />
     <div className="flex flex-col items-center gap-2">
       <div className="font-mono text-[10px] tracking-[0.4em] text-accent uppercase">Iniciando Motor IA</div>
       <div className="w-48 h-1 bg-border rounded-full overflow-hidden">
@@ -92,7 +85,7 @@ const HomePage = () => {
                         <ROISimulator />
                         <Cases />
                         <Process />
-                        <Customizer />
+                        <Personajes />
                         <Pricing />
                         <Contact />
                     </main>

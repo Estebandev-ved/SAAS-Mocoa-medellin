@@ -1,3 +1,4 @@
+import EmptyState from '../components/EmptyState';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -115,7 +116,7 @@ const ClientesPage = () => {
                                 value={buscar}
                                 onChange={(e) => setBuscar(e.target.value)}
                                 placeholder="Buscar por nombre, teléfono o email..."
-                                className="w-full bg-bg2/50 border border-border rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-accent"
+                                className="w-full bg-white border border-border rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-accent"
                             />
                         </div>
                         <button type="submit" className="bg-accent text-bg px-6 py-2 rounded-xl text-sm font-bold">
@@ -139,8 +140,8 @@ const ClientesPage = () => {
                     </div>
                     <div className="glass p-4 rounded-2xl border border-border">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center">
-                                <ShoppingBag className="text-green-500" size={20} />
+                            <div className="w-10 h-10 bg-success/20 rounded-xl flex items-center justify-center">
+                                <ShoppingBag className="text-success" size={20} />
                             </div>
                             <div>
                                 <p className="text-xs text-muted">Con Compras</p>
@@ -167,11 +168,11 @@ const ClientesPage = () => {
                         <Loader2 className="animate-spin text-accent" size={24} />
                     </div>
                 ) : clientes.length === 0 ? (
-                    <div className="text-center py-12 glass rounded-3xl">
-                        <Users className="mx-auto mb-4 text-muted" size={48} />
-                        <h3 className="text-xl font-bold mb-2">No hay clientes</h3>
-                        <p className="text-muted">Los clientes aparecerán cuando interactúen con tu bot</p>
-                    </div>
+                    <EmptyState
+                        title="No hay clientes"
+                        description="Los clientes aparecerán cuando interactúen con tu bot"
+                        className="bg-white border border-border rounded-3xl"
+                    />
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {clientes.map((cliente) => (
@@ -189,7 +190,7 @@ const ClientesPage = () => {
                                         </span>
                                     </div>
                                     {cliente.total_pedidos > 0 && (
-                                        <span className="bg-green-500/10 text-green-500 text-xs px-2 py-1 rounded-lg font-mono">
+                                        <span className="bg-success/10 text-success text-xs px-2 py-1 rounded-lg font-mono">
                                             ACTIVO
                                         </span>
                                     )}

@@ -79,10 +79,10 @@ const AnalyticsPage = () => {
                         className="glass rounded-2xl p-4 border border-border"
                     >
                         <div className="flex items-center gap-2 mb-2">
-                            <DollarSign className="w-4 h-4 text-green-500" />
+                            <DollarSign className="w-4 h-4 text-success" />
                             <span className="text-xs font-mono text-muted">VENTAS MES</span>
                         </div>
-                        <p className="text-2xl font-bold text-green-500">{formatCurrency(ventasConfirmadas)}</p>
+                        <p className="text-2xl font-bold text-success">{formatCurrency(ventasConfirmadas)}</p>
                         <p className="text-xs text-muted mt-1">{resumen.total_pedidos || 0} pedidos</p>
                     </motion.div>
 
@@ -107,10 +107,10 @@ const AnalyticsPage = () => {
                         className="glass rounded-2xl p-4 border border-border"
                     >
                         <div className="flex items-center gap-2 mb-2">
-                            <Activity className="w-4 h-4 text-blue-500" />
+                            <Activity className="w-4 h-4 text-info-text" />
                             <span className="text-xs font-mono text-muted">CONVERSIÓN</span>
                         </div>
-                        <p className="text-2xl font-bold text-blue-500">{data?.tasa_conversion || 0}%</p>
+                        <p className="text-2xl font-bold text-info-text">{data?.tasa_conversion || 0}%</p>
                         <p className="text-xs text-muted mt-1">mensajes → pedidos</p>
                     </motion.div>
 

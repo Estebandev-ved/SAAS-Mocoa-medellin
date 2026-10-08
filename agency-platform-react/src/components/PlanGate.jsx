@@ -75,9 +75,9 @@ export function PlanLimitBadge({ current, max, label }) {
       <span
         className={`font-mono text-xs px-2 py-0.5 rounded-lg ${
           isAtLimit
-            ? 'bg-[#FF4D6A]/10 text-[#FF4D6A] border border-[#FF4D6A]/30'
+            ? 'bg-danger/10 text-danger-text border border-danger/30'
             : isNearLimit
-            ? 'bg-[#FFB840]/10 text-[#FFB840] border border-[#FFB840]/30'
+            ? 'bg-warn/10 text-warn-text border border-warn/30'
             : 'bg-accent-dim text-accent border border-border'
         }`}
       >

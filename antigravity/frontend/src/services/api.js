@@ -153,6 +153,17 @@ export const businessService = {
   }
 };
 
+export const botConfigService = {
+  getConfig: async () => {
+    const response = await api.get('/api/bot/config');
+    return response.data;
+  },
+  updateConfig: async (datos) => {
+    const response = await api.put('/api/bot/config', datos);
+    return response.data;
+  }
+};
+
 export const usuariosService = {
   getAll: async () => {
     const response = await api.get('/api/usuarios');

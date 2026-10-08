@@ -181,11 +181,67 @@ async function revisarReengagement() {
     }
 }
 
+// No depende de que ninguna automatización esté prendida (a diferencia de
+// las otras funciones de este archivo): la seguridad de los domicilios no
+// es opcional una vez el módulo está activo. Dos escalones:
+// 1) se pasó del tiempo límite → "retrasado" (aviso al negocio, todavía puede llegar bien)
+// 2) se pasó del doble del tiempo límite y sigue sin entregarse → "en_disputa"
+//    (posible pérdida/robo: bloquea al domiciliario para nuevos domicilios
+//    hasta que el dueño lo revise en el panel de incidentes)
+async function revisarDomiciliosVencidos() {
+    try {
+        const [retrasados] = await db.execute(
+            `SELECT dom.id, dom.negocio_id, dom.domiciliario_id, dom.limite_entrega_at, p.numero_pedido
+             FROM domicilios dom
+             JOIN pedidos p ON dom.pedido_id = p.id
+             WHERE dom.estado IN ('aceptado', 'en_ruta')
+             AND dom.estado_incidente = 'ninguno'
+             AND dom.limite_entrega_at IS NOT NULL
+             AND dom.limite_entrega_at < NOW()`
+        );
+
+        for (const dom of retrasados) {
+            await db.execute(`UPDATE domicilios SET estado_incidente = 'retrasado' WHERE id = ?`, [dom.id]);
+            await registrarNotificacion(
+                dom.negocio_id, 'domicilio_retrasado',
+                'Domicilio retrasado',
+                `El pedido ${dom.numero_pedido} superó el tiempo estimado de entrega.`,
+                dom.id
+            );
+            console.log(`[Scheduler] Domicilio ${dom.id} marcado como retrasado (pedido ${dom.numero_pedido})`);
+        }
+
+        const [posiblesRobos] = await db.execute(
+            `SELECT dom.id, dom.negocio_id, dom.domiciliario_id, p.numero_pedido
+             FROM domicilios dom
+             JOIN pedidos p ON dom.pedido_id = p.id
+             WHERE dom.estado IN ('aceptado', 'en_ruta')
+             AND dom.estado_incidente = 'retrasado'
+             AND dom.limite_entrega_at IS NOT NULL
+             AND dom.limite_entrega_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)`
+        );
+
+        for (const dom of posiblesRobos) {
+            await db.execute(`UPDATE domicilios SET estado_incidente = 'en_disputa' WHERE id = ?`, [dom.id]);
+            await registrarNotificacion(
+                dom.negocio_id, 'domicilio_incidente',
+                'Posible pérdida de domicilio',
+                `El pedido ${dom.numero_pedido} lleva mucho más del tiempo estimado sin entregarse. Revísalo en el panel de incidentes.`,
+                dom.id
+            );
+            console.log(`[Scheduler] Domicilio ${dom.id} escalado a en_disputa (pedido ${dom.numero_pedido})`);
+        }
+    } catch (error) {
+        console.error('[Scheduler] Error en revisarDomiciliosVencidos:', error.message);
+    }
+}
+
 async function tick() {
     await revisarRecordatoriosPago();
     await revisarStockBajo();
     await revisarReporteSemanal();
     await revisarReengagement();
+    await revisarDomiciliosVencidos();
 }
 
 function iniciarScheduler() {

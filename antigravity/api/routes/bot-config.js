@@ -56,6 +56,10 @@ router.get('/config', async (req, res) => {
             horario_inicio: negocio.horario_activo_inicio ? String(negocio.horario_activo_inicio).slice(0, 5) : '08:00',
             horario_fin: negocio.horario_activo_fin ? String(negocio.horario_activo_fin).slice(0, 5) : '20:00',
             mensaje_fuera_horario: negocio.mensaje_fuera_horario || 'Estamos fuera de horario. ¿Te contactamos mañana?',
+            descripcion_negocio: negocio.descripcion_negocio || '',
+            productos_servicios: negocio.productos_servicios || '',
+            info_pagos: negocio.info_pagos || '',
+            politicas: negocio.politicas || '',
             agentes_activos: agentesActivos,
             agentes_disponibles: AGENTES_VALIDOS,
             limite_agentes: LIMITES_AGENTES_POR_PLAN[req.negocio.plan] || 3

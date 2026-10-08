@@ -31,41 +31,46 @@ import {
 } from 'lucide-react'
 import api, { analyticsService } from '../services/api'
 import { usePlan } from '../components/PlanGate'
+import OwnerAvatar from '../components/avatar/OwnerAvatar'
+import ActivationChecklist from '../components/ActivationChecklist'
 
 const NavItem = ({ icon: Icon, label, active, onClick, locked, lockTooltip }) => (
   <button
     onClick={locked ? undefined : onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+    className={`relative w-full flex items-center gap-3 px-4 h-11 rounded-xl text-sm font-semibold transition-colors duration-200 border-none ${
       active
-        ? 'bg-accent/10 text-accent border border-accent/20'
-        : 'text-muted hover:bg-bg hover:text-text border border-transparent'
-    } ${locked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        ? 'bg-white/10 text-inverse-text'
+        : 'bg-transparent text-[#A0A0A0] hover:bg-white/5 hover:text-inverse-text'
+    } ${locked ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'}`}
     title={locked ? lockTooltip : undefined}
   >
-    <Icon size={20} />
+    {active && <span className="absolute -left-4 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[#E53935] rounded-r" />}
+    <Icon size={20} className={active ? 'text-[#E53935]' : ''} />
     <span>{label}</span>
-    {locked && <Lock size={14} className="ml-auto text-muted" />}
+    {locked && <Lock size={14} className="ml-auto text-[#A0A0A0]" />}
   </button>
 )
 
-const StatCard = ({ title, value, trend, icon: Icon, variants }) => (
+const StatCard = ({ title, value, trend, icon: Icon, variants, inverse = false }) => (
   <motion.div
     variants={variants}
-    className="glass rounded-2xl p-6 border border-border/50"
+    className={`rounded-2xl p-6 border ${
+      inverse ? 'bg-inverse border-inverse text-inverse-text' : 'bg-white border-border'
+    }`}
   >
     <div className="flex items-start justify-between">
       <div>
-        <p className="text-muted text-sm">{title}</p>
-        <p className="text-3xl font-bold text-text mt-1">{value}</p>
+        <p className={`text-sm ${inverse ? 'text-[#A0A0A0]' : 'text-muted'}`}>{title}</p>
+        <p className={`font-mono text-3xl font-bold mt-1 ${inverse ? 'text-inverse-text' : 'text-text'}`}>{value}</p>
         {trend && (
           <div className="flex items-center gap-1 mt-2">
-            <TrendingUp size={14} className="text-green-400" />
-            <span className="text-green-400 text-xs">{trend}</span>
+            <TrendingUp size={14} className={inverse ? 'text-[#81C784]' : 'text-success'} />
+            <span className={`text-xs font-medium ${inverse ? 'text-[#81C784]' : 'text-success'}`}>{trend}</span>
           </div>
         )}
       </div>
-      <div className="p-3 bg-accent-dim rounded-xl">
-        <Icon size={24} className="text-accent" />
+      <div className={`p-3 rounded-xl ${inverse ? 'bg-[#E53935]/15' : 'bg-accent-dim'}`}>
+        <Icon size={24} className={inverse ? 'text-[#E53935]' : 'text-accent'} />
       </div>
     </div>
   </motion.div>
@@ -108,13 +113,13 @@ export default function Dashboard() {
   const getPlanIcon = () => {
     switch (effectivePlan) {
       case 'enterprise':
-        return <Crown size={16} className="text-yellow-400" />
+        return <Crown size={16} className="text-[#E53935]" />
       case 'professional':
-        return <Star size={16} className="text-blue-400" />
+        return <Star size={16} className="text-[#E53935]" />
       case 'starter':
-        return <Shield size={16} className="text-green-400" />
+        return <Shield size={16} className="text-[#A0A0A0]" />
       default:
-        return <Shield size={16} className="text-green-400" />
+        return <Shield size={16} className="text-[#A0A0A0]" />
     }
   }
 
@@ -225,22 +230,24 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-bg flex">
-      <aside className="w-72 bg-bg2 border-r border-border hidden lg:flex flex-col">
-        <div className="p-6 border-b border-border">
+      <aside className="w-72 bg-inverse text-inverse-text border-r border-white/10 hidden lg:flex flex-col">
+        <div className="p-6 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center">
-              <Zap size={20} className="text-white" />
-            </div>
-            <h1 className="text-xl font-bold text-text tracking-tight">ANTIGRAVITY</h1>
+            <svg width="36" height="36" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <circle cx="24" cy="24" r="24" fill="#E53935" />
+              <path d="M24 12L32 20L24 28L16 20L24 12Z" fill="#0A0A0A" />
+              <path d="M24 20L32 28L24 36L16 28L24 20Z" fill="#0A0A0A" opacity="0.6" />
+            </svg>
+            <h1 className="font-head text-lg font-extrabold text-inverse-text tracking-[0.08em]">ANTIGRAVITY</h1>
           </div>
         </div>
 
-        <div className="p-4 mx-4 mt-4 rounded-xl bg-accent-dim border border-accent/20 flex items-center gap-3">
+        <div className="p-4 mx-4 mt-4 rounded-xl bg-white/10 flex items-center gap-3">
           {getPlanIcon()}
-          <span className="text-sm text-text font-medium">{getPlanLabel()}</span>
+          <span className="text-sm text-inverse-text font-medium">{getPlanLabel()}</span>
           <button
             onClick={() => navigate('/suscripcion')}
-            className="ml-auto text-xs font-bold text-accent hover:text-accent/80 transition-colors"
+            className="ml-auto text-xs font-semibold text-[#E53935] hover:text-inverse-text transition-colors bg-transparent border-none cursor-pointer"
           >
             {getUpgradeLabel()}
           </button>
@@ -260,7 +267,7 @@ export default function Dashboard() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-border space-y-1">
+        <div className="p-4 border-t border-white/10 space-y-1">
           {bottomItems.map((item) => (
             <NavItem
               key={item.path}
@@ -272,7 +279,7 @@ export default function Dashboard() {
           ))}
           <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 cursor-pointer"
+            className="w-full flex items-center gap-3 px-4 h-11 rounded-xl text-sm font-semibold text-[#A0A0A0] bg-transparent border-none hover:bg-white/5 hover:text-inverse-text transition-colors duration-200 cursor-pointer"
           >
             <LogOut size={20} />
             <span>Cerrar Sesion</span>
@@ -280,24 +287,31 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto bg-bg2">
         <div className="p-8">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
+            className="mb-8 flex items-center gap-5"
           >
-            <h1 className="text-3xl font-bold text-text">
-              Hola, {user?.nombre}!
-            </h1>
-            <div className="flex items-center gap-4 mt-2">
-              <span className="text-muted">{user?.email}</span>
-              <div className="flex items-center gap-1 px-2 py-1 bg-accent-dim rounded-lg">
-                {getPlanIcon()}
-                <span className="text-xs text-accent font-medium">{getPlanLabel()}</span>
+            <div className="w-20 h-20 rounded-full bg-[#FDECEA] overflow-hidden shrink-0 flex items-end justify-center">
+              <OwnerAvatar config={user?.avatar} variant="busto" height={92} label={`Avatar de ${user?.nombre || 'tu negocio'}`} />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-text">
+                Hola, {user?.nombre}!
+              </h1>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="text-muted">{user?.email}</span>
+                <div className="flex items-center gap-1 px-2 py-1 bg-accent-dim rounded-lg">
+                  {getPlanIcon()}
+                  <span className="text-xs text-accent font-medium">{getPlanLabel()}</span>
+                </div>
               </div>
             </div>
           </motion.div>
+
+          <ActivationChecklist user={user} />
 
           <motion.div
             variants={containerVariants}
@@ -311,6 +325,7 @@ export default function Dashboard() {
               trend={stats.cambioVentas !== 0 ? `${stats.cambioVentas > 0 ? '+' : ''}${stats.cambioVentas}% vs ayer` : null}
               icon={TrendingUp}
               variants={itemVariants}
+              inverse
             />
             <StatCard
               title="Pedidos Hoy"
@@ -348,31 +363,31 @@ export default function Dashboard() {
                   key={idx}
                   className={`flex items-start gap-4 p-4 rounded-2xl border transition-all ${
                     alerta.severidad === 'critica'
-                      ? 'bg-[#FF4D6A]/10 border-[#FF4D6A]/30'
+                      ? 'bg-danger/10 border-danger/30'
                       : alerta.severidad === 'advertencia'
-                      ? 'bg-[#FFB840]/10 border-[#FFB840]/30'
+                      ? 'bg-warn/10 border-warn/30'
                       : 'bg-accent/5 border-accent/20'
                   }`}
                 >
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
                     alerta.severidad === 'critica'
-                      ? 'bg-[#FF4D6A]/20'
+                      ? 'bg-danger/20'
                       : alerta.severidad === 'advertencia'
-                      ? 'bg-[#FFB840]/20'
+                      ? 'bg-warn/20'
                       : 'bg-accent/10'
                   }`}>
                     {alerta.severidad === 'critica' ? (
-                      <Zap className="w-4 h-4 text-[#FF4D6A]" />
+                      <Zap className="w-4 h-4 text-danger-text" />
                     ) : alerta.severidad === 'advertencia' ? (
-                      <Bell className="w-4 h-4 text-[#FFB840]" />
+                      <Bell className="w-4 h-4 text-warn-text" />
                     ) : (
                       <TrendingUp className="w-4 h-4 text-accent" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`font-medium text-sm ${
-                      alerta.severidad === 'critica' ? 'text-[#FF4D6A]' :
-                      alerta.severidad === 'advertencia' ? 'text-[#FFB840]' : 'text-accent'
+                      alerta.severidad === 'critica' ? 'text-danger-text' :
+                      alerta.severidad === 'advertencia' ? 'text-warn-text' : 'text-accent'
                     }`}>{alerta.titulo}</p>
                     <p className="text-muted text-xs mt-0.5">{alerta.mensaje}</p>
                   </div>
@@ -381,7 +396,7 @@ export default function Dashboard() {
                       onClick={() => navigate('/dashboard/suscripcion')}
                       className={`px-3 py-1.5 rounded-xl font-mono text-xs flex-shrink-0 transition-all ${
                         alerta.severidad === 'critica'
-                          ? 'bg-[#FF4D6A] text-white hover:bg-[#FF4D6A]/90'
+                          ? 'bg-danger text-white hover:bg-danger/90'
                           : 'bg-bg3 text-text border border-border hover:border-accent/30'
                       }`}
                     >
@@ -402,24 +417,24 @@ export default function Dashboard() {
             <h2 className="text-lg font-bold text-text mb-4">Estado de Funciones</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex items-center gap-3 p-4 bg-bg rounded-xl border border-border/50">
-                <MessageSquare size={20} className="text-[#4CAF50]" />
+                <MessageSquare size={20} className="text-success" />
                 <div>
                   <p className="text-text font-medium text-sm">Conversaciones</p>
                   <p className="text-muted text-xs">Activo</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-4 bg-bg rounded-xl border border-border/50">
-                <ShoppingCart size={20} className="text-[#4CAF50]" />
+                <ShoppingCart size={20} className="text-success" />
                 <div>
                   <p className="text-text font-medium text-sm">Pedidos</p>
                   <p className="text-muted text-xs">Activo</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-4 bg-bg rounded-xl border border-border/50">
-                <Truck size={20} className={domiciliosLocked ? 'text-muted' : 'text-[#4CAF50]'} />
+                <Truck size={20} className={domiciliosLocked ? 'text-muted' : 'text-success'} />
                 <div>
                   <p className="text-text font-medium text-sm">Domicilios</p>
-                  <p className={`text-xs ${domiciliosLocked ? 'text-[#FF4D6A]' : 'text-[#4CAF50]'}`}>
+                  <p className={`text-xs ${domiciliosLocked ? 'text-danger-text' : 'text-success'}`}>
                     {domiciliosLocked ? 'Bloqueado' : 'Activo'}
                   </p>
                 </div>
@@ -468,13 +483,13 @@ export default function Dashboard() {
                     }`}
                   >
                     {isActive ? (
-                      <Power size={14} className="text-[#4CAF50]" />
+                      <Power size={14} className="text-success" />
                     ) : (
                       <PowerOff size={14} className="text-muted" />
                     )}
                     <div>
                       <p className="text-text text-sm font-medium">{agentLabels[agentId]}</p>
-                      <p className={`text-xs ${isActive ? 'text-[#4CAF50]' : 'text-muted'}`}>
+                      <p className={`text-xs ${isActive ? 'text-success' : 'text-muted'}`}>
                         {isActive ? 'Activo' : 'Inactivo'}
                       </p>
                     </div>
@@ -525,7 +540,7 @@ export default function Dashboard() {
                     <Icon size={18} className={isActive ? 'text-accent' : 'text-muted'} />
                     <div>
                       <p className="text-text text-sm font-medium">{auto.label}</p>
-                      <p className={`text-xs ${isActive ? 'text-[#4CAF50]' : 'text-muted'}`}>
+                      <p className={`text-xs ${isActive ? 'text-success' : 'text-muted'}`}>
                         {isActive ? 'Activo' : 'Inactivo'}
                       </p>
                     </div>

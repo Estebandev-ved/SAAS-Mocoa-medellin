@@ -34,24 +34,57 @@ REGLAS CRÍTICAS:
 async function obtenerConfigNegocio(negocioId) {
     try {
         const [negocios] = await db.execute(
-            `SELECT nombre, bot_nombre, bot_tono, bot_bienvenida, 
+            `SELECT nombre, bot_nombre, bot_tono, bot_bienvenida,
                     numero_nequi, numero_bancolombia,
                     descripcion_negocio, productos_servicios, info_pagos, politicas
              FROM negocios WHERE id = ?`,
             [negocioId]
         );
         const [productos] = await db.execute(
-            `SELECT nombre, precio, descripcion, stock 
+            `SELECT nombre, precio, descripcion, stock
              FROM productos WHERE negocio_id = ? AND activo = 1`,
             [negocioId]
         );
+        const moduloDomicilios = await obtenerModuloDomicilios(negocioId);
         return {
             negocio: negocios[0] || {},
-            productos
+            productos,
+            moduloDomicilios
         };
     } catch (error) {
-        return { negocio: {}, productos: {} };
+        return { negocio: {}, productos: {}, moduloDomicilios: { activo: false } };
     }
+}
+
+async function obtenerModuloDomicilios(negocioId) {
+    try {
+        const [modulos] = await db.execute(
+            `SELECT activo, config FROM negocio_modulos WHERE negocio_id = ? AND modulo_name = 'domicilios'`,
+            [negocioId]
+        );
+        if (modulos.length === 0 || !modulos[0].activo) return { activo: false };
+        let config = {};
+        try {
+            config = typeof modulos[0].config === 'string' ? JSON.parse(modulos[0].config) : (modulos[0].config || {});
+        } catch (e) { config = {}; }
+        return { activo: true, tarifa: config.valor_fijo || 5000, tiempoLimiteMinutos: config.tiempo_limite_minutos || 45 };
+    } catch (error) {
+        return { activo: false };
+    }
+}
+
+// Heurística de direcciones colombianas: "Calle 45 #12-30", "Cra 8 # 20-15
+// barrio San Pedro", etc. No pretende ser exhaustiva — su único trabajo es
+// distinguir "esto probablemente es una dirección" de "esto es una respuesta
+// de otro tipo", para no crear el pedido sin dirección ni pedirla dos veces.
+function pareceDireccion(mensaje) {
+    const msg = mensaje.trim();
+    if (msg.length < 6) return false;
+    const patrones = [
+        /\b(calle|cll|cl|carrera|cra|kra|avenida|av|diagonal|diag|transversal|tv|manzana|mz|autopista)\b\.?\s*\d/i,
+        /\b(barrio|apto|apartamento|casa\s*\d|torre|interior|int\.)\b/i,
+    ];
+    return patrones.some(r => r.test(msg));
 }
 
 async function llamarGemini(modelName, systemPrompt, historial, mensaje, apiKey) {
@@ -147,6 +180,14 @@ function construirSystemPrompt(config, contexto) {
         prompt += `\n\nPolíticas: ${config.negocio.politicas}`;
     }
 
+    if (config.moduloDomicilios?.activo) {
+        prompt += `\n\n=== DOMICILIOS ===
+Este negocio SÍ hace entregas a domicilio. Antes de dar por cerrado un pedido, necesitas la dirección de entrega.
+- Si el cliente confirma que quiere comprar y en la conversación TODAVÍA no te ha dado su dirección, pregúntasela: "Perfecto, ¿a qué dirección lo enviamos? (barrio o punto de referencia si puedes)".
+- Si el cliente ya te dio una dirección (calle/carrera/barrio) en este mensaje o en uno anterior, no la vuelvas a pedir: agradece y sigue con el resto del proceso (pago, etc).
+- No digas que el pedido quedó "confirmado" o "registrado" si aún no tienes la dirección.`;
+    }
+
     return prompt;
 }
 
@@ -166,6 +207,11 @@ async function procesarMensaje(mensaje, negocioId, clienteId, contexto = []) {
     try {
         const config = await obtenerConfigNegocio(negocioId);
         config.contexto = contexto; // Pass conversation context for order matching
+
+        // Flujo determinista de confirmación de dirección (no consume tokens de IA).
+        const flujoDireccion = await manejarFlujoDireccion(mensaje, config, contexto, clienteId, inicio);
+        if (flujoDireccion) return flujoDireccion;
+
         const systemPrompt = construirSystemPrompt(config, contexto);
 
         const result = await llamarGemini(null, systemPrompt, contexto, mensaje, apiKey);
@@ -227,21 +273,26 @@ function detectarIntencion(mensaje, respuesta) {
     return { tipo: 'general', agente: 'gemini' };
 }
 
-async function construirAccionPedido(mensaje, config, clienteId) {
+// Keywords that indicate the customer wants to buy (without naming a specific product)
+const CONFIRMACION_KEYWORDS = [
+    'si', 'sí', 'dale', 'de una', 'ok', 'perfecto', 'quiero', 'me interesa',
+    'contratar', 'activar', 'empezar', 'registrarme', 'lo quiero', 'tomarlo',
+    'comprar', 'adquirir', 'pagar', 'confirmo', 'confirmado', 'acepto'
+];
+
+function esMensajeConfirmacion(mensaje) {
+    const msg = mensaje.toLowerCase().trim();
+    return CONFIRMACION_KEYWORDS.some(k => msg === k || msg.startsWith(k + ' ') || msg.endsWith(' ' + k));
+}
+
+// Busca qué producto(s) del catálogo está pidiendo el cliente: primero por
+// nombre exacto, luego por coincidencia parcial de palabras, y por último —si
+// el mensaje es solo una confirmación o una dirección— el último producto
+// mencionado en la conversación.
+function resolverProductos(mensaje, config, permitirContexto) {
     const msg = mensaje.toLowerCase().trim();
     const productosEncontrados = [];
 
-    // Keywords that indicate the customer wants to buy (without naming a specific product)
-    const confirmacionKeywords = [
-        'si', 'sí', 'dale', 'de una', 'ok', 'perfecto', 'quiero', 'me interesa',
-        'contratar', 'activar', 'empezar', 'registrarme', 'lo quiero', 'tomarlo',
-        'comprar', 'adquirir', 'pagar', 'confirmo', 'confirmado', 'acepto'
-    ];
-
-    // Check if it's a confirmation without product name
-    const esConfirmacion = confirmacionKeywords.some(k => msg === k || msg.startsWith(k + ' ') || msg.endsWith(' ' + k));
-
-    // First: try exact match
     for (const prod of config.productos) {
         const prodName = prod.nombre.toLowerCase();
         if (msg.includes(prodName) || msg.includes(prodName.replace('plan ', ''))) {
@@ -251,7 +302,6 @@ async function construirAccionPedido(mensaje, config, clienteId) {
         }
     }
 
-    // Second: try partial match (e.g., "professional" matches "Plan Professional")
     if (productosEncontrados.length === 0) {
         for (const prod of config.productos) {
             const palabras = prod.nombre.toLowerCase().split(' ');
@@ -263,9 +313,7 @@ async function construirAccionPedido(mensaje, config, clienteId) {
         }
     }
 
-    // Third: if it's a confirmation and no product matched, use the LAST mentioned product from context
-    if (productosEncontrados.length === 0 && esConfirmacion && config.productos.length > 0) {
-        // Find the last product mentioned in the conversation context
+    if (productosEncontrados.length === 0 && permitirContexto && config.productos.length > 0) {
         const contextoStr = (config.contexto || []).map(c => c.contenido || '').join(' ').toLowerCase();
         for (let i = config.productos.length - 1; i >= 0; i--) {
             const prod = config.productos[i];
@@ -278,10 +326,117 @@ async function construirAccionPedido(mensaje, config, clienteId) {
         }
     }
 
-    if (productosEncontrados.length > 0) {
-        return { tipo: 'crear_pedido', productos: productosEncontrados, cliente_id: clienteId };
+    return productosEncontrados;
+}
+
+// ===== Confirmación de dirección de entrega =====
+// Antes el bot tomaba lo primero que parecía dirección y creaba el pedido sin
+// repetírsela al cliente. Ahora, con domicilios activos, la dirección se
+// repite y hay que confirmarla con un "sí" antes de crear el pedido. El estado
+// vive en el propio historial: el mensaje del bot lleva un marcador fijo, y el
+// siguiente mensaje del cliente se interpreta contra él (sin columnas extra).
+const MARCADOR_CONFIRMAR_DIR = '📍 Entendí esta dirección:';
+
+function esRespuestaAfirmativa(mensaje) {
+    return /^\s*(s[ií]|sip|claro|correct[oa]|exact[oa]|confirmo|confirmad[oa]|dale|de una|ok|listo|as[ií] es|perfecto|esa es)(?=$|[\s,.!¡?])/i.test(mensaje);
+}
+
+function esRespuestaNegativa(mensaje) {
+    return /^\s*(no|nop|nel|incorrect[oa]|esa no|equivocad[oa]|otra)(?=$|[\s,.!¡?])/i.test(mensaje);
+}
+
+// Devuelve una respuesta ya resuelta (sin pasar por el LLM) cuando el mensaje
+// pertenece al flujo de confirmación de dirección, o null si no aplica y el
+// mensaje debe seguir el flujo normal.
+async function manejarFlujoDireccion(mensaje, config, contexto, clienteId, inicio) {
+    if (!config.moduloDomicilios?.activo) return null;
+
+    const texto = mensaje.trim();
+    const ultimoBot = [...contexto].reverse().find(m => m.rol === 'bot');
+    const pendiente = ultimoBot?.contenido?.startsWith(MARCADOR_CONFIRMAR_DIR) ? ultimoBot.contenido : null;
+
+    const base = { intencion: 'compra', agente_usado: 'ventas', tokens_usados: 0 };
+
+    if (pendiente && esRespuestaAfirmativa(texto)) {
+        const direccion = pendiente.match(/\*([^*]+)\*/)?.[1]?.trim();
+        if (direccion) {
+            const datos_accion = await construirAccionPedido(mensaje, config, clienteId, { direccionConfirmada: direccion });
+            if (datos_accion) {
+                return {
+                    ...base,
+                    respuesta: '¡Listo! Registrando tu pedido… 🛵',
+                    datos_accion,
+                    tiempo_ms: Date.now() - inicio
+                };
+            }
+        }
+        return null;
     }
+
+    if (pendiente && esRespuestaNegativa(texto)) {
+        return {
+            ...base,
+            respuesta: 'Sin problema 🙂 Escríbeme la dirección de nuevo (calle o carrera, número y barrio) y la confirmamos.',
+            datos_accion: null,
+            tiempo_ms: Date.now() - inicio
+        };
+    }
+
+    // Dirección nueva (o corregida): solo si el cliente ya está en un proceso
+    // de compra, para no interceptar preguntas tipo "¿están en la carrera 8?".
+    if (pareceDireccion(texto) && resolverProductos(texto, config, true).length > 0) {
+        const direccionLimpia = texto.replace(/\*/g, '');
+        return {
+            ...base,
+            respuesta: `${MARCADOR_CONFIRMAR_DIR} *${direccionLimpia}*\n\n¿Es correcta? Responde *sí* para confirmar tu pedido, o escríbeme la dirección corregida (calle o carrera, número y barrio).`,
+            datos_accion: null,
+            tiempo_ms: Date.now() - inicio
+        };
+    }
+
     return null;
+}
+
+async function construirAccionPedido(mensaje, config, clienteId, opts = {}) {
+    const requiereDomicilio = !!config.moduloDomicilios?.activo;
+    // Con domicilios activos la dirección solo cuenta si el cliente ya la
+    // confirmó (ver manejarFlujoDireccion); sin domicilios se conserva el
+    // comportamiento anterior de tomarla del propio mensaje.
+    let direccionEntrega = opts.direccionConfirmada
+        || (!requiereDomicilio && pareceDireccion(mensaje) ? mensaje.trim() : null);
+
+    const esConfirmacion = esMensajeConfirmacion(mensaje);
+    const productosEncontrados = resolverProductos(mensaje, config, esConfirmacion || !!direccionEntrega);
+
+    if (productosEncontrados.length === 0) return null;
+
+    let direccionYaGuardada = false;
+    if (requiereDomicilio && !direccionEntrega) {
+        // Cliente ya recurrente: reusa la última dirección que dio, así no
+        // se le vuelve a preguntar en cada pedido.
+        try {
+            const [clientes] = await db.execute('SELECT direccion_guardada FROM clientes WHERE id = ?', [clienteId]);
+            if (clientes[0]?.direccion_guardada) {
+                direccionEntrega = clientes[0].direccion_guardada;
+                direccionYaGuardada = true;
+            }
+        } catch (e) { /* si falla, simplemente se le pregunta la dirección */ }
+    }
+
+    if (requiereDomicilio && !direccionEntrega) {
+        // No creamos el pedido todavía: el prompt de ventas ya le está
+        // pidiendo la dirección al cliente en su respuesta de texto. Se
+        // completará en el siguiente turno cuando el cliente la mande.
+        return null;
+    }
+
+    if (direccionEntrega && !direccionYaGuardada) {
+        try {
+            await db.execute('UPDATE clientes SET direccion_guardada = ? WHERE id = ?', [direccionEntrega, clienteId]);
+        } catch (e) { /* no bloquea la creación del pedido si esto falla */ }
+    }
+
+    return { tipo: 'crear_pedido', productos: productosEncontrados, cliente_id: clienteId, direccion_entrega: direccionEntrega };
 }
 
 async function verificarPagoConImagen(imagenBase64, negocioId, totalEsperado) {

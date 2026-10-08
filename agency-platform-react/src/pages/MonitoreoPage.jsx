@@ -108,9 +108,9 @@ export default function MonitoreoPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="flex items-center gap-2">
               {health?.status === 'ok' ? (
-                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                <CheckCircle2 className="w-5 h-5 text-success" />
               ) : (
-                <XCircle className="w-5 h-5 text-red-400" />
+                <XCircle className="w-5 h-5 text-danger-text" />
               )}
               <div>
                 <p className="text-xs text-muted">API</p>
@@ -136,10 +136,10 @@ export default function MonitoreoPage() {
 
         {/* Métricas del día */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <StatCard icon={MessageSquare} label="Mensajes Hoy" value={metrics?.mensajes_hoy} color="bg-blue-500/10 text-blue-400" />
-          <StatCard icon={Activity} label="Conversaciones Activas" value={metrics?.conversaciones_activas} color="bg-green-500/10 text-green-400" />
+          <StatCard icon={MessageSquare} label="Mensajes Hoy" value={metrics?.mensajes_hoy} color="bg-info/10 text-info-text" />
+          <StatCard icon={Activity} label="Conversaciones Activas" value={metrics?.conversaciones_activas} color="bg-success/10 text-success" />
           <StatCard icon={Users} label="Negocios Activos" value={metrics?.negocios_activos} color="bg-purple-500/10 text-purple-400" />
-          <StatCard icon={Zap} label="Clientes Nuevos" value={metrics?.clientes_nuevos_hoy} color="bg-yellow-500/10 text-yellow-400" />
+          <StatCard icon={Zap} label="Clientes Nuevos" value={metrics?.clientes_nuevos_hoy} color="bg-warn/10 text-warn-text" />
           <StatCard icon={ShoppingCart} label="Pedidos Hoy" value={metrics?.pedidos_hoy} color="bg-accent/10 text-accent" />
         </div>
 
@@ -175,14 +175,14 @@ export default function MonitoreoPage() {
 
           <div className="bg-bg2 border border-border rounded-2xl p-6">
             <h2 className="font-head text-lg text-text mb-4 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-yellow-500" />
+              <AlertTriangle className="w-5 h-5 text-warn-text" />
               Auditoría Reciente
             </h2>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {metrics?.auditoria_reciente?.length > 0 ? (
                 metrics.auditoria_reciente.map((log, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs font-body">
-                    <span className={`w-2 h-2 rounded-full ${log.status < 400 ? 'bg-green-500' : 'bg-red-400'}`} />
+                    <span className={`w-2 h-2 rounded-full ${log.status < 400 ? 'bg-success' : 'bg-danger'}`} />
                     <span className="text-muted">{log.method}</span>
                     <span className="text-text truncate flex-1">{log.path}</span>
                     <span className="text-muted">{log.duration}ms</span>

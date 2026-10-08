@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './TrackingCliente.css';
@@ -23,11 +23,35 @@ const moverIcon = L.divIcon({
     iconAnchor: [22, 22]
 });
 
+const destinoIcon = L.divIcon({
+    className: 'tracking-destino-icon',
+    html: '<svg viewBox="0 0 24 24" width="34" height="34"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ef4444" stroke="#fff" stroke-width="1"/></svg>',
+    iconSize: [34, 34],
+    iconAnchor: [17, 32]
+});
+
 function MapAutoCenter({ position }) {
     const map = useMap();
     useEffect(() => {
         if (position) map.setView(position, 15);
     }, [position]);
+    return null;
+}
+
+// Encuadra la ruta completa cuando todavía no hay posición del domiciliario
+// (si la hay, MapAutoCenter la sigue a ella).
+function FitRoute({ ruta, skip }) {
+    const map = useMap();
+    useEffect(() => {
+        if (skip || !ruta || ruta.length < 2) return;
+        // Al montar, el contenedor puede no tener tamaño todavía: sin
+        // invalidateSize, fitBounds calcula con 0px y se pasa de zoom.
+        const t = setTimeout(() => {
+            map.invalidateSize();
+            map.fitBounds(ruta, { padding: [30, 30] });
+        }, 150);
+        return () => clearTimeout(t);
+    }, [ruta, skip]);
     return null;
 }
 
@@ -173,9 +197,21 @@ export default function TrackingCliente() {
                 </div>
             ) : null}
 
+            {data?.codigo_confirmacion && data?.estado !== 'entregado' && data?.estado !== 'cancelado' && (
+                <div className="delivery-code-card">
+                    <span className="delivery-code-label">Tu código de entrega</span>
+                    <span className="delivery-code-value">{data.codigo_confirmacion}</span>
+                    <span className="delivery-code-hint">Dáselo al domiciliario cuando llegue con tu pedido</span>
+                </div>
+            )}
+
             <div className="tracking-map-wrapper">
                 <MapContainer center={driverPos || [1.148, -76.647]} zoom={15} style={{ height: '280px', width: '100%' }}>
-                    <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                    <TileLayer url={`https://tiles.traveltimeapp.com/positron/{z}/{x}/{y}.png?key=${import.meta.env.VITE_TRAVELTIME_APP_ID}`} />
+                    {data?.ruta && <Polyline positions={data.ruta} pathOptions={{ color: '#2563eb', weight: 5, opacity: 0.8 }} />}
+                    {data?.negocio && <Marker position={[data.negocio.lat, data.negocio.lng]} />}
+                    {data?.destino && <Marker position={[data.destino.lat, data.destino.lng]} icon={destinoIcon} />}
+                    <FitRoute ruta={data?.ruta} skip={!!driverPos} />
                     {driverPos && (
                         <Marker position={driverPos} icon={moverIcon}>
                             <MapAutoCenter position={driverPos} />

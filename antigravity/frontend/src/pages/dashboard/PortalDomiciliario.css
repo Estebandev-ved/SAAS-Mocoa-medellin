@@ -424,6 +424,34 @@
   background: rgba(102, 187, 106, 0.2);
 }
 
+.suspension-banner {
+  margin: 0 16px 16px;
+  padding: 12px 14px;
+  background: rgba(255, 82, 82, 0.12);
+  border: 1px solid rgba(255, 82, 82, 0.35);
+  border-radius: 10px;
+  color: #FF5252;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.btn-problema {
+  padding: 10px 16px;
+  background: rgba(255, 82, 82, 0.1);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  border-radius: 10px;
+  color: #FF5252;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-problema:hover {
+  background: rgba(255, 82, 82, 0.2);
+}
+
 .delivery-map {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }

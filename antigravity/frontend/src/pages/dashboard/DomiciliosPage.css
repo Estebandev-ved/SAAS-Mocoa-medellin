@@ -318,6 +318,66 @@
   color: #42A5F5;
 }
 
+.status-badge-sm.retrasado {
+  background: rgba(255, 167, 38, 0.15);
+  color: #FFA726;
+}
+
+.status-badge-sm.en_disputa {
+  background: rgba(255, 82, 82, 0.15);
+  color: #FF5252;
+}
+
+.queue-tab.incidents {
+  color: #FF5252;
+}
+
+.queue-item.incident {
+  border-left: 3px solid #FF5252;
+}
+
+.incident-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-resolver, .btn-robo {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.btn-resolver {
+  background: rgba(102, 187, 106, 0.1);
+  border-color: rgba(102, 187, 106, 0.3);
+  color: #66BB6A;
+}
+
+.btn-resolver:hover {
+  background: rgba(102, 187, 106, 0.2);
+}
+
+.btn-robo {
+  background: rgba(255, 82, 82, 0.1);
+  border-color: rgba(255, 82, 82, 0.3);
+  color: #FF5252;
+}
+
+.btn-robo:hover {
+  background: rgba(255, 82, 82, 0.2);
+}
+
+.driver-suspendido {
+  display: block;
+  font-size: 11px;
+  color: #FF5252;
+  margin-top: 2px;
+}
+
 .queue-item-actions .assign-select {
   padding: 8px 12px;
   background: rgba(255, 255, 255, 0.04);
@@ -333,6 +393,11 @@
   text-align: center;
   color: var(--text-muted);
   font-size: 14px;
+}
+
+.empty-queue p,
+.empty-drivers p {
+  margin-top: 16px;
 }
 
 .add-driver-form {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { businessService } from '../../services/api';
+import { businessService, botConfigService } from '../../services/api';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import PlanBadge from '../../components/dashboard/PlanBadge';
@@ -8,6 +8,16 @@ import './SettingsPage.css';
 
 const formatCOP = (valor) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(valor || 0);
+
+const BOT_CONFIG_DEFAULTS = {
+  bot_nombre: '',
+  bot_tono: 'amigable',
+  bot_bienvenida: '',
+  descripcion_negocio: '',
+  productos_servicios: '',
+  info_pagos: '',
+  politicas: ''
+};
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -19,6 +29,11 @@ export default function SettingsPage() {
   const [upgrading, setUpgrading] = useState(false);
   const [planError, setPlanError] = useState(null);
 
+  const [botConfig, setBotConfig] = useState(BOT_CONFIG_DEFAULTS);
+  const [loadingBot, setLoadingBot] = useState(true);
+  const [savingBot, setSavingBot] = useState(false);
+  const [botError, setBotError] = useState(null);
+
   useEffect(() => {
     let vivo = true;
     setLoadingPlan(true);
@@ -28,6 +43,39 @@ export default function SettingsPage() {
       .finally(() => { if (vivo) setLoadingPlan(false); });
     return () => { vivo = false; };
   }, []);
+
+  useEffect(() => {
+    let vivo = true;
+    botConfigService.getConfig()
+      .then((data) => {
+        if (!vivo) return;
+        setBotConfig({
+          bot_nombre: data.bot_nombre || '',
+          bot_tono: data.bot_tono || 'amigable',
+          bot_bienvenida: data.bot_bienvenida || '',
+          descripcion_negocio: data.descripcion_negocio || '',
+          productos_servicios: data.productos_servicios || '',
+          info_pagos: data.info_pagos || '',
+          politicas: data.politicas || ''
+        });
+        setBotError(null);
+      })
+      .catch((err) => { if (vivo) setBotError(err.response?.data?.error || 'No se pudo cargar la configuración del bot'); })
+      .finally(() => { if (vivo) setLoadingBot(false); });
+    return () => { vivo = false; };
+  }, []);
+
+  const handleSaveBot = async () => {
+    setSavingBot(true);
+    try {
+      await botConfigService.updateConfig(botConfig);
+      alert('El bot ya está usando esta información para responder a tus clientes.');
+    } catch (error) {
+      alert(error.response?.data?.error || 'No se pudo guardar la configuración del bot');
+    } finally {
+      setSavingBot(false);
+    }
+  };
 
   const handleUpgrade = async (nuevoPlanId, nombrePlan) => {
     if (!window.confirm(`¿Actualizar a ${nombrePlan}? El cobro se ajusta desde tu próximo ciclo de facturación.`)) {
@@ -70,7 +118,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="settings-tabs">
-        {['cuenta', 'seguridad', 'plan'].map(tab => (
+        {['cuenta', 'seguridad', 'bot', 'plan'].map(tab => (
           <button key={tab} className={activeTab === tab ? 'active' : ''} onClick={() => setActiveTab(tab)}>
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
@@ -110,6 +158,88 @@ export default function SettingsPage() {
                 <Button size="sm" variant="ghost">Cerrar</Button>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'bot' && (
+          <div className="settings-section settings-section-bot">
+            <h3>Configuración del bot</h3>
+            {loadingBot && <p>Cargando configuración...</p>}
+            {!loadingBot && botError && <div className="error-banner">{botError}</div>}
+
+            {!loadingBot && (
+              <div className="settings-form">
+                <Input
+                  label="Nombre del bot"
+                  value={botConfig.bot_nombre}
+                  onChange={(e) => setBotConfig({ ...botConfig, bot_nombre: e.target.value })}
+                />
+                <div className="form-group">
+                  <label>Tono de voz</label>
+                  <select value={botConfig.bot_tono} onChange={(e) => setBotConfig({ ...botConfig, bot_tono: e.target.value })}>
+                    <option value="formal">Formal</option>
+                    <option value="amigable">Amigable</option>
+                    <option value="casual">Casual</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Mensaje de bienvenida</label>
+                  <textarea
+                    value={botConfig.bot_bienvenida}
+                    onChange={(e) => setBotConfig({ ...botConfig, bot_bienvenida: e.target.value })}
+                    rows={3}
+                    placeholder="¡Hola! Soy el asistente de tu negocio. ¿En qué puedo ayudarte?"
+                  />
+                </div>
+
+                <h3>Conocimiento de tu negocio</h3>
+                <p className="settings-hint">
+                  Esto es lo que el bot usa para responder a tus clientes por WhatsApp. Entre más completo,
+                  menos improvisa la IA.
+                </p>
+                <div className="form-group">
+                  <label>Descripción del negocio</label>
+                  <textarea
+                    value={botConfig.descripcion_negocio}
+                    onChange={(e) => setBotConfig({ ...botConfig, descripcion_negocio: e.target.value })}
+                    rows={3}
+                    placeholder="Ej: Somos una pastelería artesanal en Bogotá, hacemos tortas por encargo..."
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Productos / servicios y precios</label>
+                  <textarea
+                    value={botConfig.productos_servicios}
+                    onChange={(e) => setBotConfig({ ...botConfig, productos_servicios: e.target.value })}
+                    rows={4}
+                    placeholder="Ej: Torta de chocolate 8 porciones: $80,000. Cupcakes docena: $35,000..."
+                  />
+                  <span className="settings-hint">
+                    Si ya cargaste productos en la pestaña "Productos" con precio, el bot usa esos primero.
+                    Este campo es un respaldo para cuando no hay productos cargados o para servicios sin catálogo formal.
+                  </span>
+                </div>
+                <div className="form-group">
+                  <label>Información de pagos</label>
+                  <textarea
+                    value={botConfig.info_pagos}
+                    onChange={(e) => setBotConfig({ ...botConfig, info_pagos: e.target.value })}
+                    rows={3}
+                    placeholder="Ej: Aceptamos Nequi 300-123-4567, Bancolombia ahorros 000-123456-78, o efectivo contraentrega."
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Políticas (devoluciones, envíos, tiempos)</label>
+                  <textarea
+                    value={botConfig.politicas}
+                    onChange={(e) => setBotConfig({ ...botConfig, politicas: e.target.value })}
+                    rows={3}
+                    placeholder="Ej: Envíos en 24-48h dentro de Bogotá. No hay devoluciones en productos personalizados."
+                  />
+                </div>
+                <Button onClick={handleSaveBot} loading={savingBot}>Guardar cambios del bot</Button>
+              </div>
+            )}
           </div>
         )}
 

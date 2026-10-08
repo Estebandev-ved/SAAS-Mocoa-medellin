@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import EmptyState from '../components/EmptyState';
+import Toast from '../components/Toast';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import {
   Truck,
   CheckCircle,
@@ -17,12 +23,67 @@ import {
   Zap,
   ArrowRight,
   ArrowLeft,
+  AlertTriangle,
+  Star,
+  CheckCircle2,
 } from 'lucide-react';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../components/PlanGate';
+import Illustration from '../components/Illustration';
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3002';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+const driverIcon = L.divIcon({
+  className: 'domicilio-driver-marker',
+  html: '<div style="width:16px;height:16px;border-radius:50%;background:#00FFD1;border:3px solid #0A0F14;box-shadow:0 0 0 4px rgba(0,255,209,0.25)"></div>',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+});
+
+const ESTADO_LABELS = {
+  pendiente: 'Esperando repartidor',
+  aceptado: 'Repartidor asignado',
+  en_ruta: 'En camino',
+  entregado: 'Entregado',
+  cancelado: 'Cancelado',
+};
+
+const destinoIcon = L.divIcon({
+  className: 'domicilio-destino-marker',
+  html: '<svg viewBox="0 0 24 24" width="30" height="30"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ef4444" stroke="#fff" stroke-width="1"/></svg>',
+  iconSize: [30, 30],
+  iconAnchor: [15, 28],
+});
+
+// Encuadra domiciliarios activos, puntos de entrega y el negocio. Depende de
+// una clave serializada (no del array) para no reencuadrar en cada render, y
+// difiere el ajuste porque al montar el contenedor puede medir 0px.
+function MapAutoFit({ points }) {
+  const map = useMap();
+  const clave = JSON.stringify(points);
+  useEffect(() => {
+    if (points.length === 0) return;
+    const t = setTimeout(() => {
+      map.invalidateSize();
+      const bounds = L.latLngBounds(points);
+      if (bounds.isValid()) map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
+    }, 150);
+    return () => clearTimeout(t);
+  }, [clave]);
+  return null;
+}
 
 export default function DomiciliosPage() {
   const { hasFeature } = usePlan();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [apiPlan, setApiPlan] = useState(null);
 
@@ -42,26 +103,37 @@ export default function DomiciliosPage() {
   const domiciliosAllowed = effectivePlan !== 'starter';
 
   const [activeTab, setActiveTab] = useState('pendientes');
-  const [domicilios, setDomicilios] = useState([]);
+  const [pendientes, setPendientes] = useState([]);
+  const [enCurso, setEnCurso] = useState([]);
+  const [completados, setCompletados] = useState([]);
+  const [negocioUbicacion, setNegocioUbicacion] = useState(null);
+  const [incidentes, setIncidentes] = useState([]);
   const [drivers, setDrivers] = useState([]);
-  const [driverStats, setDriverStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDriverForm, setShowDriverForm] = useState(false);
   const [driverForm, setDriverForm] = useState({ nombre: '', telefono: '', pin: '' });
   const [assignLoading, setAssignLoading] = useState(false);
   const [selectedDomicilioId, setSelectedDomicilioId] = useState(null);
+  const [toast, setToast] = useState(null);
+  const socketRef = useRef(null);
+
+  const showToast = (type, message) => setToast({ type, message });
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [domiciliosRes, driversRes] = await Promise.all([
+      const [activeRes, driversRes, incidentesRes] = await Promise.all([
         api.get('/domicilios/active'),
         api.get('/domicilios/drivers'),
+        api.get('/domicilios/incidentes'),
       ]);
-      setDomicilios(domiciliosRes.data?.domicilios || []);
-      setDrivers(driversRes.data?.drivers || []);
-      setDriverStats(driversRes.data?.stats || null);
+      setPendientes(activeRes.data?.data?.pendientes || []);
+      setEnCurso(activeRes.data?.data?.en_curso || []);
+      setCompletados(activeRes.data?.data?.completados || []);
+      setNegocioUbicacion(activeRes.data?.data?.negocio_ubicacion || null);
+      setDrivers(driversRes.data?.data || []);
+      setIncidentes(incidentesRes.data?.data || []);
     } catch (error) {
       console.error('Error fetching domicilios data:', error);
     } finally {
@@ -75,15 +147,46 @@ export default function DomiciliosPage() {
     }
   }, [domiciliosAllowed]);
 
+  useEffect(() => {
+    if (!domiciliosAllowed || !user?.id) return;
+
+    const socket = io(SOCKET_URL, {
+      auth: { token: localStorage.getItem('antigravity_token') },
+      transports: ['websocket', 'polling'],
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => socket.emit('suscribirse_negocio', user.id));
+
+    socket.on('domicilio_nuevo', () => {
+      showToast('success', '🛵 Nuevo pedido con domicilio recibido por WhatsApp');
+      fetchData();
+    });
+    socket.on('domicilio_asignado', fetchData);
+    socket.on('domicilio_en_ruta', fetchData);
+    socket.on('domicilio_entregado', fetchData);
+    socket.on('domicilio_incidente', () => {
+      showToast('error', '⚠️ Un domiciliario reportó un problema en una entrega');
+      fetchData();
+    });
+    socket.on('driver_location', (data) => {
+      setDrivers((prev) => prev.map((d) => (d.id === data.domiciliario_id ? { ...d, latitud: data.latitud, longitud: data.longitud } : d)));
+    });
+    socket.on('driver_status', () => fetchData());
+
+    return () => socket.disconnect();
+  }, [domiciliosAllowed, user?.id]);
+
   const handleAssign = async (domicilioId, driverId) => {
     try {
       setAssignLoading(true);
-      await api.post('/domicilios/assign', { domicilioId, driverId });
+      await api.post('/domicilios/assign', { domicilio_id: domicilioId, domiciliario_id: driverId });
       setShowAssignModal(false);
       setSelectedDomicilioId(null);
+      showToast('success', 'Domicilio asignado');
       fetchData();
     } catch (error) {
-      console.error('Error assigning domicilio:', error);
+      showToast('error', error.response?.data?.error || 'Error al asignar');
     } finally {
       setAssignLoading(false);
     }
@@ -96,22 +199,48 @@ export default function DomiciliosPage() {
       await api.post('/domicilios/drivers', driverForm);
       setShowDriverForm(false);
       setDriverForm({ nombre: '', telefono: '', pin: '' });
+      showToast('success', 'Domiciliario creado');
       fetchData();
     } catch (error) {
-      console.error('Error adding driver:', error);
+      showToast('error', error.response?.data?.error || 'Error al crear domiciliario');
     } finally {
       setAssignLoading(false);
     }
   };
 
-  const pendientes = domicilios.filter((d) => d.estado === 'pendiente');
-  const enRuta = domicilios.filter((d) => d.estado === 'en_ruta');
-  const completados = domicilios.filter((d) => d.estado === 'completado');
+  const handleResolverIncidente = async (id, resultado) => {
+    const confirmMsg = resultado === 'robo_confirmado'
+      ? '¿Confirmas que este domicilio se perdió/robó? El domiciliario será penalizado.'
+      : '¿Marcar este incidente como resuelto (falsa alarma)?';
+    if (!window.confirm(confirmMsg)) return;
+    try {
+      await api.post(`/domicilios/incidentes/${id}/resolver`, { resultado });
+      showToast('success', resultado === 'robo_confirmado' ? 'Domiciliario penalizado' : 'Incidente resuelto');
+      fetchData();
+    } catch (error) {
+      showToast('error', error.response?.data?.error || 'Error al resolver el incidente');
+    }
+  };
+
+  const formatCOP = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
+  const noSuspendido = (d) => !d.suspendido_hasta || new Date(d.suspendido_hasta) <= new Date();
+  const driversDisponibles = drivers.filter((d) => d.estado_activo && noSuspendido(d));
+  const driversEnMapa = drivers.filter((d) => d.estado_activo && d.latitud && d.longitud);
+  const entregasEnMapa = [
+    ...pendientes.map((d) => ({ ...d, enCurso: false })),
+    ...enCurso.map((d) => ({ ...d, enCurso: true })),
+  ].filter((d) => d.destino);
+  const puntosMapa = [
+    ...driversEnMapa.map((d) => [Number(d.latitud), Number(d.longitud)]),
+    ...entregasEnMapa.map((d) => [d.destino.lat, d.destino.lng]),
+    ...(negocioUbicacion ? [[negocioUbicacion.lat, negocioUbicacion.lng]] : []),
+  ];
 
   const tabs = [
     { id: 'pendientes', label: 'Pendientes', count: pendientes.length },
-    { id: 'en_ruta', label: 'En Ruta', count: enRuta.length },
+    { id: 'en_curso', label: 'En Curso', count: enCurso.length },
     { id: 'completados', label: 'Completados', count: completados.length },
+    { id: 'incidentes', label: '⚠️ Incidentes', count: incidentes.length },
     { id: 'domiciliarios', label: 'Domiciliarios', count: drivers.length },
   ];
 
@@ -188,13 +317,78 @@ export default function DomiciliosPage() {
               <p className="text-muted">Gestiona domicilios y domiciliarios</p>
             </div>
           </div>
-          <button
-            onClick={fetchData}
-            className="flex items-center gap-2 bg-bg2 border border-border rounded-lg px-4 py-2 text-text hover:bg-bg3 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Actualizar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowDriverForm(true)}
+              className="flex items-center gap-2 bg-accent text-bg px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity"
+            >
+              <Plus className="w-4 h-4" />
+              Agregar Domiciliario
+            </button>
+            <button
+              onClick={fetchData}
+              className="flex items-center gap-2 bg-bg2 border border-border rounded-lg px-4 py-2 text-text hover:bg-bg3 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Actualizar
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-bg2 border border-border rounded-xl overflow-hidden mb-6 isolate">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+            <MapPin className="w-4 h-4 text-accent" />
+            <span className="text-sm font-medium text-text">Mapa en vivo</span>
+            <span className="text-xs text-muted ml-auto">{driversEnMapa.length} domiciliario(s) activo(s) en el mapa</span>
+          </div>
+          <div style={{ height: '280px' }}>
+            <MapContainer center={[4.711, -74.0721]} zoom={12} style={{ height: '100%', width: '100%' }}>
+              <TileLayer
+                url={`https://tiles.traveltimeapp.com/positron/{z}/{x}/{y}.png?key=${import.meta.env.VITE_TRAVELTIME_APP_ID}`}
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | Map tiles by TravelTime'
+              />
+              <MapAutoFit points={puntosMapa} />
+              {negocioUbicacion && (
+                <Marker position={[negocioUbicacion.lat, negocioUbicacion.lng]}>
+                  <Popup><strong>{negocioUbicacion.nombre || 'Tu negocio'}</strong></Popup>
+                </Marker>
+              )}
+              {entregasEnMapa.map((d) => (
+                <React.Fragment key={`entrega-${d.id}`}>
+                  {d.ruta && (
+                    <Polyline
+                      positions={d.ruta}
+                      pathOptions={d.enCurso
+                        ? { color: '#2563eb', weight: 5, opacity: 0.85 }
+                        : { color: '#94a3b8', weight: 4, opacity: 0.8, dashArray: '8 8' }}
+                    />
+                  )}
+                  <Marker position={[d.destino.lat, d.destino.lng]} icon={destinoIcon}>
+                    <Popup>
+                      <strong>{d.numero_pedido}</strong><br />
+                      {d.cliente_nombre}<br />
+                      {d.direccion_entrega}<br />
+                      {d.enCurso ? 'En curso' : 'Pendiente'}
+                    </Popup>
+                  </Marker>
+                </React.Fragment>
+              ))}
+              {driversEnMapa.map((driver) => (
+                <Marker key={driver.id} position={[driver.latitud, driver.longitud]} icon={driverIcon}>
+                  <Popup>
+                    <strong>{driver.nombre}</strong><br />
+                    {driver.telefono}<br />
+                    ⭐ {driver.score ?? 100}
+                  </Popup>
+                </Marker>
+              ))}
+            </MapContainer>
+          </div>
+          {driversEnMapa.length === 0 && entregasEnMapa.length === 0 && (
+            <div className="px-4 py-3 text-xs text-muted border-t border-border">
+              Ningún domiciliario conectado está compartiendo ubicación todavía.
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
@@ -204,7 +398,7 @@ export default function DomiciliosPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-accent text-bg'
+                  ? tab.id === 'incidentes' ? 'bg-danger text-white' : 'bg-accent text-bg'
                   : 'bg-bg2 text-muted hover:text-text'
               }`}
             >
@@ -234,43 +428,46 @@ export default function DomiciliosPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-border">
+                        <th className="text-left p-4 text-muted font-medium">Pedido</th>
                         <th className="text-left p-4 text-muted font-medium">Cliente</th>
                         <th className="text-left p-4 text-muted font-medium">Dirección</th>
-                        <th className="text-left p-4 text-muted font-medium">Pedido</th>
                         <th className="text-left p-4 text-muted font-medium">Valor</th>
                         <th className="text-left p-4 text-muted font-medium">Hora</th>
                         <th className="text-left p-4 text-muted font-medium">Acción</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {pendientes.map((domicilio) => (
-                        <tr key={domicilio.id} className="border-b border-border last:border-0 hover:bg-bg3 transition-colors">
-                          <td className="p-4 text-text">{domicilio.cliente}</td>
-                          <td className="p-4 text-text">{domicilio.direccion}</td>
-                          <td className="p-4 text-text">{domicilio.pedido}</td>
-                          <td className="p-4 text-accent font-semibold">${domicilio.valor?.toLocaleString()}</td>
+                      {pendientes.map((d) => (
+                        <tr key={d.id} className="border-b border-border last:border-0 hover:bg-bg3 transition-colors">
+                          <td className="p-4 text-text font-mono text-sm">{d.numero_pedido}</td>
+                          <td className="p-4 text-text">{d.cliente_nombre}</td>
+                          <td className="p-4 text-text">{d.direccion_entrega}</td>
+                          <td className="p-4 text-accent font-semibold">{formatCOP(d.total)}</td>
                           <td className="p-4 text-muted flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {domicilio.hora}
+                            {new Date(d.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
                           </td>
                           <td className="p-4">
-                            <button
-                              onClick={() => {
-                                setSelectedDomicilioId(domicilio.id);
-                                setShowAssignModal(true);
-                              }}
-                              className="flex items-center gap-1 bg-accent text-bg px-3 py-1.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                            <select
+                              defaultValue=""
+                              onChange={(e) => e.target.value && handleAssign(d.id, e.target.value)}
+                              className="bg-bg3 border border-border rounded-lg px-3 py-1.5 text-sm text-text"
                             >
-                              <Truck className="w-3 h-3" />
-                              Asignar
-                            </button>
+                              <option value="" disabled>Asignar a...</option>
+                              {driversDisponibles.map((drv) => (
+                                <option key={drv.id} value={drv.id}>{drv.nombre} (⭐ {drv.score ?? 100})</option>
+                              ))}
+                            </select>
                           </td>
                         </tr>
                       ))}
                       {pendientes.length === 0 && (
                         <tr>
                           <td colSpan="6" className="p-8 text-center text-muted">
-                            No hay domicilios pendientes
+                            <div className="flex flex-col items-center gap-4">
+                              <Illustration name="vacio-domicilios" size={120} />
+                              <span>No hay domicilios pendientes</span>
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -280,9 +477,9 @@ export default function DomiciliosPage() {
               </motion.div>
             )}
 
-            {activeTab === 'en_ruta' && (
+            {activeTab === 'en_curso' && (
               <motion.div
-                key="en_ruta"
+                key="en_curso"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -292,38 +489,41 @@ export default function DomiciliosPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-border">
+                        <th className="text-left p-4 text-muted font-medium">Pedido</th>
                         <th className="text-left p-4 text-muted font-medium">Cliente</th>
-                        <th className="text-left p-4 text-muted font-medium">Dirección</th>
                         <th className="text-left p-4 text-muted font-medium">Domiciliario</th>
                         <th className="text-left p-4 text-muted font-medium">Estado</th>
                         <th className="text-left p-4 text-muted font-medium">Hora</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {enRuta.map((domicilio) => (
-                        <tr key={domicilio.id} className="border-b border-border last:border-0 hover:bg-bg3 transition-colors">
-                          <td className="p-4 text-text">{domicilio.cliente}</td>
-                          <td className="p-4 text-text">{domicilio.direccion}</td>
+                      {enCurso.map((d) => (
+                        <tr key={d.id} className="border-b border-border last:border-0 hover:bg-bg3 transition-colors">
+                          <td className="p-4 text-text font-mono text-sm">{d.numero_pedido}</td>
+                          <td className="p-4 text-text">{d.cliente_nombre}</td>
                           <td className="p-4 text-text flex items-center gap-2">
                             <User className="w-4 h-4 text-muted" />
-                            {domicilio.domiciliario}
+                            {d.domiciliario_nombre || 'Sin asignar'}
                           </td>
                           <td className="p-4">
                             <span className="inline-flex items-center gap-1 bg-bg3 text-text px-2 py-1 rounded-full text-xs font-medium">
                               <Truck className="w-3 h-3" />
-                              En ruta
+                              {ESTADO_LABELS[d.estado] || d.estado}
                             </span>
                           </td>
                           <td className="p-4 text-muted flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {domicilio.hora}
+                            {new Date(d.updated_at || d.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
                           </td>
                         </tr>
                       ))}
-                      {enRuta.length === 0 && (
+                      {enCurso.length === 0 && (
                         <tr>
                           <td colSpan="5" className="p-8 text-center text-muted">
-                            No hay domicilios en ruta
+                            <div className="flex flex-col items-center gap-4">
+                              <Illustration name="vacio-domicilios" size={120} />
+                              <span>No hay domicilios en curso</span>
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -345,32 +545,29 @@ export default function DomiciliosPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-border">
+                        <th className="text-left p-4 text-muted font-medium">Pedido</th>
                         <th className="text-left p-4 text-muted font-medium">Cliente</th>
-                        <th className="text-left p-4 text-muted font-medium">Dirección</th>
                         <th className="text-left p-4 text-muted font-medium">Domiciliario</th>
-                        <th className="text-left p-4 text-muted font-medium">Valor</th>
-                        <th className="text-left p-4 text-muted font-medium">Tiempo</th>
+                        <th className="text-left p-4 text-muted font-medium">Valor envío</th>
+                        <th className="text-left p-4 text-muted font-medium">Km</th>
                         <th className="text-left p-4 text-muted font-medium">Estado</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {completados.map((domicilio) => (
-                        <tr key={domicilio.id} className="border-b border-border last:border-0 hover:bg-bg3 transition-colors">
-                          <td className="p-4 text-text">{domicilio.cliente}</td>
-                          <td className="p-4 text-text">{domicilio.direccion}</td>
+                      {completados.map((d) => (
+                        <tr key={d.id} className="border-b border-border last:border-0 hover:bg-bg3 transition-colors">
+                          <td className="p-4 text-text font-mono text-sm">{d.numero_pedido}</td>
+                          <td className="p-4 text-text">{d.cliente_nombre}</td>
                           <td className="p-4 text-text flex items-center gap-2">
                             <User className="w-4 h-4 text-muted" />
-                            {domicilio.domiciliario}
+                            {d.domiciliario_nombre}
                           </td>
-                          <td className="p-4 text-accent font-semibold">${domicilio.valor?.toLocaleString()}</td>
-                          <td className="p-4 text-muted flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {domicilio.tiempo}
-                          </td>
+                          <td className="p-4 text-accent font-semibold">{formatCOP(d.tarifa_envio)}</td>
+                          <td className="p-4 text-muted">{d.km_recorridos || 0}km</td>
                           <td className="p-4">
                             <span className="inline-flex items-center gap-1 bg-accent/20 text-accent px-2 py-1 rounded-full text-xs font-medium">
                               <CheckCircle className="w-3 h-3" />
-                              Completado
+                              Entregado
                             </span>
                           </td>
                         </tr>
@@ -378,12 +575,62 @@ export default function DomiciliosPage() {
                       {completados.length === 0 && (
                         <tr>
                           <td colSpan="6" className="p-8 text-center text-muted">
-                            No hay domicilios completados
+                            <div className="flex flex-col items-center gap-4">
+                              <Illustration name="vacio-domicilios" size={120} />
+                              <span>No hay domicilios completados</span>
+                            </div>
                           </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'incidentes' && (
+              <motion.div
+                key="incidentes"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="bg-bg2 border border-border rounded-xl overflow-hidden"
+              >
+                <div className="divide-y divide-border">
+                  {incidentes.map((inc) => (
+                    <div key={inc.id} className="p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <AlertTriangle className="w-4 h-4 text-danger-text" />
+                          <span className="font-mono text-sm text-text">{inc.numero_pedido}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${inc.estado_incidente === 'en_disputa' ? 'bg-danger/10 text-danger-text' : 'bg-warn/10 text-warn-text'}`}>
+                            {inc.estado_incidente === 'en_disputa' ? 'Posible pérdida/robo' : 'Retrasado'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-text">{inc.cliente_nombre} · {inc.direccion_entrega}</p>
+                        <p className="text-xs text-muted">
+                          Domiciliario: {inc.domiciliario_nombre || 'Sin asignar'} {inc.score != null && `(⭐ ${inc.score}, ${inc.strikes} strikes)`}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleResolverIncidente(inc.id, 'resuelto')}
+                          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-success/10 text-success border border-success/30 hover:bg-success/20 transition-colors"
+                        >
+                          Falsa alarma
+                        </button>
+                        <button
+                          onClick={() => handleResolverIncidente(inc.id, 'robo_confirmado')}
+                          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-danger/10 text-danger-text border border-danger/30 hover:bg-danger/20 transition-colors"
+                        >
+                          Confirmar robo/pérdida
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {incidentes.length === 0 && (
+                    <EmptyState name="exito" size={130} title="Sin incidentes abiertos" description="Todas las entregas van en orden." />
+                  )}
                 </div>
               </motion.div>
             )}
@@ -406,45 +653,59 @@ export default function DomiciliosPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {drivers.map((driver) => (
-                    <motion.div
-                      key={driver.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="bg-bg2 border border-border rounded-xl p-5"
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-bg3 rounded-full flex items-center justify-center">
-                          <User className="w-5 h-5 text-muted" />
+                  {drivers.map((driver) => {
+                    const suspendido = driver.suspendido_hasta && new Date(driver.suspendido_hasta) > new Date();
+                    return (
+                      <motion.div
+                        key={driver.id}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-bg2 border border-border rounded-xl p-5"
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 bg-bg3 rounded-full flex items-center justify-center">
+                            <User className="w-5 h-5 text-muted" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-text font-semibold">{driver.nombre}</h3>
+                            <p className="text-muted text-sm flex items-center gap-1">
+                              <Phone className="w-3 h-3" />
+                              {driver.telefono}
+                            </p>
+                          </div>
+                          <span className="flex items-center gap-1 text-sm font-semibold text-warn-text">
+                            <Star className="w-4 h-4 fill-yellow-400" />
+                            {driver.score ?? 100}
+                          </span>
                         </div>
-                        <div>
-                          <h3 className="text-text font-semibold">{driver.nombre}</h3>
-                          <p className="text-muted text-sm flex items-center gap-1">
-                            <Phone className="w-3 h-3" />
-                            {driver.telefono}
-                          </p>
-                        </div>
-                      </div>
 
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-bg3 rounded-lg p-3 text-center">
-                          <p className="text-lg font-bold text-text">{driver.pedidos_completados || 0}</p>
-                          <p className="text-muted text-xs">Pedidos</p>
+                        {suspendido && (
+                          <div className="mb-3 px-3 py-2 rounded-lg bg-danger/10 border border-danger/30 text-xs text-danger-text">
+                            Suspendido hasta {new Date(driver.suspendido_hasta).toLocaleDateString('es-CO')}
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="bg-bg3 rounded-lg p-3 text-center">
+                            <p className="text-lg font-bold text-text">{driver.pedidos_completados || 0}</p>
+                            <p className="text-muted text-xs">Pedidos</p>
+                          </div>
+                          <div className="bg-bg3 rounded-lg p-3 text-center">
+                            <p className="text-lg font-bold text-text">{driver.km_totales || 0}</p>
+                            <p className="text-muted text-xs">Km</p>
+                          </div>
+                          <div className="bg-bg3 rounded-lg p-3 text-center">
+                            <p className="text-lg font-bold text-accent">{formatCOP(driver.ganancias_totales)}</p>
+                            <p className="text-muted text-xs">Ganancias</p>
+                          </div>
                         </div>
-                        <div className="bg-bg3 rounded-lg p-3 text-center">
-                          <p className="text-lg font-bold text-text">{driver.km_totales || 0}</p>
-                          <p className="text-muted text-xs">Km</p>
-                        </div>
-                        <div className="bg-bg3 rounded-lg p-3 text-center">
-                          <p className="text-lg font-bold text-accent">${(driver.ganancias_totales || 0).toLocaleString()}</p>
-                          <p className="text-muted text-xs">Ganancias</p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    );
+                  })}
                   {drivers.length === 0 && (
-                    <div className="col-span-full bg-bg2 border border-border rounded-xl p-8 text-center text-muted">
-                      No hay domiciliarios registrados
+                    <div className="col-span-full bg-bg2 border border-border rounded-xl p-8 text-center text-muted flex flex-col items-center gap-4">
+                      <Illustration name="vacio-domicilios" size={140} />
+                      <span>No hay domiciliarios registrados</span>
                     </div>
                   )}
                 </div>
@@ -454,13 +715,15 @@ export default function DomiciliosPage() {
         )}
       </div>
 
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
+
       <AnimatePresence>
         {showAssignModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] p-4"
             onClick={() => setShowAssignModal(false)}
           >
             <motion.div
@@ -481,13 +744,11 @@ export default function DomiciliosPage() {
               </div>
 
               <div className="p-4 max-h-80 overflow-y-auto">
-                {drivers.length === 0 ? (
-                  <p className="text-muted text-center py-8">
-                    No hay domiciliarios disponibles
-                  </p>
+                {driversDisponibles.length === 0 ? (
+                  <EmptyState name="vacio-domicilios" size={110} title="No hay domiciliarios disponibles" className="py-6" />
                 ) : (
                   <div className="space-y-2">
-                    {drivers.map((driver) => (
+                    {driversDisponibles.map((driver) => (
                       <button
                         key={driver.id}
                         onClick={() => handleAssign(selectedDomicilioId, driver.id)}
@@ -516,7 +777,7 @@ export default function DomiciliosPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] p-4"
             onClick={() => setShowDriverForm(false)}
           >
             <motion.div
@@ -568,7 +829,8 @@ export default function DomiciliosPage() {
                     value={driverForm.pin}
                     onChange={(e) => setDriverForm({ ...driverForm, pin: e.target.value })}
                     className="w-full bg-bg3 border border-border rounded-lg px-4 py-2 text-text focus:outline-none focus:border-accent transition-colors"
-                    placeholder="PIN de acceso"
+                    placeholder="PIN de acceso (mín. 4 dígitos)"
+                    minLength={4}
                     required
                   />
                 </div>

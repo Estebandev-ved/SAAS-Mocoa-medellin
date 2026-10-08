@@ -1,3 +1,4 @@
+import FeedbackMessage from '../components/FeedbackMessage';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -270,23 +271,23 @@ export default function WhatsAppConnectionPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className={`bg-bg2 border rounded-3xl p-6 transition-all duration-500 ${
-          status.conectado ? 'border-[#4CAF50]/40 shadow-[0_0_30px_rgba(76,175,80,0.1)]' : 'border-border'
+          status.conectado ? 'border-success/40' : 'border-border'
         }`}
       >
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 ${
-              status.conectado ? 'bg-[#4CAF50]/15' : 'bg-bg3'
+              status.conectado ? 'bg-success/15' : 'bg-bg3'
             }`}>
               {status.conectado ? (
-                <Wifi className="w-7 h-7 text-[#4CAF50]" />
+                <Wifi className="w-7 h-7 text-success" />
               ) : (
                 <WifiOff className="w-7 h-7 text-muted" />
               )}
             </div>
             <div>
               <h2 className={`text-xl font-bold transition-colors ${
-                status.conectado ? 'text-[#4CAF50]' : 'text-[#FF4D6A]'
+                status.conectado ? 'text-success' : 'text-danger-text'
               }`}>
                 {status.conectado ? 'CONECTADO' : 'DESCONECTADO'}
               </h2>
@@ -300,10 +301,10 @@ export default function WhatsAppConnectionPage() {
           </div>
           <div className="flex flex-col items-end gap-1">
             <div className={`w-4 h-4 rounded-full ${
-              status.conectado ? 'bg-[#4CAF50] animate-pulse' : 'bg-[#FF4D6A]'
+              status.conectado ? 'bg-success animate-pulse' : 'bg-danger'
             }`} />
             {status.conectado && elapsed && (
-              <div className="flex items-center gap-1 text-[#4CAF50] text-xs font-mono">
+              <div className="flex items-center gap-1 text-success text-xs font-mono">
                 <Clock size={10} />
                 {elapsed}
               </div>
@@ -313,10 +314,10 @@ export default function WhatsAppConnectionPage() {
 
         {status.conectado ? (
           <div className="space-y-4">
-            <div className="bg-[#4CAF50]/10 border border-[#4CAF50]/30 rounded-2xl p-4">
+            <div className="bg-success/10 border border-success/30 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="w-5 h-5 text-[#4CAF50]" />
-                <span className="text-[#4CAF50] font-medium text-sm">Tu bot está activo y respondiendo</span>
+                <CheckCircle className="w-5 h-5 text-success" />
+                <span className="text-success font-medium text-sm">Tu bot está activo y respondiendo</span>
               </div>
               <p className="text-muted text-xs">
                 Los clientes te escriben y el bot responde automáticamente con IA.
@@ -325,19 +326,14 @@ export default function WhatsAppConnectionPage() {
             </div>
             <button
               onClick={handleDisconnect}
-              className="w-full py-3 rounded-2xl border border-[#FF4D6A]/30 text-[#FF4D6A] font-medium text-sm hover:bg-[#FF4D6A]/10 transition-all"
+              className="w-full py-3 rounded-2xl border border-danger/30 text-danger-text font-medium text-sm hover:bg-danger/10 transition-all"
             >
               Desconectar WhatsApp
             </button>
           </div>
         ) : (
           <div className="space-y-4">
-            {error && (
-              <div className="bg-[#FF4D6A]/10 border border-[#FF4D6A]/30 rounded-2xl p-4 flex items-center gap-2">
-                <XCircle className="w-5 h-5 text-[#FF4D6A]" />
-                <span className="text-[#FF4D6A] text-sm">{error}</span>
-              </div>
-            )}
+            {error && <FeedbackMessage type="error">{error}</FeedbackMessage>}
 
             {qr ? (
               <div className="space-y-4">
@@ -363,7 +359,7 @@ export default function WhatsAppConnectionPage() {
               <button
                 onClick={handleConnect}
                 disabled={connecting}
-                className="w-full py-4 rounded-2xl bg-accent text-white font-bold text-base hover:bg-accent/90 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(229,57,53,0.3)]"
+                className="w-full py-4 rounded-2xl bg-accent text-white font-bold text-base hover:bg-accent/90 transition-all flex items-center justify-center gap-2"
               >
                 {connecting ? (
                   <>
@@ -399,9 +395,9 @@ export default function WhatsAppConnectionPage() {
           ) : (
             events.map((ev, i) => (
               <div key={i} className={`flex items-center gap-3 text-sm py-1.5 px-3 rounded-xl ${
-                ev.type === 'connected' ? 'bg-[#4CAF50]/5 text-[#4CAF50]' :
-                ev.type === 'disconnected' ? 'bg-[#FF4D6A]/5 text-[#FF4D6A]' :
-                ev.type === 'error' ? 'bg-[#FF4D6A]/5 text-[#FF4D6A]' :
+                ev.type === 'connected' ? 'bg-success/5 text-success' :
+                ev.type === 'disconnected' ? 'bg-danger/5 text-danger-text' :
+                ev.type === 'error' ? 'bg-danger/5 text-danger-text' :
                 ev.type === 'qr' ? 'bg-accent/5 text-accent' :
                 'text-muted'
               }`}>

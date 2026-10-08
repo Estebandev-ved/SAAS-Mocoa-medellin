@@ -1,3 +1,4 @@
+import FeedbackMessage from '../components/FeedbackMessage';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +30,7 @@ function UsageBar({ label, used, limit, color = 'accent' }) {
     <div className="space-y-2">
       <div className="flex justify-between items-center">
         <span className="font-mono text-xs text-muted uppercase tracking-wider">{label}</span>
-        <span className={`font-mono text-sm ${isHigh ? 'text-[#FF4D6A]' : 'text-text'}`}>
+        <span className={`font-mono text-sm ${isHigh ? 'text-danger-text' : 'text-text'}`}>
           {isUnlimited ? `${used} (ilimitado)` : `${used} / ${limit}`}
         </span>
       </div>
@@ -39,7 +40,7 @@ function UsageBar({ label, used, limit, color = 'accent' }) {
             initial={{ width: 0 }}
             animate={{ width: `${pct}%` }}
             transition={{ duration: 1, ease: 'easeOut' }}
-            className={`h-full rounded-full ${isHigh ? 'bg-[#FF4D6A]' : `bg-${color}`}`}
+            className={`h-full rounded-full ${isHigh ? 'bg-danger' : `bg-${color}`}`}
           />
         </div>
       )}
@@ -55,14 +56,14 @@ function TrialBanner({ diasRestantes, onUpgrade }) {
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       className={`relative overflow-hidden rounded-2xl p-4 border ${
-        isUrgent ? 'bg-[#FF4D6A]/10 border-[#FF4D6A]/30' : 'bg-[#FFB840]/10 border-[#FFB840]/30'
+        isUrgent ? 'bg-danger/10 border-danger/30' : 'bg-warn/10 border-warn/30'
       }`}
     >
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <Clock className={`w-5 h-5 ${isUrgent ? 'text-[#FF4D6A]' : 'text-[#FFB840]'}`} />
+          <Clock className={`w-5 h-5 ${isUrgent ? 'text-danger-text' : 'text-warn-text'}`} />
           <div>
-            <p className={`font-mono text-sm font-medium ${isUrgent ? 'text-[#FF4D6A]' : 'text-[#FFB840]'}`}>
+            <p className={`font-mono text-sm font-medium ${isUrgent ? 'text-danger-text' : 'text-warn-text'}`}>
               {isUrgent ? '¡Tu trial está por vencer!' : 'Estás en período de prueba'}
             </p>
             <p className="text-muted text-xs mt-0.5">
@@ -89,7 +90,7 @@ function PlanCard({ plan, isCurrent, isUpgrade, onSelect, upgrading, planId }) {
       animate={{ opacity: 1, y: 0 }}
       className={`relative bg-bg2 border rounded-3xl p-6 flex flex-col transition-all ${
         isCurrent
-          ? 'border-accent shadow-[0_0_30px_rgba(229,57,53,0.15)]'
+          ? 'border-accent'
           : 'border-border hover:border-border/80'
       }`}
     >
@@ -116,7 +117,7 @@ function PlanCard({ plan, isCurrent, isUpgrade, onSelect, upgrading, planId }) {
       <div className="flex-1 space-y-2 mb-6">
         {plan.featuresList.map((f, i) => (
           <div key={i} className="flex items-center gap-2">
-            <Check className="w-4 h-4 text-[#4CAF50] flex-shrink-0" />
+            <Check className="w-4 h-4 text-success flex-shrink-0" />
             <span className="text-muted text-sm">{f}</span>
           </div>
         ))}
@@ -128,7 +129,7 @@ function PlanCard({ plan, isCurrent, isUpgrade, onSelect, upgrading, planId }) {
           isCurrent
             ? 'bg-bg3 text-muted cursor-not-allowed border border-border'
             : isUpgrade
-            ? 'bg-accent text-white hover:bg-accent/90 shadow-[0_0_20px_rgba(229,57,53,0.3)]'
+            ? 'bg-accent text-white hover:bg-accent/90'
             : 'bg-bg3 text-text hover:bg-border/30 border border-border'
         }`}
       >
@@ -143,9 +144,9 @@ function PlanCard({ plan, isCurrent, isUpgrade, onSelect, upgrading, planId }) {
 
 function InvoiceRow({ inv }) {
   const estadoColors = {
-    pagada: 'text-[#4CAF50] bg-[#4CAF50]/10',
-    pendiente: 'text-[#FFB840] bg-[#FFB840]/10',
-    vencida: 'text-[#FF4D6A] bg-[#FF4D6A]/10',
+    pagada: 'text-success bg-success/10',
+    pendiente: 'text-warn-text bg-warn/10',
+    vencida: 'text-danger-text bg-danger/10',
     cancelada: 'text-muted bg-bg3',
   };
   return (
@@ -180,12 +181,12 @@ function HistoryRow({ h }) {
     reactivation: 'Reactivación',
   };
   const tipoColors = {
-    upgrade: 'text-[#4CAF50]',
-    payment_success: 'text-[#4CAF50]',
-    renewal: 'text-[#4CAF50]',
-    downgrade: 'text-[#FFB840]',
-    payment_failed: 'text-[#FF4D6A]',
-    cancellation: 'text-[#FF4D6A]',
+    upgrade: 'text-success',
+    payment_success: 'text-success',
+    renewal: 'text-success',
+    downgrade: 'text-warn-text',
+    payment_failed: 'text-danger-text',
+    cancellation: 'text-danger-text',
     trial_start: 'text-accent',
     trial_end: 'text-muted',
     reactivation: 'text-accent',
@@ -383,12 +384,8 @@ export default function SuscripcionPage() {
       {/* Messages */}
       <AnimatePresence>
         {message && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-            className={`flex items-center gap-3 p-4 rounded-2xl border ${
-              message.type === 'success' ? 'bg-[#4CAF50]/10 border-[#4CAF50]/30 text-[#4CAF50]' : 'bg-[#FF4D6A]/10 border-[#FF4D6A]/30 text-[#FF4D6A]'
-            }`}>
-            {message.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
-            <span className="font-mono text-sm">{message.text}</span>
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+            <FeedbackMessage type={message.type}>{message.text}</FeedbackMessage>
           </motion.div>
         )}
       </AnimatePresence>
@@ -406,7 +403,7 @@ export default function SuscripcionPage() {
             <h2 className="font-head text-xl font-bold text-text">Tu Plan Actual</h2>
           </div>
           {sub?.suscripcion_activa && (
-            <button onClick={() => setShowCancelModal(true)} className="font-mono text-xs text-[#FF4D6A] hover:text-[#FF4D6A]/80 transition-colors flex items-center gap-1">
+            <button onClick={() => setShowCancelModal(true)} className="font-mono text-xs text-danger-text hover:text-danger-text/80 transition-colors flex items-center gap-1">
               <Ban size={12} /> Cancelar suscripción
             </button>
           )}
@@ -429,8 +426,8 @@ export default function SuscripcionPage() {
           <div className="space-y-1">
             <span className="font-mono text-xs text-muted uppercase tracking-wider">Estado</span>
             <div className="flex items-center gap-2">
-              <span className={`inline-block w-2 h-2 rounded-full ${sub?.suscripcion_activa ? 'bg-[#4CAF50]' : sub?.en_trial ? 'bg-[#FFB840]' : 'bg-[#FF4D6A]'}`} />
-              <span className={`font-mono text-sm ${sub?.suscripcion_activa ? 'text-[#4CAF50]' : sub?.en_trial ? 'text-[#FFB840]' : 'text-[#FF4D6A]'}`}>
+              <span className={`inline-block w-2 h-2 rounded-full ${sub?.suscripcion_activa ? 'bg-success' : sub?.en_trial ? 'bg-warn' : 'bg-danger'}`} />
+              <span className={`font-mono text-sm ${sub?.suscripcion_activa ? 'text-success' : sub?.en_trial ? 'text-warn-text' : 'text-danger-text'}`}>
                 {sub?.suscripcion_activa ? 'Activa' : sub?.en_trial ? 'Trial' : 'Inactiva'}
               </span>
             </div>
@@ -550,7 +547,7 @@ export default function SuscripcionPage() {
         </div>
         <p className="text-muted text-sm mb-4">Si no estás satisfecho en los primeros 15 días, te devolvemos el dinero. Sin preguntas.</p>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2"><Shield className="w-4 h-4 text-[#4CAF50]" /><span className="text-text text-sm">Pago seguro</span></div>
+          <div className="flex items-center gap-2"><Shield className="w-4 h-4 text-success" /><span className="text-text text-sm">Pago seguro</span></div>
           <div className="flex items-center gap-2"><Rocket className="w-4 h-4 text-accent" /><span className="text-text text-sm">Cancela cuando quieras</span></div>
         </div>
       </motion.div>
@@ -559,7 +556,7 @@ export default function SuscripcionPage() {
       <AnimatePresence>
         {showCancelModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
             onClick={() => setShowCancelModal(false)}>
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
               className="bg-bg2 border border-border rounded-3xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
@@ -573,7 +570,7 @@ export default function SuscripcionPage() {
                 className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text placeholder:text-muted/50 focus:outline-none focus:border-accent h-24 resize-none" />
               <div className="flex gap-3 mt-4">
                 <button onClick={() => setShowCancelModal(false)} className="flex-1 py-3 rounded-xl bg-bg3 text-text font-mono text-sm border border-border hover:bg-border/30">No cancelar</button>
-                <button onClick={handleCancel} className="flex-1 py-3 rounded-xl bg-[#FF4D6A] text-white font-mono text-sm hover:bg-[#FF4D6A]/90">Confirmar cancelación</button>
+                <button onClick={handleCancel} className="flex-1 py-3 rounded-xl bg-danger text-white font-mono text-sm hover:bg-danger/90">Confirmar cancelación</button>
               </div>
             </motion.div>
           </motion.div>

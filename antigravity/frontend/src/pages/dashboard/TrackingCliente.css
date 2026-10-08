@@ -219,6 +219,39 @@
   color: #8892A0;
 }
 
+.delivery-code-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 0 20px 20px;
+  padding: 18px;
+  background: rgba(0, 255, 209, 0.08);
+  border: 1px dashed rgba(0, 255, 209, 0.4);
+  border-radius: 14px;
+  text-align: center;
+}
+
+.delivery-code-label {
+  font-size: 12px;
+  color: #8892A0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.delivery-code-value {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #00FFD1;
+  font-family: var(--font-mono, monospace);
+}
+
+.delivery-code-hint {
+  font-size: 12px;
+  color: #8892A0;
+}
+
 .tracking-map-wrapper {
   position: relative;
   margin: 0 20px 20px;

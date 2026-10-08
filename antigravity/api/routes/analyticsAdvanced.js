@@ -410,7 +410,7 @@ router.get('/alertas', async (req, res) => {
         const [errores] = await db.execute(
             `SELECT COUNT(*) as total_errores
              FROM agente_logs
-             WHERE negocio_id = ? AND DATE(created_at) = CURDATE() AND intencion = 'error'`,
+             WHERE negocio_id = ? AND DATE(created_at) = CURDATE() AND intencion_detectada = 'error'`,
             [negocioId]
         );
         const [totalLogs] = await db.execute(

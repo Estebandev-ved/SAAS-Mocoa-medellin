@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Play, ArrowRight, Sparkles } from 'lucide-react';
 import { useBranding } from '../context/BrandingContext';
+import Illustration from './Illustration';
 
 const Counter = ({ value, suffix = "" }) => {
   const count = useMotionValue(0);
@@ -47,10 +48,15 @@ const Hero = () => {
         viewport={{ once: true }}
         className="relative z-10 max-w-5xl mx-auto"
       >
+        {/* Personaje de bienvenida */}
+        <motion.div variants={itemVariants} className="flex justify-center mb-8">
+          <Illustration name="bienvenida" size={200} alt="Sofía te da la bienvenida a NOMA" />
+        </motion.div>
+
         {/* Label */}
-        <motion.div 
+        <motion.div
           variants={itemVariants}
-          className="inline-flex items-center gap-3 bg-accent-dim border border-border px-5 py-2 rounded-full text-[10px] font-mono tracking-[0.2em] mb-10 text-accent font-bold"
+          className="inline-flex items-center gap-3 bg-accent-dim border border-border px-4 h-7 rounded-full text-xs tracking-[0.04em] mb-10 text-accent font-semibold uppercase"
         >
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
@@ -62,7 +68,7 @@ const Hero = () => {
         {/* Title */}
         <motion.h1 
           variants={itemVariants}
-          className="font-head text-6xl md:text-8xl lg:text-9xl font-black leading-[0.9] mb-8 tracking-tighter"
+          className="font-head text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.1] mb-8 tracking-[-0.02em]"
         >
           El sistema nervioso<br />
           <span className="text-accent underline decoration-accent/10">de tu negocio</span>
@@ -71,7 +77,7 @@ const Hero = () => {
         {/* Subtitle */}
         <motion.p 
           variants={itemVariants}
-          className="text-muted text-lg md:text-xl max-w-2xl mx-auto mb-12 leading-relaxed font-medium"
+          className="text-muted text-lg max-w-2xl mx-auto mb-12 leading-7"
         >
           Un ecosistema completo de automatización inteligente — desde el primer WhatsApp hasta el reporte de ventas con <span className="text-text">{branding.name}</span>.
         </motion.p>
@@ -82,20 +88,18 @@ const Hero = () => {
           className="flex flex-wrap justify-center gap-6 mb-24"
         >
           <motion.button
-            whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(229,57,53,0.3)' }}
-            whileTap={{ scale: 0.95 }}
-            className="bg-accent text-bg px-10 py-5 rounded-2xl font-mono text-xs font-black tracking-widest flex items-center gap-3 cursor-pointer border-none shadow-xl"
+            whileTap={{ scale: 0.98 }}
+            className="bg-accent hover:bg-accent2 text-white h-12 px-8 rounded-xl text-sm font-semibold flex items-center gap-3 cursor-pointer border-none transition-colors"
             onClick={() => document.getElementById('ecosistema')?.scrollIntoView({ behavior: 'smooth' })}
           >
-             VER ECOSISTEMA <ArrowRight size={16} />
+             Ver ecosistema <ArrowRight size={16} />
           </motion.button>
           
           <motion.button
-            whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
-            className="bg-transparent text-text border-2 border-border px-10 py-5 rounded-2xl font-mono text-xs font-black tracking-widest transition-all cursor-pointer"
+            className="bg-white hover:bg-bg2 text-text h-12 px-8 rounded-xl border border-[#C9C9C9] text-sm font-semibold transition-colors cursor-pointer"
             onClick={() => document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })}
           >
-            AGENDAR DEMO
+            Agendar demo
           </motion.button>
         </motion.div>
 
@@ -109,7 +113,7 @@ const Hero = () => {
               <div className="font-head text-5xl md:text-6xl font-black text-accent mb-2">
                 {stat.isFixed ? stat.target + stat.suffix : <Counter value={stat.target} suffix={stat.suffix} />}
               </div>
-              <div className="text-[10px] font-mono tracking-[0.3em] text-muted uppercase font-bold">
+              <div className="text-xs tracking-[0.04em] text-muted uppercase font-semibold">
                 {stat.label}
               </div>
             </div>

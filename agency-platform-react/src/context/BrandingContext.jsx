@@ -3,11 +3,12 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const BrandingContext = createContext();
 
 export const BrandingProvider = ({ children }) => {
+  // Valores por defecto = design.md (tema claro, rojo de acción primary-strong)
   const [branding, setBranding] = useState({
     name: 'Antigravity',
-    primary: '#E53935',
-    accent: '#C62828',
-    theme: 'dark',
+    primary: '#C62828',
+    accent: '#8E1B1B',
+    theme: 'light',
     logo: '⚡',
   });
 
@@ -16,26 +17,34 @@ export const BrandingProvider = ({ children }) => {
     const root = document.documentElement;
     root.style.setProperty('--accent', branding.primary);
     root.style.setProperty('--accent2', branding.accent);
-    
+
     // Adjust accent-dim based on current primary
     const r = parseInt(branding.primary.slice(1, 3), 16);
     const g = parseInt(branding.primary.slice(3, 5), 16);
     const b = parseInt(branding.primary.slice(5, 7), 16);
-    root.style.setProperty('--accent-dim', `rgba(${r}, ${g}, ${b}, 0.12)`);
-    root.style.setProperty('--border', `rgba(${r}, ${g}, ${b}, 0.15)`);
 
-    if (branding.theme === 'light') {
-      root.style.setProperty('--bg', '#F5F5F0');
-      root.style.setProperty('--bg2', '#FFFFFF');
-      root.style.setProperty('--bg3', '#EAEAE5');
-      root.style.setProperty('--text', '#111111');
-      root.style.setProperty('--muted', '#666666');
+    if (branding.theme === 'dark') {
+      // Tema oscuro NOMA: black / ink / charcoal, borde rgba(255,255,255,0.08)
+      root.style.setProperty('--bg', '#0A0A0A');
+      root.style.setProperty('--bg2', '#111111');
+      root.style.setProperty('--bg3', '#1A1A1A');
+      root.style.setProperty('--text', '#F5F5F5');
+      root.style.setProperty('--muted', '#A0A0A0');
+      root.style.setProperty('--border', 'rgba(255, 255, 255, 0.08)');
+      root.style.setProperty('--card', '#1A1A1A');
+      root.style.setProperty('--glass', '#111111');
+      root.style.setProperty('--accent-dim', `rgba(${r}, ${g}, ${b}, 0.15)`);
     } else {
-      root.style.setProperty('--bg', '#080C10');
-      root.style.setProperty('--bg2', '#0D1117');
-      root.style.setProperty('--bg3', '#131820');
-      root.style.setProperty('--text', '#E8F0F7');
-      root.style.setProperty('--muted', '#5A7080');
+      // Tema claro NOMA: background white, surface gray-50, border #E4E4E4
+      root.style.setProperty('--bg', '#FFFFFF');
+      root.style.setProperty('--bg2', '#F8F8F8');
+      root.style.setProperty('--bg3', '#F0F0F0');
+      root.style.setProperty('--text', '#1A1A1A');
+      root.style.setProperty('--muted', '#666666');
+      root.style.setProperty('--border', '#E4E4E4');
+      root.style.setProperty('--card', '#FFFFFF');
+      root.style.setProperty('--glass', '#FFFFFF');
+      root.style.setProperty('--accent-dim', `rgba(${r}, ${g}, ${b}, 0.1)`);
     }
   }, [branding]);
 

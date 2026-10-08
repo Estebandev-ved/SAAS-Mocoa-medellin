@@ -14,7 +14,7 @@ const Footer = () => {
               <div className="w-8 h-8 rounded bg-accent flex items-center justify-center">
                 <Layers size={18} className="text-bg" />
               </div>
-              <span className="font-mono font-bold tracking-[0.2em]">{branding.name}</span>
+              <span className="font-bold tracking-[0.04em]">{branding.name}</span>
             </div>
             <p className="text-muted text-sm max-w-sm leading-relaxed mb-8">
               Automatización inteligente por WhatsApp. Vende más, trabaja menos. 
@@ -30,7 +30,7 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4 className="font-mono text-xs font-bold text-text uppercase tracking-widest mb-6">Producto</h4>
+            <h4 className="text-xs font-bold text-text uppercase tracking-[0.04em] mb-6">Producto</h4>
             <ul className="flex flex-col gap-4 list-none p-0">
               <li><a href="#features" className="text-muted hover:text-accent text-sm no-underline transition-colors">Características</a></li>
               <li><a href="#process" className="text-muted hover:text-accent text-sm no-underline transition-colors">Cómo funciona</a></li>
@@ -40,7 +40,7 @@ const Footer = () => {
           </div>
 
           <div>
-            <h4 className="font-mono text-xs font-bold text-text uppercase tracking-widest mb-6">Empresa</h4>
+            <h4 className="text-xs font-bold text-text uppercase tracking-[0.04em] mb-6">Empresa</h4>
             <ul className="flex flex-col gap-4 list-none p-0">
               <li><a href="#" className="text-muted hover:text-accent text-sm no-underline transition-colors">Sobre nosotros</a></li>
               <li><a href="#" className="text-muted hover:text-accent text-sm no-underline transition-colors">Blog</a></li>
@@ -51,10 +51,10 @@ const Footer = () => {
         </div>
 
         <div className="pt-10 border-t border-border flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="text-[11px] font-mono text-muted">
+          <div className="text-xs font-mono text-muted">
             © 2026 {branding.name} · Medellín, Colombia
           </div>
-          <div className="text-[11px] font-mono text-muted flex gap-4 uppercase tracking-widest">
+          <div className="text-xs text-muted flex gap-4 uppercase tracking-[0.04em]">
             <span>Hecho con IA</span>
             <span className="text-accent/30">•</span>
             <span>React</span>

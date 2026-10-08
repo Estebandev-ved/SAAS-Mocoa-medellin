@@ -1,4 +1,5 @@
 import React from 'react';
+import Illustration from './Illustration';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -19,8 +20,8 @@ class ErrorBoundary extends React.Component {
             return (
                 <div className="min-h-screen bg-bg flex items-center justify-center p-6">
                     <div className="glass p-8 rounded-3xl border border-border max-w-md text-center">
-                        <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <span className="text-2xl">!</span>
+                        <div className="flex justify-center mb-4">
+                            <Illustration name="error" size={160} alt="Nova se disculpa: algo salió mal" />
                         </div>
                         <h2 className="font-head text-xl font-bold mb-2">Algo salió mal</h2>
                         <p className="text-muted text-sm mb-4">{this.state.error?.message || 'Error desconocido'}</p>

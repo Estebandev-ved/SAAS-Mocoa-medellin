@@ -1,3 +1,4 @@
+import EmptyState from '../components/EmptyState';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -33,6 +34,7 @@ const ConversacionesPage = () => {
 
     const fetchConversaciones = async () => {
         try {
+            setError('');
             setLoading(true);
             const response = await api.get('/conversaciones', { params: { buscar } });
             setConversaciones(response.data.conversaciones || []);
@@ -124,11 +126,16 @@ const ConversacionesPage = () => {
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="animate-spin text-accent" size={24} />
                         </div>
+                    ) : error && conversaciones.length === 0 ? (
+                        <EmptyState
+                            name="error"
+                            size={130}
+                            title="No pudimos cargar tus conversaciones"
+                            description={error}
+                            action={<button onClick={fetchConversaciones} className="h-11 px-5 rounded-xl bg-accent text-white text-sm font-semibold border-none cursor-pointer hover:bg-accent2 transition-colors">Reintentar</button>}
+                        />
                     ) : conversaciones.length === 0 ? (
-                        <div className="text-center py-12 px-4">
-                            <MessageSquare className="mx-auto mb-4 text-muted" size={48} />
-                            <p className="text-muted">No hay conversaciones aún</p>
-                        </div>
+                        <EmptyState size={130} title="No hay conversaciones aún" description="Cuando un cliente escriba a tu bot, la conversación aparecerá aquí." />
                     ) : (
                         conversaciones.map((conv) => (
                             <motion.div
@@ -170,7 +177,7 @@ const ConversacionesPage = () => {
                         <div className="h-16 bg-bg2 border-b border-border flex items-center px-4 gap-4">
                             <button 
                                 onClick={() => setSelectedConv(null)}
-                                className="md:hidden text-muted hover:text-white"
+                                className="md:hidden text-muted hover:text-text"
                             >
                                 <ArrowLeft size={20} />
                             </button>
@@ -192,10 +199,7 @@ const ConversacionesPage = () => {
                                     <Loader2 className="animate-spin text-accent" size={24} />
                                 </div>
                             ) : mensajes.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <MessageSquare className="mx-auto mb-4 text-muted" size={48} />
-                                    <p className="text-muted">No hay mensajes en esta conversación</p>
-                                </div>
+                                <EmptyState size={130} title="No hay mensajes" description="Esta conversación todavía no tiene mensajes." />
                             ) : (
                                 mensajes.map((msg) => (
                                     <div 

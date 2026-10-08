@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, ArrowRight, Star } from 'lucide-react';
+import { Character } from './Illustration';
 
 const PricingCard = ({ tier, price, desc, features, featured, isAnnual }) => {
   const displayPrice = isAnnual ? Math.round(price * 0.8) : price;
@@ -9,15 +10,15 @@ const PricingCard = ({ tier, price, desc, features, featured, isAnnual }) => {
     <motion.div 
       whileHover={{ y: -10 }}
       className={`relative p-10 flex flex-col gap-6 ${
-        featured ? 'bg-bg3 border-2 border-accent shadow-[0_20px_50px_rgba(229,57,53,0.15)] z-10' : 'bg-bg border border-border'
+        featured ? 'bg-bg3 border-2 border-accent z-10' : 'bg-bg border border-border'
       } first:rounded-l-2xl last:rounded-r-2xl max-lg:rounded-2xl`}
     >
       {featured && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-accent text-bg font-mono text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest flex items-center gap-2">
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-accent text-bg text-xs font-black px-4 py-1.5 rounded-full tracking-[0.04em] flex items-center gap-2">
           <Star size={12} fill="currentColor" /> MÁS POPULAR
         </div>
       )}
-      <div className="font-mono text-[11px] text-muted uppercase tracking-widest">{tier}</div>
+      <div className="text-xs text-muted uppercase tracking-[0.04em]">{tier}</div>
       <div className="flex items-baseline gap-1">
         <span className="text-2xl font-mono align-top mt-2">$</span>
         <motion.span 
@@ -32,7 +33,7 @@ const PricingCard = ({ tier, price, desc, features, featured, isAnnual }) => {
       </div>
       <p className="text-muted text-sm leading-relaxed">{desc}</p>
       {isAnnual && (
-        <span className="text-[10px] font-mono text-accent uppercase tracking-widest font-bold">Ahorras un 20% anual</span>
+        <span className="text-xs text-accent uppercase tracking-[0.04em] font-bold">Ahorras un 20% anual</span>
       )}
       <div className="h-px bg-border" />
       <ul className="flex flex-col gap-4 list-none p-0 flex-1">
@@ -46,8 +47,8 @@ const PricingCard = ({ tier, price, desc, features, featured, isAnnual }) => {
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className={`w-full py-4 rounded-xl font-mono text-xs font-bold tracking-widest border-2 transition-all cursor-pointer ${
-          featured ? 'bg-accent text-bg border-accent shadow-lg' : 'bg-transparent text-text border-border hover:border-accent hover:text-accent'
+        className={`w-full py-4 rounded-xl text-xs font-bold tracking-[0.04em] border-2 transition-all cursor-pointer ${
+          featured ? 'bg-accent text-bg border-accent' : 'bg-transparent text-text border-border hover:border-accent hover:text-accent'
         }`}
         onClick={() => document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })}
       >
@@ -110,21 +111,24 @@ const Pricing = () => {
     <section id="pricing" className="py-32 px-6 bg-bg2/30 relative">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
+          <div className="flex justify-center mb-6">
+            <Character name="sofia" height={200} alt="Sofía, la dueña del negocio, eligiendo su plan" />
+          </div>
           <div className="section-label">INVERSIÓN</div>
           <h2 className="section-title">Planes que <span className="text-accent underline decoration-accent/20">Escalan</span> contigo</h2>
           
           <div className="flex items-center justify-center gap-4 mt-8">
-            <span className={`text-xs font-mono uppercase tracking-widest ${!isAnnual ? 'text-accent' : 'text-muted'}`}>Mensual</span>
+            <span className={`text-xs uppercase tracking-[0.04em] ${!isAnnual ? 'text-accent' : 'text-muted'}`}>Mensual</span>
             <button 
               onClick={() => setIsAnnual(!isAnnual)}
               className="w-14 h-7 bg-bg3 border border-border rounded-full p-1 relative transition-colors"
             >
               <motion.div 
                 animate={{ x: isAnnual ? 28 : 0 }}
-                className="w-5 h-5 bg-accent rounded-full shadow-[0_0_10px_rgba(229,57,53,0.5)]"
+                className="w-5 h-5 bg-accent rounded-full"
               />
             </button>
-            <span className={`text-xs font-mono uppercase tracking-widest ${isAnnual ? 'text-accent' : 'text-muted'}`}>Anual (-20%)</span>
+            <span className={`text-xs uppercase tracking-[0.04em] ${isAnnual ? 'text-accent' : 'text-muted'}`}>Anual (-20%)</span>
           </div>
         </div>
 

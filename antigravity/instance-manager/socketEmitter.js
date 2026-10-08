@@ -55,11 +55,21 @@ function emitNewMessage(negocioId, message) {
   }
 }
 
+function emitDomicilioNuevo(negocioId, data) {
+  if (io) {
+    io.emit('domicilio_nuevo', {
+      negocio_id: negocioId,
+      ...data
+    });
+  }
+}
+
 module.exports = {
   setSocketIO,
   emitQR,
   emitConnected,
   emitDisconnected,
   emitCampaignProgress,
-  emitNewMessage
+  emitNewMessage,
+  emitDomicilioNuevo
 };

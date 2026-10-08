@@ -1,3 +1,5 @@
+import EmptyState from '../components/EmptyState';
+import Toast from '../components/Toast';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -13,23 +15,6 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-
-function Toast({ type, message, onClose }) {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 3000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-  return (
-    <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-top-4">
-      <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl border shadow-2xl backdrop-blur-xl ${
-        type === 'success' ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
-      }`}>
-        {type === 'success' ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <AlertCircle className="w-5 h-5 text-red-400" />}
-        <span className="text-sm text-text">{message}</span>
-      </div>
-    </div>
-  );
-}
 
 export default function ProductosPage() {
   const navigate = useNavigate();
@@ -191,11 +176,11 @@ export default function ProductosPage() {
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-accent animate-spin" /></div>
         ) : productos.length === 0 ? (
-          <div className="text-center py-20">
-            <Package className="w-12 h-12 text-muted mx-auto mb-4" />
-            <p className="text-muted text-sm">No tienes productos aún.</p>
-            <p className="text-muted text-xs mt-1">Agrega productos o servicios para que el bot los conozca.</p>
-          </div>
+          <EmptyState
+            title="No tienes productos aún"
+            description="Agrega productos o servicios para que el bot los conozca."
+            className="py-16"
+          />
         ) : (
           <div className="space-y-3">
             {productos.map(p => (
@@ -209,8 +194,8 @@ export default function ProductosPage() {
                   <button onClick={() => handleEdit(p)} className="p-2 hover:bg-bg3 rounded-lg transition-colors">
                     <Edit3 className="w-4 h-4 text-muted" />
                   </button>
-                  <button onClick={() => handleDelete(p.id)} className="p-2 hover:bg-red-500/10 rounded-lg transition-colors">
-                    <Trash2 className="w-4 h-4 text-red-400" />
+                  <button onClick={() => handleDelete(p.id)} className="p-2 hover:bg-danger/10 rounded-lg transition-colors">
+                    <Trash2 className="w-4 h-4 text-danger-text" />
                   </button>
                 </div>
               </div>

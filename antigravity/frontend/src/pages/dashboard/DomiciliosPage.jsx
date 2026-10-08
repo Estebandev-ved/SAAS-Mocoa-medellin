@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useState, useEffect, useRef, Fragment } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { apiService } from '../../services/api';
@@ -8,6 +8,7 @@ import { initSocket, subscribeToNegocio, disconnectSocket } from '../../services
 import toast from 'react-hot-toast';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
+import Illustration from '../../components/ui/Illustration';
 import './DomiciliosPage.css';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -31,21 +32,44 @@ const activeDriverIcon = L.divIcon({
     iconAnchor: [18, 18]
 });
 
-function MapUpdater({ drivers }) {
+const destinoIcon = L.divIcon({
+    className: 'destino-marker',
+    html: '<svg viewBox="0 0 24 24" width="30" height="30"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ef4444" stroke="#fff" stroke-width="1"/></svg>',
+    iconSize: [30, 30],
+    iconAnchor: [15, 28]
+});
+
+// Encuadra el mapa sobre todo lo que hay que ver (domiciliarios activos, puntos
+// de entrega y el negocio). Depende de una clave serializada, no del array, para
+// no reencuadrar en cada re-render y pelear con el usuario si mueve el mapa.
+function MapUpdater({ points }) {
     const map = useMap();
+    const clave = JSON.stringify(points);
     useEffect(() => {
-        if (drivers.length > 0) {
-            const bounds = L.latLngBounds(drivers.filter(d => d.latitud && d.longitud).map(d => [d.latitud, d.longitud]));
-            if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50] });
-        }
-    }, [drivers]);
+        if (points.length === 0) return;
+        const t = setTimeout(() => {
+            map.invalidateSize();
+            const bounds = L.latLngBounds(points);
+            if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        }, 150);
+        return () => clearTimeout(t);
+    }, [clave]);
     return null;
 }
+
+const ESTADO_LABELS = {
+    pendiente: 'Esperando repartidor',
+    aceptado: 'Repartidor asignado',
+    en_ruta: 'En camino',
+    entregado: 'Entregado',
+    cancelado: 'Cancelado',
+};
 
 export default function DomiciliosPage() {
     const { user } = useAuth();
     const [drivers, setDrivers] = useState([]);
     const [deliveries, setDeliveries] = useState({ pendientes: [], en_curso: [], completados: [] });
+    const [incidentes, setIncidentes] = useState([]);
     const [conteo, setConteo] = useState({ pendientes: 0, en_ruta: 0 });
     const [loading, setLoading] = useState(true);
     const [showAddDriver, setShowAddDriver] = useState(false);
@@ -86,23 +110,47 @@ export default function DomiciliosPage() {
         socket.on('domicilio_asignado', () => fetchData());
         socket.on('domicilio_en_ruta', () => fetchData());
         socket.on('domicilio_entregado', () => fetchData());
+        socket.on('domicilio_nuevo', () => {
+            toast('🛵 Nuevo pedido con domicilio recibido por WhatsApp');
+            fetchData();
+        });
+        socket.on('domicilio_incidente', () => {
+            toast.error('⚠️ Un domiciliario reportó un problema en una entrega');
+            fetchData();
+        });
     };
 
     const fetchData = async () => {
         try {
-            const [driversRes, activeRes] = await Promise.all([
+            const [driversRes, activeRes, incidentesRes] = await Promise.all([
                 apiService.get('/api/domicilios/drivers'),
-                apiService.get('/api/domicilios/active')
+                apiService.get('/api/domicilios/active'),
+                apiService.get('/api/domicilios/incidentes')
             ]);
             if (driversRes.success) {
                 setDrivers(driversRes.data);
                 setConteo(driversRes.conteo);
             }
             if (activeRes.success) setDeliveries(activeRes.data);
+            if (incidentesRes.success) setIncidentes(incidentesRes.data);
         } catch (err) {
             console.error('Error fetching delivery data:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleResolverIncidente = async (id, resultado) => {
+        const confirmMsg = resultado === 'robo_confirmado'
+            ? '¿Confirmas que este domicilio se perdió/robó? El domiciliario será penalizado.'
+            : '¿Marcar este incidente como resuelto (falsa alarma)?';
+        if (!window.confirm(confirmMsg)) return;
+        try {
+            await apiService.post(`/api/domicilios/incidentes/${id}/resolver`, { resultado });
+            toast.success(resultado === 'robo_confirmado' ? 'Domiciliario penalizado' : 'Incidente resuelto');
+            fetchData();
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Error al resolver el incidente');
         }
     };
 
@@ -145,6 +193,16 @@ export default function DomiciliosPage() {
     const formatCOP = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(val || 0);
 
     const activeDriversOnMap = drivers.filter(d => d.estado_activo && d.latitud && d.longitud);
+    const entregasEnMapa = [
+        ...(deliveries.pendientes || []).map(d => ({ ...d, enCurso: false })),
+        ...(deliveries.en_curso || []).map(d => ({ ...d, enCurso: true })),
+    ].filter(d => d.destino);
+    const negocioUbicacion = deliveries.negocio_ubicacion;
+    const puntosMapa = [
+        ...activeDriversOnMap.map(d => [Number(d.latitud), Number(d.longitud)]),
+        ...entregasEnMapa.map(d => [d.destino.lat, d.destino.lng]),
+        ...(negocioUbicacion ? [[negocioUbicacion.lat, negocioUbicacion.lng]] : []),
+    ];
 
     return (
         <div className="domicilios-page">
@@ -184,10 +242,37 @@ export default function DomiciliosPage() {
                     <div className="map-container">
                         <MapContainer center={[1.148, -76.647]} zoom={13} style={{ height: '100%', width: '100%', borderRadius: '12px' }}>
                             <TileLayer
-                                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+                                url={`https://tiles.traveltimeapp.com/positron/{z}/{x}/{y}.png?key=${import.meta.env.VITE_TRAVELTIME_APP_ID}`}
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> | Map tiles by TravelTime'
                             />
-                            <MapUpdater drivers={activeDriversOnMap} />
+                            <MapUpdater points={puntosMapa} />
+                            {negocioUbicacion && (
+                                <Marker position={[negocioUbicacion.lat, negocioUbicacion.lng]}>
+                                    <Popup><strong>{negocioUbicacion.nombre || 'Tu negocio'}</strong></Popup>
+                                </Marker>
+                            )}
+                            {entregasEnMapa.map(d => (
+                                <Fragment key={`entrega-${d.id}`}>
+                                    {d.ruta && (
+                                        <Polyline
+                                            positions={d.ruta}
+                                            pathOptions={d.enCurso
+                                                ? { color: '#2563eb', weight: 5, opacity: 0.85 }
+                                                : { color: '#94a3b8', weight: 4, opacity: 0.8, dashArray: '8 8' }}
+                                        />
+                                    )}
+                                    <Marker position={[d.destino.lat, d.destino.lng]} icon={destinoIcon}>
+                                        <Popup>
+                                            <div className="driver-popup">
+                                                <strong>{d.numero_pedido}</strong>
+                                                <span>{d.cliente_nombre}</span>
+                                                <span>{d.direccion_entrega}</span>
+                                                <span>{d.enCurso ? 'En curso' : 'Pendiente'}</span>
+                                            </div>
+                                        </Popup>
+                                    </Marker>
+                                </Fragment>
+                            ))}
                             {activeDriversOnMap.map(driver => (
                                 <Marker key={driver.id} position={[driver.latitud, driver.longitud]} icon={activeDriverIcon}>
                                     <Popup>
@@ -219,7 +304,11 @@ export default function DomiciliosPage() {
                                         <span>{driver.pedidos_completados || 0}</span>
                                         <span>{formatCOP(driver.ganancias_totales)}</span>
                                         <span>{driver.km_totales || 0}km</span>
+                                        <span title="Puntaje de reputación">⭐ {driver.score ?? 100}</span>
                                     </div>
+                                    {driver.suspendido_hasta && new Date(driver.suspendido_hasta) > new Date() && (
+                                        <span className="driver-suspendido">Suspendido hasta {new Date(driver.suspendido_hasta).toLocaleDateString('es-CO')}</span>
+                                    )}
                                 </div>
                                 <button className="driver-delete" onClick={() => handleDeleteDriver(driver.id)} title="Desactivar">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -227,7 +316,10 @@ export default function DomiciliosPage() {
                             </div>
                         ))}
                         {drivers.length === 0 && !loading && (
-                            <div className="empty-drivers">No hay domiciliarios registrados</div>
+                            <div className="empty-drivers">
+                                <Illustration name="vacio-domicilios" size={120} />
+                                <p>No hay domiciliarios registrados</p>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -245,6 +337,9 @@ export default function DomiciliosPage() {
                     <button className={`queue-tab ${activeTab === 'completados' ? 'active' : ''}`} onClick={() => setActiveTab('completados')}>
                         Completados ({deliveries.completados.length})
                     </button>
+                    <button className={`queue-tab incidents ${activeTab === 'incidentes' ? 'active' : ''}`} onClick={() => setActiveTab('incidentes')}>
+                        ⚠️ Incidentes ({incidentes.length})
+                    </button>
                 </div>
 
                 <div className="queue-list">
@@ -259,8 +354,8 @@ export default function DomiciliosPage() {
                             <div className="queue-item-actions">
                                 <select className="assign-select" onChange={(e) => e.target.value && handleAssign(d.id, e.target.value)} defaultValue="">
                                     <option value="" disabled>Asignar a...</option>
-                                    {drivers.filter(drv => drv.estado_activo).map(drv => (
-                                        <option key={drv.id} value={drv.id}>{drv.nombre}</option>
+                                    {drivers.filter(drv => drv.estado_activo && (!drv.suspendido_hasta || new Date(drv.suspendido_hasta) <= new Date())).map(drv => (
+                                        <option key={drv.id} value={drv.id}>{drv.nombre} (⭐ {drv.score ?? 100})</option>
                                     ))}
                                 </select>
                             </div>
@@ -272,8 +367,26 @@ export default function DomiciliosPage() {
                             <div className="queue-item-info">
                                 <span className="order-ref">{d.numero_pedido}</span>
                                 <span className="client-name">{d.cliente_nombre}</span>
-                                <span className="driver-name-sm">{d.domiciliario_nombre}</span>
-                                <span className={`status-badge-sm ${d.estado}`}>{d.estado.replace('_', ' ')}</span>
+                <span className="driver-name-sm">{d.domiciliario_nombre}</span>
+                                <span className={`status-badge-sm ${d.estado}`}>{ESTADO_LABELS[d.estado] || d.estado}</span>
+                            </div>
+                        </div>
+                    ))}
+
+                    {activeTab === 'incidentes' && incidentes.map(inc => (
+                        <div key={inc.id} className={`queue-item incident ${inc.estado_incidente}`}>
+                            <div className="queue-item-info">
+                                <span className="order-ref">{inc.numero_pedido}</span>
+                                <span className="client-name">{inc.cliente_nombre}</span>
+                                <span className="driver-name-sm">{inc.domiciliario_nombre || 'Sin asignar'} {inc.score != null ? `(⭐ ${inc.score})` : ''}</span>
+                                <span className={`status-badge-sm ${inc.estado_incidente}`}>
+                                    {inc.estado_incidente === 'retrasado' ? 'Retrasado' : 'Posible pérdida/robo'}
+                                </span>
+                                <span className="client-whatsapp">{inc.direccion_entrega}</span>
+                            </div>
+                            <div className="queue-item-actions incident-actions">
+                                <button className="btn-resolver" onClick={() => handleResolverIncidente(inc.id, 'resuelto')}>Falsa alarma</button>
+                                <button className="btn-robo" onClick={() => handleResolverIncidente(inc.id, 'robo_confirmado')}>Confirmar robo/pérdida</button>
                             </div>
                         </div>
                     ))}
@@ -290,13 +403,19 @@ export default function DomiciliosPage() {
                     ))}
 
                     {activeTab === 'pendientes' && deliveries.pendientes.length === 0 && !loading && (
-                        <div className="empty-queue">No hay entregas pendientes</div>
+                        <div className="empty-queue">
+                            <Illustration name="vacio-domicilios" size={120} />
+                            <p>No hay entregas pendientes</p>
+                        </div>
                     )}
                     {activeTab === 'en_curso' && deliveries.en_curso.length === 0 && !loading && (
                         <div className="empty-queue">No hay entregas en curso</div>
                     )}
                     {activeTab === 'completados' && deliveries.completados.length === 0 && !loading && (
                         <div className="empty-queue">No hay entregas completadas</div>
+                    )}
+                    {activeTab === 'incidentes' && incidentes.length === 0 && !loading && (
+                        <div className="empty-queue">Sin incidentes abiertos 🎉</div>
                     )}
                 </div>
             </div>
