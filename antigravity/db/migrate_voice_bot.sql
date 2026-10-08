@@ -20,9 +20,9 @@ CREATE TABLE IF NOT EXISTS voice_bot_config (
     
     -- Configuración de llamadas
     max_call_duration INT DEFAULT 300, -- segundos
-    greeting_message TEXT DEFAULT '¡Hola! Soy tu asistente virtual. ¿Qué desea ordenar?',
-    farewell_message TEXT DEFAULT '¡Gracias por llamar! ¡Hasta pronto!',
-    no_response_message TEXT DEFAULT 'No te escuché bien, ¿puedes repetir?',
+    greeting_message TEXT DEFAULT ('¡Hola! Soy tu asistente virtual. ¿Qué desea ordenar?'),
+    farewell_message TEXT DEFAULT ('¡Gracias por llamar! ¡Hasta pronto!'),
+    no_response_message TEXT DEFAULT ('No te escuché bien, ¿puedes repetir?'),
     
     -- Horarios
     activo_horario BOOLEAN DEFAULT TRUE,
