@@ -8,6 +8,7 @@ const navItems = [
   { path: '/admin/inteligencia', icon: 'trend', label: 'Inteligencia' },
   { path: '/admin/negocios', icon: 'business', label: 'Negocios' },
   { path: '/admin/whatsapps', icon: 'whatsapp', label: 'WhatsApps' },
+  { path: '/admin/prospectos', icon: 'whatsapp', label: 'Prospectos' },
   { path: '/admin/suscripciones', icon: 'card', label: 'Suscripciones' },
   { path: '/admin/logs', icon: 'list', label: 'Logs' },
   { path: '/admin/config', icon: 'gear', label: 'Configuración' }

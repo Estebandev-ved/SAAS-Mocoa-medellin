@@ -7,6 +7,7 @@ import AdminRoute from './components/auth/AdminRoute';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const InfoPage = lazy(() => import('./pages/InfoPage'));
 
 const DashboardLayout = lazy(() => import('./pages/dashboard/DashboardLayout'));
 const OverviewPage = lazy(() => import('./pages/dashboard/OverviewPage'));
@@ -31,6 +32,7 @@ const AdminNegocioDetalle = lazy(() => import('./pages/admin/AdminNegocio'));
 const AdminWhatsApps = lazy(() => import('./pages/admin/AdminWhatsApps'));
 const AdminSuscripciones = lazy(() => import('./pages/admin/AdminSuscripciones'));
 const AdminLogs = lazy(() => import('./pages/admin/AdminLogs'));
+const AdminProspectos = lazy(() => import('./pages/admin/AdminProspectos'));
 const AdminConfig = lazy(() => import('./pages/admin/AdminConfig'));
 
 function ScrollToTop() {
@@ -175,6 +177,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Suspense fallback={<DashboardLoadingScreen />}><LoginPage /></Suspense>} />
+            <Route path="/info" element={<Suspense fallback={<DashboardLoadingScreen />}><InfoPage /></Suspense>} />
             <Route path="/register" element={<Suspense fallback={<DashboardLoadingScreen />}><RegisterPage /></Suspense>} />
             
             <Route path="/dashboard" element={
@@ -217,6 +220,7 @@ export default function App() {
               <Route path="whatsapps" element={<Suspense fallback={<AdminLoadingScreen />}><AdminWhatsApps /></Suspense>} />
               <Route path="suscripciones" element={<Suspense fallback={<AdminLoadingScreen />}><AdminSuscripciones /></Suspense>} />
               <Route path="logs" element={<Suspense fallback={<AdminLoadingScreen />}><AdminLogs /></Suspense>} />
+              <Route path="prospectos" element={<Suspense fallback={<AdminLoadingScreen />}><AdminProspectos /></Suspense>} />
               <Route path="config" element={<Suspense fallback={<AdminLoadingScreen />}><AdminConfig /></Suspense>} />
             </Route>
             

@@ -71,3 +71,6 @@ temp_hash.txt
 nul
 *.bak
 *.tmp
+
+# La carpeta de componentes React sí se versiona (no son credenciales de WhatsApp)
+!antigravity/frontend/src/components/auth/
