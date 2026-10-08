@@ -20,6 +20,7 @@ import Contact from './components/Contact';
 import Footer from './components/Footer';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import InfoPage from './pages/InfoPage';
 import Dashboard from './pages/Dashboard';
 import ConversacionesPage from './pages/ConversacionesPage';
 import PedidosPage from './pages/PedidosPage';
