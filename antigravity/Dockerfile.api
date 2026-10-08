@@ -8,6 +8,8 @@ RUN npm ci --omit=dev
 COPY api/ ./api/
 COPY db/ ./db/
 COPY config/ ./config/
+COPY instance-manager/ ./instance-manager/
+COPY queue/ ./queue/
 
 FROM node:20-alpine
 
@@ -21,6 +23,8 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/api ./api
 COPY --from=builder /app/db ./db
 COPY --from=builder /app/config ./config
+COPY --from=builder /app/instance-manager ./instance-manager
+COPY --from=builder /app/queue ./queue
 
 RUN mkdir -p /app/logs
 
