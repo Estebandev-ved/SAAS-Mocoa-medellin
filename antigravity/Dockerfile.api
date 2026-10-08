@@ -26,7 +26,8 @@ COPY --from=builder /app/config ./config
 COPY --from=builder /app/instance-manager ./instance-manager
 COPY --from=builder /app/queue ./queue
 
-RUN mkdir -p /app/logs
+# La API corre como "node", no como root: las carpetas donde escribe deben ser suyas.
+RUN mkdir -p /app/logs /app/voice-bot/temp && chown -R node:node /app/logs /app/voice-bot
 
 EXPOSE 3002
 
