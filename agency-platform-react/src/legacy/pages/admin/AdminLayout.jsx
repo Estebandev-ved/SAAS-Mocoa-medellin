@@ -69,6 +69,10 @@ export default function AdminLayout() {
         </nav>
 
         <div className="admin-sidebar-footer">
+          <button className="admin-logout-btn" onClick={() => navigate('/dashboard')}>
+            <Icons name="home" />
+            {sidebarExpanded && <span>Mi Dashboard</span>}
+          </button>
           {user && sidebarExpanded && (
             <div className="admin-user">
               <div className="admin-user-avatar">{user.nombre?.charAt(0) || 'A'}</div>

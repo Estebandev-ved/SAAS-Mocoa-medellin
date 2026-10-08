@@ -23,8 +23,7 @@ const LoginPage = () => {
         if (result.success) {
             const rol = result.negocio?.rol;
             if (rol === 'admin' || rol === 'superadmin') {
-                const antigravityUrl = import.meta.env.VITE_ANTIGRAVITY_URL || 'http://localhost:5174';
-                window.location.href = `${antigravityUrl}/login?email=${encodeURIComponent(email)}`;
+                navigate('/admin');
                 return;
             }
             navigate('/dashboard');
