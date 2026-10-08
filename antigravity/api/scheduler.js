@@ -47,7 +47,7 @@ async function revisarRecordatoriosPago() {
             }
         }
     } catch (error) {
-        console.error('[Scheduler] Error en revisarRecordatoriosPago:', error.message);
+        console.error('[Scheduler] Error en revisarRecordatoriosPago:', error.code || error.message);
     }
 }
 
@@ -86,7 +86,7 @@ async function revisarStockBajo() {
             }
         }
     } catch (error) {
-        console.error('[Scheduler] Error en revisarStockBajo:', error.message);
+        console.error('[Scheduler] Error en revisarStockBajo:', error.code || error.message);
     }
 }
 
@@ -133,7 +133,7 @@ async function revisarReporteSemanal() {
             }
         }
     } catch (error) {
-        console.error('[Scheduler] Error en revisarReporteSemanal:', error.message);
+        console.error('[Scheduler] Error en revisarReporteSemanal:', error.code || error.message);
     }
 }
 
@@ -177,7 +177,7 @@ async function revisarReengagement() {
             }
         }
     } catch (error) {
-        console.error('[Scheduler] Error en revisarReengagement:', error.message);
+        console.error('[Scheduler] Error en revisarReengagement:', error.code || error.message);
     }
 }
 
@@ -190,9 +190,9 @@ async function tick() {
 
 function iniciarScheduler() {
     console.log(`[Scheduler] Iniciado, revisando automatizaciones cada ${INTERVALO_MS / 1000}s`);
-    tick().catch(err => console.error('[Scheduler] Error en tick inicial:', err.message));
+    tick().catch(err => console.error('[Scheduler] Error en tick inicial:', err.code || err.message));
     setInterval(() => {
-        tick().catch(err => console.error('[Scheduler] Error en tick:', err.message));
+        tick().catch(err => console.error('[Scheduler] Error en tick:', err.code || err.message));
     }, INTERVALO_MS);
 }
 
