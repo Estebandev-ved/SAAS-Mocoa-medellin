@@ -236,3 +236,29 @@
 @media (prefers-reduced-motion: reduce) {
   .noma-zzz { animation: none; opacity: 1; }
 }
+
+/* ─── MÓVIL (PWA): zona táctil mínima de 44px y áreas seguras ─── */
+.tap-44 {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Padding inferior que respeta la barra de gestos de iOS/Android */
+.safe-bottom {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+@media (max-width: 1023px) {
+  body {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  /* iOS hace zoom al enfocar campos con letra menor a 16px */
+  input:not([type='checkbox']):not([type='radio']), select, textarea {
+    font-size: max(16px, 1em);
+  }
+}

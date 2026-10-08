@@ -1,4 +1,5 @@
 import Toast from '../components/Toast';
+import AvisosPedidos from '../components/AvisosPedidos';
 import TipNova from '../components/TipNova';
 import AvatarEditor from '../components/avatar/AvatarEditor';
 import OwnerAvatar from '../components/avatar/OwnerAvatar';
@@ -1106,6 +1107,7 @@ function NotificacionesTab() {
           <Bell className="w-5 h-5 text-accent" />
           Preferencias de Notificación
         </h3>
+        <AvisosPedidos />
         <div className="space-y-8">
           {groups.map((group) => (
             <div key={group.title}>

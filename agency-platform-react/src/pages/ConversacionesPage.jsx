@@ -93,14 +93,15 @@ const ConversacionesPage = () => {
     };
 
     return (
-        <div className="h-screen bg-bg flex">
+        <div className="h-dvh bg-bg flex">
             {/* Lista de conversaciones */}
             <div className={`w-full md:w-96 bg-bg2 border-r border-border flex flex-col ${selectedConv ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-border">
                     <div className="flex items-center gap-3 mb-4">
                         <button
                             onClick={() => navigate('/dashboard')}
-                            className="p-2 rounded-xl bg-bg border border-border hover:border-accent/30 hover:bg-accent/10 transition-all"
+                            className="tap-44 rounded-xl bg-bg border border-border hover:border-accent/30 hover:bg-accent/10 transition-all"
+                            aria-label="Volver al dashboard"
                         >
                             <ArrowLeft className="w-4 h-4 text-muted" />
                         </button>
@@ -117,7 +118,7 @@ const ConversacionesPage = () => {
                                 className="w-full bg-bg/50 border border-border rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-accent"
                             />
                         </div>
-                        <button type="submit" className="bg-accent text-bg px-4 py-2 rounded-xl text-sm font-bold">
+                        <button type="submit" className="bg-accent text-bg px-4 min-h-[44px] rounded-xl text-sm font-bold">
                             Buscar
                         </button>
                     </form>
@@ -183,10 +184,11 @@ const ConversacionesPage = () => {
                 {selectedConv ? (
                     <>
                         {/* Header */}
-                        <div className="h-16 bg-bg2 border-b border-border flex items-center px-4 gap-4">
+                        <div className="h-16 shrink-0 bg-bg2 border-b border-border flex items-center px-4 gap-3 md:gap-4">
                             <button 
                                 onClick={() => setSelectedConv(null)}
-                                className="md:hidden text-muted hover:text-text"
+                                className="md:hidden tap-44 -ml-2 text-muted hover:text-text"
+                                aria-label="Volver a la lista"
                             >
                                 <ArrowLeft size={20} />
                             </button>
@@ -202,7 +204,7 @@ const ConversacionesPage = () => {
                         </div>
 
                         {/* Mensajes */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4">
                             {loadingMensajes ? (
                                 <div className="flex items-center justify-center py-12">
                                     <Loader2 className="animate-spin text-accent" size={24} />
@@ -215,7 +217,7 @@ const ConversacionesPage = () => {
                                         key={msg.id}
                                         className={`flex ${msg.tipo === 'salida' ? 'justify-end' : 'justify-start'}`}
                                     >
-                                        <div className={`max-w-[70%] p-3 rounded-2xl ${
+                                        <div className={`max-w-[85%] md:max-w-[70%] break-words p-3 rounded-2xl ${
                                             msg.tipo === 'salida' 
                                                 ? 'bg-accent text-bg rounded-br-md' 
                                                 : 'bg-bg2 border border-border rounded-bl-md'
@@ -231,7 +233,7 @@ const ConversacionesPage = () => {
                         </div>
 
                         {/* Input */}
-                        <div className="p-4 bg-bg2 border-t border-border">
+                        <div className="safe-bottom p-4 bg-bg2 border-t border-border">
                             <form onSubmit={handleEnviarMensaje} className="flex gap-2">
                                 <input
                                     type="text"
@@ -244,7 +246,7 @@ const ConversacionesPage = () => {
                                 <button 
                                     type="submit" 
                                     disabled={enviando || !nuevoMensaje.trim()}
-                                    className="bg-accent text-bg px-6 py-3 rounded-xl font-bold disabled:opacity-50"
+                                    className="tap-44 bg-accent text-bg px-5 rounded-xl font-bold disabled:opacity-50"
                                 >
                                     {enviando ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
                                 </button>

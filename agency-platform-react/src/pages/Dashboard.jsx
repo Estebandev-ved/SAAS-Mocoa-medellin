@@ -25,6 +25,8 @@ import {
   Bell,
   FileText,
   Power,
+  Menu,
+  X,
   PowerOff,
   Smartphone,
   Phone,
@@ -114,6 +116,16 @@ export default function Dashboard() {
   const [apiPlan, setApiPlan] = useState(null)
   const [planInfo, setPlanInfo] = useState(null)
   const [activando, setActivando] = useState(false)
+  const [menuAbierto, setMenuAbierto] = useState(false)
+
+  useEffect(() => {
+    if (!menuAbierto) return undefined
+    const onKey = (e) => { if (e.key === 'Escape') setMenuAbierto(false) }
+    document.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+  }, [menuAbierto])
 
   const effectivePlan = apiPlan || plan
   const domiciliosLocked = effectivePlan === 'starter' || effectivePlan === 'emprendedor'
@@ -264,9 +276,8 @@ export default function Dashboard() {
     )
   }
 
-  return (
-    <div className="min-h-screen bg-bg flex">
-      <aside className="w-72 bg-inverse text-inverse-text border-r border-white/10 hidden lg:flex flex-col">
+  const sidebarInner = (
+    <>
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center gap-3">
             <svg width="36" height="36" viewBox="0 0 48 48" fill="none" aria-hidden="true">
@@ -282,21 +293,21 @@ export default function Dashboard() {
           {getPlanIcon()}
           <span className="text-sm text-inverse-text font-medium">{getPlanLabel()}</span>
           <button
-            onClick={() => navigate('/suscripcion')}
+            onClick={() => { setMenuAbierto(false); navigate('/suscripcion') }}
             className="ml-auto text-xs font-semibold text-[#E53935] hover:text-inverse-text transition-colors bg-transparent border-none cursor-pointer"
           >
             {getUpgradeLabel()}
           </button>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1" aria-label="Menú principal">
           {navItems.map((item) => (
             <NavItem
               key={item.path}
               icon={item.icon}
               label={item.label}
               active={location.pathname === item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => { setMenuAbierto(false); navigate(item.path) }}
               locked={item.locked}
               lockTooltip={item.lockTooltip}
             />
@@ -310,7 +321,7 @@ export default function Dashboard() {
               icon={item.icon}
               label={item.label}
               active={location.pathname === item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => { setMenuAbierto(false); navigate(item.path) }}
             />
           ))}
           <button
@@ -321,25 +332,60 @@ export default function Dashboard() {
             <span>Cerrar Sesion</span>
           </button>
         </div>
+    </>
+  )
+
+  return (
+    <div className="min-h-screen bg-bg flex">
+      <aside className="w-72 bg-inverse text-inverse-text border-r border-white/10 hidden lg:flex flex-col">
+        {sidebarInner}
       </aside>
 
-      <main className="flex-1 overflow-auto bg-bg2">
-        <div className="p-8">
+      {/* Móvil/tablet: cajón con el mismo menú (el lateral fijo solo cabe desde lg) */}
+      {menuAbierto && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menú">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMenuAbierto(false)} />
+          <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-inverse text-inverse-text flex flex-col overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]">
+            <button
+              onClick={() => setMenuAbierto(false)}
+              className="tap-44 absolute top-3 right-3 rounded-xl bg-transparent border-none text-[#A0A0A0] hover:text-inverse-text cursor-pointer"
+              aria-label="Cerrar menú"
+            >
+              <X size={22} />
+            </button>
+            {sidebarInner}
+          </aside>
+        </div>
+      )}
+
+      <main className="flex-1 min-w-0 overflow-auto bg-bg2">
+        <div className="lg:hidden sticky top-0 z-40 flex items-center gap-2 h-14 px-2 bg-inverse text-inverse-text border-b border-white/10">
+          <button
+            onClick={() => setMenuAbierto(true)}
+            className="tap-44 rounded-xl bg-transparent border-none text-inverse-text cursor-pointer"
+            aria-label="Abrir menú"
+            aria-expanded={menuAbierto}
+          >
+            <Menu size={24} />
+          </button>
+          <span className="font-head text-base font-extrabold tracking-[0.08em]">ANTIGRAVITY</span>
+        </div>
+        <div className="p-4 sm:p-6 lg:p-8">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8 flex items-center gap-5"
+            className="mb-6 sm:mb-8 flex items-center gap-4 sm:gap-5"
           >
-            <div className="w-20 h-20 rounded-full bg-[#FDECEA] overflow-hidden shrink-0 flex items-end justify-center">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#FDECEA] overflow-hidden shrink-0 flex items-end justify-center">
               <OwnerAvatar config={user?.avatar} variant="busto" height={92} label={`Avatar de ${user?.nombre || 'tu negocio'}`} />
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-text">
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-text">
                 {saludo}, {user?.nombre}!
               </h1>
               <p className="text-muted mt-1">{resumenHoy}</p>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="text-muted">{user?.email}</span>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+                <span className="text-muted break-all">{user?.email}</span>
                 <div className="flex items-center gap-1 px-2 py-1 bg-accent-dim rounded-lg">
                   {getPlanIcon()}
                   <span className="text-xs text-accent font-medium">{getPlanLabel()}</span>
@@ -356,7 +402,7 @@ export default function Dashboard() {
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8"
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mb-8"
           >
             <StatCard
               title="Ventas Hoy"

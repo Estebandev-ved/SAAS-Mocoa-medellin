@@ -146,19 +146,19 @@ const PedidosPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-bg p-6 lg:p-10">
+        <div className="min-h-screen bg-bg p-4 sm:p-6 lg:p-10">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => navigate('/dashboard')}
-                            className="p-2 rounded-xl bg-bg2 border border-border hover:border-accent/30 hover:bg-accent/10 transition-all"
+                            className="tap-44 rounded-xl bg-bg2 border border-border hover:border-accent/30 hover:bg-accent/10 transition-all" aria-label="Volver al dashboard"
                         >
                             <ArrowLeft className="w-5 h-5 text-muted" />
                         </button>
                         <div>
-                            <h1 className="font-head text-3xl font-bold mb-2 flex items-center gap-3">
+                            <h1 className="font-head text-2xl sm:text-3xl font-bold mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                                 Pedidos
                                 <span
                                     className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-semibold tracking-[0.04em] uppercase ${
@@ -211,12 +211,12 @@ const PedidosPage = () => {
                             />
                         </div>
                     </form>
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-2 md:flex-wrap overflow-x-auto md:overflow-visible -mx-4 px-4 md:mx-0 md:px-0 pb-1 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
                         {['todos', 'pendiente_pago', 'pago_enviado', 'pago_confirmado', 'en_preparacion', 'enviado', 'entregado', 'cancelado'].map(estado => (
                             <button
                                 key={estado}
                                 onClick={() => setFiltroEstado(estado)}
-                                className={`h-7 px-3 rounded-full text-xs font-semibold tracking-[0.04em] border-none cursor-pointer transition-colors ${
+                                className={`h-11 md:h-7 px-4 md:px-3 rounded-full text-xs font-semibold tracking-[0.04em] border-none cursor-pointer transition-colors ${
                                     filtroEstado === estado 
                                         ? 'bg-accent-dim text-accent' 
                                         : 'bg-bg3 text-muted hover:text-text'
@@ -241,7 +241,29 @@ const PedidosPage = () => {
                     </div>
                 ) : (
                     <div className="bg-white rounded-2xl border border-border overflow-hidden">
-                        <div className="overflow-x-auto">
+                        <div className="md:hidden divide-y divide-border">
+                            {pedidosFiltrados.map((pedido) => (
+                                <button
+                                    key={pedido.id}
+                                    type="button"
+                                    onClick={() => setPedidoSeleccionado(pedido)}
+                                    className="w-full min-h-[44px] text-left p-4 bg-transparent border-none cursor-pointer hover:bg-bg2 active:bg-bg2 flex flex-col gap-2"
+                                >
+                                    <div className="flex items-center justify-between gap-3">
+                                        <span className="font-mono text-sm font-bold">#{pedido.numero_pedido || pedido.id}</span>
+                                        {getEstadoBadge(pedido.estado)}
+                                    </div>
+                                    <div className="flex items-end justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-sm truncate">{pedido.cliente_nombre || 'Sin nombre'}</p>
+                                            <p className="text-xs text-muted">{pedido.items?.length || pedido.total_productos || 1} items · {formatFecha(pedido.created_at)}</p>
+                                        </div>
+                                        <span className="font-mono font-bold shrink-0">{formatCurrency(pedido.total)}</span>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-border">
@@ -321,19 +343,19 @@ const PedidosPage = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+                        className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
                         onClick={() => { setPedidoSeleccionado(null); setImagenPago(null); }}
                     >
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-[0_16px_48px_rgba(10,10,10,0.2)] max-h-[80vh] overflow-y-auto"
+                            className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] w-full max-w-lg shadow-[0_16px_48px_rgba(10,10,10,0.2)] max-h-[90dvh] sm:max-h-[80vh] overflow-y-auto overscroll-contain"
                             onClick={e => e.stopPropagation()}
                         >
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-bold">Detalle del Pedido</h2>
-                                <button onClick={() => { setPedidoSeleccionado(null); setImagenPago(null); }} className="p-2 rounded-xl hover:bg-bg3">
+                                <button onClick={() => { setPedidoSeleccionado(null); setImagenPago(null); }} className="tap-44 rounded-xl hover:bg-bg3" aria-label="Cerrar">
                                     <X size={20} />
                                 </button>
                             </div>
@@ -363,8 +385,8 @@ const PedidosPage = () => {
                                 <div className="border-t border-border pt-4">
                                     <p className="text-xs font-mono text-muted mb-2">PRODUCTOS</p>
                                     {pedidoSeleccionado.items?.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between py-2">
-                                            <span>{item.producto?.nombre || item.nombre} x{item.cantidad}</span>
+                                        <div key={idx} className="flex justify-between gap-3 py-2">
+                                            <span className="min-w-0 break-words">{item.producto?.nombre || item.nombre} x{item.cantidad}</span>
                                             <span className="font-mono">{formatCurrency(item.subtotal)}</span>
                                         </div>
                                     ))}
@@ -391,7 +413,7 @@ const PedidosPage = () => {
                                                 <button
                                                     onClick={() => avanzarEstado(SIGUIENTE_ESTADO[pedidoSeleccionado.estado].estado)}
                                                     disabled={avanzando}
-                                                    className="h-11 px-5 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                                                    className="h-11 px-5 flex-1 sm:flex-none justify-center rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
                                                 >
                                                     {avanzando && <Loader2 size={16} className="animate-spin" />}
                                                     {SIGUIENTE_ESTADO[pedidoSeleccionado.estado].label}
@@ -401,7 +423,7 @@ const PedidosPage = () => {
                                                 <button
                                                     onClick={() => { if (confirm('¿Cancelar este pedido?')) avanzarEstado('cancelado'); }}
                                                     disabled={avanzando}
-                                                    className="h-11 px-5 rounded-xl bg-white hover:bg-bg2 text-danger-text text-sm font-semibold border border-danger/40 cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    className="h-11 px-5 flex-1 sm:flex-none rounded-xl bg-white hover:bg-bg2 text-danger-text text-sm font-semibold border border-danger/40 cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                                                 >
                                                     Cancelar pedido
                                                 </button>
@@ -427,7 +449,7 @@ const PedidosPage = () => {
                                         ) : (
                                             <button
                                                 onClick={() => fetchImagenPago(pedidoSeleccionado.id)}
-                                                className="w-full py-2 bg-bg3 rounded-xl text-sm text-accent hover:bg-accent/10 transition-all"
+                                                className="w-full min-h-[44px] bg-bg3 rounded-xl text-sm text-accent hover:bg-accent/10 transition-all"
                                             >
                                                 Ver captura de pago
                                             </button>
