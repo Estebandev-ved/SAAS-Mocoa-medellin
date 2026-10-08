@@ -40,6 +40,7 @@ const MIGRACIONES = [
     'migrate_marketplace.js',
     'migrate_incidentes_v2.js',
     'migrate_ui_estado.js',
+    'migrate_push.js',
 ];
 
 const BASE = process.env.MYSQL_DATABASE || 'antigravity';
@@ -119,6 +120,7 @@ const VERIFICACIONES = [
     { archivo: 'migrate_efipay.js', tabla: 'pagos_efipay' },
     { archivo: 'migrate_marketplace.js', tabla: 'restaurantes' },
     { archivo: 'migrate_ui_estado.js', tabla: 'negocios', columna: 'ui_estado' },
+    { archivo: 'migrate_push.js', tabla: 'push_subscriptions' },
 ];
 
 async function existe(con, { tabla, columna }) {

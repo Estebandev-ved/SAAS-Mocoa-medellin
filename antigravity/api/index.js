@@ -247,6 +247,7 @@ const instagramRoutes = require('./routes/instagram');
 const voiceRoutes = require('./routes/voice');
 const restaurantesRoutes = require('./routes/restaurantes');
 const cajaRoutes = require('./routes/caja');
+const pushRoutes = require('./routes/push');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/automations', automationsToggleRoutes);
@@ -273,6 +274,7 @@ app.use('/api/instagram', instagramRoutes);
 app.use('/api/voice', voiceRoutes);
 app.use('/api/restaurantes', restaurantesRoutes);
 app.use('/api/caja', cajaRoutes);
+app.use('/api/push', pushRoutes);
 // automationsRoutes define sus propios prefijos internos (/automatizaciones,
 // /campañas) y se monta en la raíz /api, pero su router aplica
 // `router.use(verificarAuth)` SIN restringir la ruta — eso exigía login de
@@ -407,6 +409,8 @@ io.on('connection', (socket) => {
             console.log('[Socket] Nuevo pedido del bot:', data.numero_pedido);
             const room = data.room || `negocio_${data.negocio_id || 1}`;
             io.to(room).emit('nuevo_pedido', data);
+            // Aviso al celular aunque la app esté cerrada (no-op sin claves VAPID).
+            require('./services/push').enviarAlNegocio(data.negocio_id || 1, 'nuevo_pedido', data);
         });
         
         socket.on('qr_update', (data) => {
@@ -436,6 +440,7 @@ io.on('connection', (socket) => {
         socket.on('pedido_confirmado', (data) => {
             const room = `negocio_${data.negocio_id}`;
             io.to(room).emit('pedido_confirmado', data);
+            require('./services/push').enviarAlNegocio(data.negocio_id, 'pedido_confirmado', data);
         });
 
         return;

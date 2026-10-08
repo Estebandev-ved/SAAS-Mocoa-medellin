@@ -47,6 +47,7 @@
     "socket.io": "^4.7.2",
     "stripe": "^22.6.1",
     "twilio": "^5.4.3",
+    "web-push": "^3.6.7",
     "xss": "^1.0.15"
   },
   "devDependencies": {
