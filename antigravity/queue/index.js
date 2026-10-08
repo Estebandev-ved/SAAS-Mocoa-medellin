@@ -94,7 +94,7 @@ reminderQueue.on('failed', (job, err) => {
   console.error(`[ReminderQueue] Job ${job.id} fallido:`, err.message);
 });
 
-const emailWorker = require('./workers/emailWorker');
+const { emailWorker } = require('./workers/emailWorker');
 const campaignWorker = require('./workers/campaignWorker');
 const reportWorker = require('./workers/reportWorker');
 
