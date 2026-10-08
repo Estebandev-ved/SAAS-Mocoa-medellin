@@ -1,0 +1,246 @@
+/* Tokens y base de las pantallas trasladadas (panel admin y portal del domiciliario).
+   Valores = design.md. Se activan solo en esas rutas (LegacyScope pone la clase en <html>),
+   así no pisan los tokens del resto del sitio. */
+.legacy-scope {
+  /* colors: marca */
+  --color-primary: #E53935;
+  --color-primary-strong: #C62828;
+  --color-primary-deep: #8E1B1B;
+  --color-primary-soft: #FDECEA;
+  --color-on-primary: #FFFFFF;
+
+  /* colors: neutros oscuros */
+  --color-black: #0A0A0A;
+  --color-ink: #111111;
+  --color-charcoal: #1A1A1A;
+  --color-graphite: #262626;
+
+  /* colors: grises */
+  --color-gray-700: #404040;
+  --color-gray-600: #666666;
+  --color-gray-500: #8A8A8A;
+  --color-gray-400: #A0A0A0;
+  --color-gray-300: #C9C9C9;
+  --color-gray-200: #E4E4E4;
+  --color-gray-100: #F0F0F0;
+  --color-gray-50: #F8F8F8;
+  --color-white: #FFFFFF;
+
+  /* colors: estados (solo funcionales) */
+  --color-success: #2E7D32;
+  --color-warning: #F9A825;
+  --color-error: #EF5350;
+  --color-info: #0288D1;
+
+  /* colors: roles (tema claro por defecto) */
+  --color-background: #FFFFFF;
+  --color-surface: #F8F8F8;
+  --color-surface-raised: #FFFFFF;
+  --color-surface-inverse: #0A0A0A;
+  --color-border: #E4E4E4;
+  --color-border-strong: #C9C9C9;
+  --color-text: #1A1A1A;
+  --color-text-secondary: #555555;
+  --color-text-muted: #8A8A8A;
+  --color-text-inverse: #F5F5F5;
+  --color-accent: var(--color-primary-strong);
+  --color-accent-soft: var(--color-primary-soft);
+
+  /* typography: familias */
+  --font-heading: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* typography: escala (tamaño / interlineado / peso) */
+  --type-display-size: 48px;
+  --type-display-line: 56px;
+  --type-display-weight: 800;
+  --type-headline-lg-size: 32px;
+  --type-headline-lg-line: 40px;
+  --type-headline-lg-weight: 700;
+  --type-headline-md-size: 24px;
+  --type-headline-md-line: 32px;
+  --type-headline-md-weight: 700;
+  --type-headline-sm-size: 20px;
+  --type-headline-sm-line: 28px;
+  --type-headline-sm-weight: 600;
+  --type-body-lg-size: 18px;
+  --type-body-lg-line: 28px;
+  --type-body-md-size: 16px;
+  --type-body-md-line: 24px;
+  --type-body-sm-size: 14px;
+  --type-body-sm-line: 20px;
+  --type-label-lg-size: 14px;
+  --type-label-lg-line: 20px;
+  --type-label-lg-weight: 600;
+  --type-label-sm-size: 12px;
+  --type-label-sm-line: 16px;
+  --type-label-sm-weight: 600;
+  --type-mono-size: 13px;
+  --type-mono-line: 20px;
+
+  /* spacing: escala de 4px */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --gutter: 24px;
+  --margin-mobile: 16px;
+  --margin-desktop: 32px;
+
+  /* rounded */
+  --radius-none: 0px;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* elevación (design.md > Elevation & Depth) */
+  --elevation-1: 0 0 0 1px var(--color-border);
+  --elevation-2: 0 4px 12px rgba(10, 10, 10, 0.08);
+  --elevation-3: 0 8px 24px rgba(10, 10, 10, 0.12);
+  --elevation-4: 0 16px 48px rgba(10, 10, 10, 0.20);
+  --overlay: rgba(10, 10, 10, 0.5);
+  --focus-ring: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-primary);
+
+  /* componentes */
+  --control-height: 44px;
+  --navbar-height: 64px;
+
+  /* Alias heredados: las hojas de estilo existentes siguen funcionando,
+     ahora apuntan a los tokens de arriba. */
+  --bg-primary: var(--color-background);
+  --bg-secondary: var(--color-surface);
+  --bg-tertiary: var(--color-gray-100);
+  --accent-primary: var(--color-primary-strong);
+  --accent-secondary: var(--color-primary-deep);
+  --accent-glow: var(--color-primary-soft);
+  --surface: var(--color-surface);
+  --surface-hover: var(--color-gray-100);
+  --border: var(--color-border);
+  --border-color: var(--color-border);
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --success: var(--color-success);
+  --warning: var(--color-warning);
+  --error: var(--color-error);
+  --info: var(--color-info);
+  --shadow-sm: var(--elevation-2);
+  --shadow-md: var(--elevation-3);
+  --shadow-lg: var(--elevation-4);
+}
+
+
+.legacy-root {
+  min-height: 100vh;
+  font-family: var(--font-body);
+  font-size: var(--type-body-md-size);
+  line-height: var(--type-body-md-line);
+  background: var(--color-background);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+.legacy-root h1, .legacy-root h2, .legacy-root h3, .legacy-root h4, .legacy-root h5, .legacy-root h6 {
+  font-family: var(--font-heading); font-weight: 700; line-height: 1.25; color: var(--color-text);
+}
+.legacy-root a { color: var(--color-accent); text-decoration: none; }
+.legacy-root button { font-family: var(--font-body); cursor: pointer; }
+.legacy-root input, .legacy-root textarea, .legacy-root select { font-family: var(--font-body); }
+.legacy-root .glass { background: var(--color-surface-raised); border: 1px solid var(--color-border); }
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-5px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-xs);
+}
+
+.fade-up {
+  animation: fadeUp 0.4s ease forwards;
+}
+
+.slide-in {
+  animation: slideIn 0.4s ease forwards;
+}
+
+.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.glass {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+}
+
+.glow {
+  box-shadow: var(--elevation-3);
+}
+

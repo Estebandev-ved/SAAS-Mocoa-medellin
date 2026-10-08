@@ -242,7 +242,10 @@ export default function Dashboard() {
       locked: effectivePlan !== 'emprendedor',
       lockTooltip: 'La caja es del plan Emprendedor'
     },
-    { icon: CreditCard, label: 'Suscripcion', path: '/suscripcion' }
+    { icon: CreditCard, label: 'Suscripcion', path: '/suscripcion' },
+    ...(user?.rol === 'admin' || user?.rol === 'superadmin'
+      ? [{ icon: Users, label: 'Panel Admin', path: '/admin' }]
+      : [])
   ]
 
   const bottomItems = [

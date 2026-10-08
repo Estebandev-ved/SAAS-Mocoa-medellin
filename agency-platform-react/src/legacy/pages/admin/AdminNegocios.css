@@ -1,0 +1,249 @@
+.admin-negocios {
+  padding: 24px;
+}
+
+.admin-negocios .admin-header {
+  margin-bottom: 24px;
+}
+
+.admin-negocios .admin-header h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 8px 0;
+}
+
+.admin-negocios .admin-header p {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.filtros-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filtros-bar .search-input {
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 16px;
+}
+
+.filtros-bar .search-input svg {
+  color: var(--text-muted);
+}
+
+.filtros-bar .search-input input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 12px 0;
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.filtros-bar .search-input input::placeholder {
+  color: var(--text-muted);
+}
+
+.filtros-bar select {
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--color-text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.filtros-bar select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.btn-ghost {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-ghost:hover {
+  color: var(--color-text);
+}
+
+.results-info {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.negocios-table {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.negocios-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.negocios-table th,
+.negocios-table td {
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.negocios-table th {
+  background: var(--bg-tertiary);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.negocios-table td {
+  border-top: 1px solid var(--surface);
+  color: var(--color-text);
+}
+
+.negocios-table .clickable-row {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.negocios-table .clickable-row:hover {
+  background: var(--surface);
+}
+
+.email-cell {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.number-cell {
+  font-family: 'JetBrains Mono', monospace;
+  text-align: right;
+}
+
+.negocios-table select.plan-badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.action-buttons .btn-action {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-suspend {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: var(--error) !important;
+}
+
+.btn-suspend:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.btn-activate {
+  border-color: rgba(34, 197, 94, 0.3) !important;
+  color: var(--success) !important;
+}
+
+.btn-activate:hover {
+  background: rgba(34, 197, 94, 0.1) !important;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-btn:not(:disabled):hover {
+  background: var(--border);
+}
+
+.pagination-numbers {
+  display: flex;
+  gap: 4px;
+}
+
+.pagination-num {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.pagination-num.active {
+  background: var(--border);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.pagination-num:hover:not(.active) {
+  background: var(--surface);
+}
+
+.pagination-ellipsis {
+  color: var(--text-muted);
+  padding: 0 8px;
+}
+
+.loading-cell {
+  text-align: center;
+  padding: 40px !important;
+}
+
+.empty-row {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px !important;
+}

@@ -6,6 +6,12 @@
 
 **Contexto:** ya está todo en producción (rama `caja-emprendedor`). Lo único que falta del lado del socio es **activar la pasarela Efipay** (credenciales + webhook + primer pago de prueba — él lo hace el 9 oct, ver más abajo). Hoy el socio pidió: precios más justos, versión celular empezando por PWA (fase 1) e ir evolucionando, y dejarlo en este flujo. Trabajo en la rama **`pwa-y-precios`** (no toca la rama de producción; el socio la revisa y la mergea).
 
+### 🧭 Panel admin + portal del domiciliario en el sitio de producción (8 oct, rama `caja-emprendedor`)
+
+- [x] Se trasladaron a `agency-platform-react/src/legacy/` el **panel admin** (`/admin/*`: resumen, inteligencia, negocios, whatsapps, suscripciones, prospectos, logs, config), el **portal del domiciliario** (`/delivery/login`, `/delivery/portal`, `/delivery/terminos`) y el **tracking del cliente** (`/delivery/track/:token`). Usan la sesión del sitio (`antigravity_token`), la API sale de `VITE_SOCKET_URL` (sin `/api`) y los tokens de diseño viejos quedan acotados a esas rutas (`LegacyScope`). Acceso admin: rol `admin`/`superadmin` (enlace "Panel Admin" en el menú del Dashboard). Se agregó `recharts`. Cargan diferido.
+- [ ] `antigravity/frontend` ya no es necesaria para estas pantallas: borrarla en esta rama al mezclar con `main` (en `main` ya se borró).
+- [ ] Probado solo con API simulada y capturas; falta probar con datos reales (admin y un domiciliario con PIN).
+
 ### 📣 Formulario de interesados + Prospectos (8 oct)
 
 - [x] **Formulario público `/info`** (enlace para Instagram/videos; `?f=tiktok` etc. marca la fuente) con la estética de `design.md` (rojo de acción, Plus Jakarta Sans). Envía a `POST /api/public/interesados` (sin login, 5 envíos/hora por IP, campo trampa anti-bots, mismo WhatsApp no se duplica) y entra a `prospectos` con estado `nuevo` y seguimiento para hoy.

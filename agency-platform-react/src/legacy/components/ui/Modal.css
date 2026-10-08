@@ -1,0 +1,112 @@
+/* Modales (design.md > Components > Modales): radio xl, relleno 32px,
+   ancho máx 480px, elevación 4 con velo. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-container {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--elevation-4);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: modalSlideIn 0.25s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-sm {
+  width: 400px;
+  max-width: 90vw;
+}
+
+.modal-md {
+  width: 480px;
+  max-width: 90vw;
+}
+
+/* lg queda para detalles con tablas o formularios extensos */
+.modal-lg {
+  width: 720px;
+  max-width: 90vw;
+}
+
+.modal-fullscreen {
+  width: 95vw;
+  height: 90vh;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-8) var(--space-8) 0;
+}
+
+.modal-title {
+  font-size: var(--type-headline-sm-size);
+  line-height: var(--type-headline-sm-line);
+  font-weight: var(--type-headline-sm-weight);
+  color: var(--color-text);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.modal-close:hover {
+  color: var(--color-text);
+  background: var(--color-gray-100);
+}
+
+.modal-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.modal-body {
+  padding: var(--space-6) var(--space-8) var(--space-8);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: var(--space-4) var(--space-8) var(--space-8);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}

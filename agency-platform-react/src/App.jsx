@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrandingProvider } from './context/BrandingContext';
 import { AuthProvider } from './context/AuthContext';
@@ -42,6 +42,31 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Illustration from './components/Illustration';
 import LegalPage from './pages/LegalPage';
 import InfoPage from './pages/InfoPage';
+
+// Panel de administración y portal del domiciliario (carga diferida: no pesan en la web principal)
+const L = (loader) => lazy(loader);
+const LegacyScope = L(() => import('./legacy/LegacyScope'));
+const AdminGuard = L(() => import('./legacy/AdminGuard'));
+const AdminLayout = L(() => import('./legacy/pages/admin/AdminLayout'));
+const AdminResumen = L(() => import('./legacy/pages/admin/AdminResumen'));
+const AdminInteligencia = L(() => import('./legacy/pages/admin/AdminInteligencia'));
+const AdminNegocios = L(() => import('./legacy/pages/admin/AdminNegocios'));
+const AdminNegocioDetalle = L(() => import('./legacy/pages/admin/AdminNegocio'));
+const AdminWhatsApps = L(() => import('./legacy/pages/admin/AdminWhatsApps'));
+const AdminSuscripciones = L(() => import('./legacy/pages/admin/AdminSuscripciones'));
+const AdminLogs = L(() => import('./legacy/pages/admin/AdminLogs'));
+const AdminProspectos = L(() => import('./legacy/pages/admin/AdminProspectos'));
+const AdminConfig = L(() => import('./legacy/pages/admin/AdminConfig'));
+const PortalDomiciliario = L(() => import('./legacy/pages/dashboard/PortalDomiciliario'));
+const TrackingCliente = L(() => import('./legacy/pages/dashboard/TrackingCliente'));
+const TerminosDomiciliarioPage = L(() => import('./legacy/pages/dashboard/TerminosDomiciliarioPage'));
+
+const Cargando = () => (
+  <div className="min-h-screen bg-bg flex items-center justify-center text-muted text-sm">Cargando…</div>
+);
+const Lazy = ({ children }) => (
+  <Suspense fallback={<Cargando />}><LegacyScope>{children}</LegacyScope></Suspense>
+);
 
 const LoadingScreen = () => (
   <motion.div 
@@ -114,7 +139,23 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
-              <Route path="/info" element={<InfoPage />} />
+                            <Route path="/info" element={<InfoPage />} />
+              <Route path="/admin" element={<Lazy><AdminGuard><AdminLayout /></AdminGuard></Lazy>}>
+                <Route index element={<Navigate to="/admin/resumen" replace />} />
+                <Route path="resumen" element={<AdminResumen />} />
+                <Route path="inteligencia" element={<AdminInteligencia />} />
+                <Route path="negocios" element={<AdminNegocios />} />
+                <Route path="negocios/:id" element={<AdminNegocioDetalle />} />
+                <Route path="whatsapps" element={<AdminWhatsApps />} />
+                <Route path="suscripciones" element={<AdminSuscripciones />} />
+                <Route path="prospectos" element={<AdminProspectos />} />
+                <Route path="logs" element={<AdminLogs />} />
+                <Route path="config" element={<AdminConfig />} />
+              </Route>
+              <Route path="/delivery/login" element={<Lazy><PortalDomiciliario /></Lazy>} />
+              <Route path="/delivery/portal" element={<Lazy><PortalDomiciliario /></Lazy>} />
+              <Route path="/delivery/terminos" element={<Lazy><TerminosDomiciliarioPage /></Lazy>} />
+              <Route path="/delivery/track/:token" element={<Lazy><TrackingCliente /></Lazy>} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/conversaciones" element={<ConversacionesPage />} />
               <Route path="/pedidos" element={<PedidosPage />} />

@@ -1,0 +1,127 @@
+/* Botones (design.md > Components > Botones): 44px, radio md, label-lg.
+   Un solo primario por vista. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--type-label-lg-size);
+  line-height: var(--type-label-lg-line);
+  font-weight: var(--type-label-lg-weight);
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  position: relative;
+  white-space: nowrap;
+}
+
+/* Tamaños: md es el estándar de 44px; sm es compacto para filas de tabla */
+.btn-sm {
+  min-height: 36px;
+  padding: 0 var(--space-4);
+}
+
+.btn-md {
+  min-height: var(--control-height);
+  padding: 0 var(--space-5);
+}
+
+.btn-lg {
+  min-height: 52px;
+  padding: 0 var(--space-8);
+  font-size: var(--type-body-md-size);
+}
+
+.btn-full {
+  width: 100%;
+}
+
+/* Primario: fondo primary-strong, hover primary-deep */
+.btn-primary {
+  background: var(--color-primary-strong);
+  color: var(--color-on-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-deep);
+  color: var(--color-on-primary);
+}
+
+/* Secundario: blanco con borde border-strong */
+.btn-secondary,
+.btn-outline {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.btn-secondary:hover:not(:disabled),
+.btn-outline:hover:not(:disabled) {
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-500);
+}
+
+/* Fantasma: sin fondo, texto primary-strong */
+.btn-ghost {
+  background: transparent;
+  color: var(--color-primary-strong);
+  padding: 0 var(--space-4);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-deep);
+}
+
+/* Destructivo: uso funcional (confirmaciones), nunca como acento de marca */
+.btn-danger {
+  background: var(--color-error);
+  color: var(--color-on-primary);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-error) 80%, black);
+}
+
+/* Deshabilitado: fondo gray-100, texto gray-500 */
+.btn:disabled {
+  background: var(--color-gray-100);
+  border-color: transparent;
+  color: var(--color-gray-500);
+  cursor: not-allowed;
+}
+
+.btn-loading {
+  pointer-events: none;
+}
+
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon svg {
+  width: 18px;
+  height: 18px;
+}
