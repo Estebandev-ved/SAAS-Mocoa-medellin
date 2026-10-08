@@ -260,6 +260,7 @@ app.use('/api/clientes', clientesRoutes);
 app.use('/api/pedidos', ordersRoutes);
 app.use('/api/productos', productsRoutes);
 app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/admin/prospectos', require('./routes/prospectos'));
 app.use('/api/admin', adminRoutes);
 app.use('/api/agentes', agentesRoutes);
 app.use('/api/domicilios', domiciliosRoutes);
