@@ -22,6 +22,7 @@ import Contact from './components/Contact';
 import Footer from './components/Footer';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import InfoPage from './pages/InfoPage';
 import Dashboard from './pages/Dashboard';
 import ConversacionesPage from './pages/ConversacionesPage';
 import PedidosPage from './pages/PedidosPage';
@@ -41,7 +42,6 @@ import CajaPage from './pages/CajaPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import Illustration from './components/Illustration';
 import LegalPage from './pages/LegalPage';
-import InfoPage from './pages/InfoPage';
 
 // Panel de administración y portal del domiciliario (carga diferida: no pesan en la web principal)
 const L = (loader) => lazy(loader);
@@ -139,7 +139,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
-                            <Route path="/info" element={<InfoPage />} />
+              <Route path="/info" element={<InfoPage />} />
               <Route path="/admin" element={<Lazy><AdminGuard><AdminLayout /></AdminGuard></Lazy>}>
                 <Route index element={<Navigate to="/admin/resumen" replace />} />
                 <Route path="resumen" element={<AdminResumen />} />

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Check, Loader2, MessageCircle, MapPin, Wallet } from 'lucide-react';
 import { interesadosService } from '../services/api';
-import FeedbackMessage from '../components/FeedbackMessage';
 
 const inputCls =
     'w-full min-h-11 bg-white border border-[#C9C9C9] rounded-xl px-4 py-2.5 text-base text-text placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors';
@@ -123,7 +122,7 @@ const InfoPage = () => {
                                 style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
                             />
 
-                            {error && <FeedbackMessage type="error">{error}</FeedbackMessage>}
+                            {error && <div role="alert" className="p-3 rounded-xl border border-danger/50 bg-[#FDECEA] text-sm font-medium text-danger-text">{error}</div>}
 
                             <button
                                 type="submit" disabled={enviando}
