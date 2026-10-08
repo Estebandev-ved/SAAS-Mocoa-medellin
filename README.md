@@ -313,7 +313,7 @@ Definidos en un solo lugar: [`antigravity/config/planConfig.js`](antigravity/con
 
 | | **Emprendedor** | **Starter** | **Professional** | **Enterprise** |
 |---|---|---|---|---|
-| Precio | $25.000 | $450.000 | $850.000 | $1.800.000 |
+| Precio | $25.000 | $89.000 | $189.000 | $449.000 |
 | Números de WhatsApp | — | 1 | 3 | Ilimitados |
 | Clientes | — | 100 | 500 | Ilimitados |
 | Productos | — | 20 | Ilimitados | Ilimitados |

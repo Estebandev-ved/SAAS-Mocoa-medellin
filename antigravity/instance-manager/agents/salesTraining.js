@@ -52,7 +52,7 @@ const SALES_FLOW = {
     planes: {
         starter: {
             nombre: 'Plan Starter',
-            precio: '$450,000/mes',
+            precio: '$89,000/mes',
             ideal_para: 'Emprendedores que empiezan',
             incluye: [
                 '1 número de WhatsApp',
@@ -66,7 +66,7 @@ const SALES_FLOW = {
         },
         professional: {
             nombre: 'Plan Professional',
-            precio: '$850,000/mes',
+            precio: '$189,000/mes',
             ideal_para: 'Negocios en crecimiento',
             incluye: [
                 '3 números de WhatsApp',
@@ -83,7 +83,7 @@ const SALES_FLOW = {
         },
         enterprise: {
             nombre: 'Plan Enterprise',
-            precio: '$1,800,000/mes',
+            precio: '$449,000/mes',
             ideal_para: 'Negocios grandes y multi-sede',
             incluye: [
                 'WhatsApp ilimitado',

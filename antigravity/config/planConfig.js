@@ -54,8 +54,8 @@ const PLANS = {
         id: 'starter',
         name: 'Starter',
         nameEs: 'Inicial',
-        price: 450000,
-        priceUSD: 110,
+        price: 89000,
+        priceUSD: 22,
         trialDays: 7,
         features: {
             // Límites
@@ -102,8 +102,8 @@ const PLANS = {
         id: 'professional',
         name: 'Professional',
         nameEs: 'Profesional',
-        price: 850000,
-        priceUSD: 210,
+        price: 189000,
+        priceUSD: 47,
         trialDays: 7,
         features: {
             // Límites
@@ -150,8 +150,8 @@ const PLANS = {
         id: 'enterprise',
         name: 'Enterprise',
         nameEs: 'Empresarial',
-        price: 1800000,
-        priceUSD: 440,
+        price: 449000,
+        priceUSD: 110,
         trialDays: 7,
         features: {
             // Límites (todo ilimitado)

@@ -17,7 +17,7 @@ const ROISimulator = () => {
   const calculateROI = () => {
     // Basic assumptions
     const costPerManualOrder = 3500; // Average cost in COP for manual handling (time, errors, etc)
-    const monthlySubscription = 450000; // Estimated monthly cost of the system
+    const monthlySubscription = 189000; // Estimated monthly cost of the system
     
     const monthlyOrders = orders * 30;
     const manualTotalCost = monthlyOrders * costPerManualOrder;

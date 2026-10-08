@@ -76,7 +76,7 @@ const Pricing = () => {
     },
     {
       tier: "Starter",
-      price: 450000,
+      price: 89000,
       desc: "Ideal para MVP o negocios que están empezando a automatizar.",
       features: [
         { text: "Bot de WhatsApp (IA Básica)" },
@@ -90,7 +90,7 @@ const Pricing = () => {
     },
     {
       tier: "Professional",
-      price: 850000,
+      price: 189000,
       desc: "Nuestra solución estrella para negocios con alto volumen.",
       featured: true,
       features: [
@@ -105,7 +105,7 @@ const Pricing = () => {
     },
     {
       tier: "Enterprise",
-      price: 1800000,
+      price: 449000,
       desc: "Arquitectura a medida para corporativos y agencias escala.",
       features: [
         { text: "Todo de Plan Professional" },

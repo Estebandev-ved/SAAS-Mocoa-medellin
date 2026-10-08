@@ -1,0 +1,21 @@
+{
+  "name": "Antigravity — Tu negocio en el celular",
+  "short_name": "Antigravity",
+  "description": "Pedidos, conversaciones y domicilios de tu negocio, desde tu celular.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#E53935",
+  "lang": "es-CO",
+  "icons": [
+    { "src": "/icons/noma-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/noma-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/noma-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Pedidos", "url": "/pedidos", "icons": [{ "src": "/icons/noma-192.png", "sizes": "192x192" }] },
+    { "name": "Conversaciones", "url": "/conversaciones", "icons": [{ "src": "/icons/noma-192.png", "sizes": "192x192" }] }
+  ]
+}

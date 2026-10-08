@@ -36,6 +36,7 @@ import { usePlan } from '../components/PlanGate'
 import { useHitos } from '../context/HitosContext'
 import OwnerAvatar from '../components/avatar/OwnerAvatar'
 import ActivationChecklist from '../components/ActivationChecklist'
+import InstallPrompt from '../components/InstallPrompt'
 import EstadoNegocio from '../components/EstadoNegocio'
 
 const NavItem = ({ icon: Icon, label, active, onClick, locked, lockTooltip }) => (
@@ -347,6 +348,7 @@ export default function Dashboard() {
             </div>
           </motion.div>
 
+          <InstallPrompt />
           <ActivationChecklist user={user} onActivando={setActivando} />
           <EstadoNegocio plan={planInfo} activando={activando} domicilios={!domiciliosLocked} />
 

@@ -3,9 +3,9 @@ const db = require('./config');
 
 async function run() {
     const productos = [
-        { nombre: 'Plan Starter', precio: 450000, descripcion: '1 número WhatsApp, hasta 500 contactos, mensajes automáticos, respuestas rápidas, soporte por email', stock: 999 },
-        { nombre: 'Plan Professional', precio: 850000, descripcion: '3 números WhatsApp, hasta 2.000 contactos, chatbot con IA, extracción automática de pedidos, agentes especializados, domicilios con tracking, analytics avanzados, multi-usuario (5), soporte prioritario', stock: 999 },
-        { nombre: 'Plan Enterprise', precio: 1800000, descripcion: 'Números ilimitados, contactos ilimitados, IA avanzada con GPT-4, agentes ilimitados, domicilios ilimitados, API completa, multi-usuario ilimitado, analytics premium, soporte 24/7, manager dedicado', stock: 999 },
+        { nombre: 'Plan Starter', precio: 89000, descripcion: '1 número WhatsApp, hasta 500 contactos, mensajes automáticos, respuestas rápidas, soporte por email', stock: 999 },
+        { nombre: 'Plan Professional', precio: 189000, descripcion: '3 números WhatsApp, hasta 2.000 contactos, chatbot con IA, extracción automática de pedidos, agentes especializados, domicilios con tracking, analytics avanzados, multi-usuario (5), soporte prioritario', stock: 999 },
+        { nombre: 'Plan Enterprise', precio: 449000, descripcion: 'Números ilimitados, contactos ilimitados, IA avanzada con GPT-4, agentes ilimitados, domicilios ilimitados, API completa, multi-usuario ilimitado, analytics premium, soporte 24/7, manager dedicado', stock: 999 },
     ];
 
     for (const p of productos) {

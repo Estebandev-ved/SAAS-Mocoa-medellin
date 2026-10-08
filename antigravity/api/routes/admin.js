@@ -6,7 +6,7 @@ const { verificarAdmin } = require('../middleware/admin');
 
 const INSTANCE_MANAGER_URL = process.env.INSTANCE_MANAGER_URL || 'http://localhost:3001';
 
-const PRECIOS_PLAN = { starter: 450000, professional: 850000, enterprise: 1800000 };
+const PRECIOS_PLAN = { starter: 89000, professional: 189000, enterprise: 449000 };
 
 const DEFAULT_CONFIG = {
     plataforma: {
@@ -18,9 +18,9 @@ const DEFAULT_CONFIG = {
         mensaje_mantenimiento: ''
     },
     planes: {
-        starter: { precio: 450000, mensajes_limite: 1000, clientes_max: 100, agentes_max: 2 },
-        professional: { precio: 850000, mensajes_limite: 5000, clientes_max: 500, agentes_max: 4 },
-        enterprise: { precio: 1800000, mensajes_limite: 999999, clientes_max: 999999, agentes_max: 6 }
+        starter: { precio: 89000, mensajes_limite: 1000, clientes_max: 100, agentes_max: 2 },
+        professional: { precio: 189000, mensajes_limite: 5000, clientes_max: 500, agentes_max: 4 },
+        enterprise: { precio: 449000, mensajes_limite: 999999, clientes_max: 999999, agentes_max: 6 }
     },
     ia: {
         modelo_default: 'gpt-4o',

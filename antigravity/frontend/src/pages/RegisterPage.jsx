@@ -35,20 +35,20 @@ const PLANES = [
   {
     id: 'starter',
     nombre: 'Starter',
-    precio: 450000,
+    precio: 89000,
     features: ['Bot de ventas básico', 'Hasta 100 clientes', 'Catálogo de productos', 'Reportes básicos']
   },
   {
     id: 'professional',
     nombre: 'Professional',
-    precio: 850000,
+    precio: 189000,
     recomendado: true,
     features: ['Clientes ilimitados', 'Analytics avanzado', 'Automatizaciones', 'Personalización completa', 'Soporte prioritario']
   },
   {
     id: 'enterprise',
     nombre: 'Enterprise',
-    precio: 1800000,
+    precio: 449000,
     features: ['Multi-sede', 'Integraciones', 'Equipo completo', 'Soporte 24/7', 'SLA garantizado']
   }
 ];

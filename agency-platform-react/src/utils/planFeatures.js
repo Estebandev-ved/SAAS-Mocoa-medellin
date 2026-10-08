@@ -33,7 +33,7 @@ const planFeatures = {
   },
   starter: {
     nombre: 'Starter',
-    precio: 450000,
+    precio: 89000,
     maxNumerosWhatsApp: 1,
     maxContactos: 500,
     maxAgentesIA: 1,
@@ -68,7 +68,7 @@ const planFeatures = {
   },
   professional: {
     nombre: 'Professional',
-    precio: 850000,
+    precio: 189000,
     maxNumerosWhatsApp: 3,
     maxContactos: 2000,
     maxAgentesIA: 3,
@@ -103,7 +103,7 @@ const planFeatures = {
   },
   enterprise: {
     nombre: 'Enterprise',
-    precio: 1800000,
+    precio: 449000,
     maxNumerosWhatsApp: -1, // ilimitado
     maxContactos: -1, // ilimitado
     maxAgentesIA: -1, // ilimitado

@@ -60,9 +60,9 @@ export default function AdminSuscripciones() {
 
   const getMontoPlan = (plan) => {
     const precios = {
-      starter: 450000,
-      professional: 850000,
-      enterprise: 1800000
+      starter: 89000,
+      professional: 189000,
+      enterprise: 449000
     };
     return precios[plan] || 0;
   };
