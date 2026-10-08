@@ -20,6 +20,13 @@ api.interceptors.request.use((config) => {
     return Promise.reject(error);
 });
 
+export const interesadosService = {
+    enviar: async (datos) => {
+        const response = await api.post('/public/interesados', datos);
+        return response.data;
+    }
+};
+
 export const authService = {
     login: async (email, password) => {
         const response = await api.post('/auth/login', { email, password });

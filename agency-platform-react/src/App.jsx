@@ -41,6 +41,7 @@ import CajaPage from './pages/CajaPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import Illustration from './components/Illustration';
 import LegalPage from './pages/LegalPage';
+import InfoPage from './pages/InfoPage';
 
 const LoadingScreen = () => (
   <motion.div 
@@ -113,6 +114,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/info" element={<InfoPage />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/conversaciones" element={<ConversacionesPage />} />
               <Route path="/pedidos" element={<PedidosPage />} />

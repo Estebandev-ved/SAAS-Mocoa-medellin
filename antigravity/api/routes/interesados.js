@@ -5,6 +5,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const db = require('../../db/config');
+const { asegurarTablaProspectos } = require('../../db/prospectosTabla');
 const { validarInteresado } = require('../services/prospectos');
 
 // 5 envíos por hora por IP: suficiente para una persona real, frena el spam del formulario.
@@ -22,6 +23,7 @@ router.post('/', limite, async (req, res) => {
     if (bot) return res.status(201).json({ ok: true });
     if (error) return res.status(400).json({ error });
     try {
+        await asegurarTablaProspectos(db);
         // Mismo WhatsApp ya registrado: no se duplica, se agrega la nueva nota al prospecto.
         const [existe] = await db.execute('SELECT id FROM prospectos WHERE whatsapp = ? ORDER BY id DESC LIMIT 1', [datos.whatsapp]);
         if (existe.length) {

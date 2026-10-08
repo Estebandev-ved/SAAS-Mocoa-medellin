@@ -4,12 +4,14 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../../db/config');
+const { asegurarTablaProspectos } = require('../../db/prospectosTabla');
 const { verificarAuth } = require('../middleware/auth');
 const { verificarAdmin } = require('../middleware/admin');
 const { ESTADOS, validarProspecto } = require('../services/prospectos');
 
 router.use(verificarAuth);
 router.use(verificarAdmin);
+router.use((req, res, next) => asegurarTablaProspectos(db).then(() => next(), next));
 
 // mysql2 devuelve las columnas DATE como Date a medianoche local; al serializar a JSON pueden
 // correrse un día según la zona del servidor. Se entregan como texto AAAA-MM-DD.
