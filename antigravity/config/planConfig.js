@@ -2,6 +2,54 @@
 // Todo el sistema debe importar de aquí, NUNCA hardcodear precios o features
 
 const PLANS = {
+    emprendedor: {
+        id: 'emprendedor',
+        name: 'Emprendedor',
+        nameEs: 'Emprendedor',
+        price: 25000,
+        priceUSD: 6,
+        trialDays: 7,
+        features: {
+            // Límites: este plan vende solo la "caja" (app aparte), no el bot de WhatsApp.
+            maxMessages: 0,
+            maxProducts: 0,
+            maxClients: 0,
+            maxAgents: 0,
+            maxUsers: 1,
+            maxWhatsAppNumbers: 0,
+            maxCampaigns: 0,
+            maxCalls: 0,
+
+            // Features
+            cajaInventario: true,
+            soporteEmail: true,
+
+            // No incluido
+            botVentas: false,
+            catalogoProductos: false,
+            pedidosWhatsApp: false,
+            reportesBasicos: false,
+            analyticsBasico: false,
+            analyticsAvanzado: false,
+            automatizaciones: false,
+            personalizacionCompleta: false,
+            multiplesMetodosPago: false,
+            soportePrioritario: false,
+            apiAccess: false,
+            multiSede: false,
+            integraciones: false,
+            ocrPagos: false,
+            campañasMasivas: false,
+            domicilios: false,
+            multiUsuario: false,
+            voiceBot: false,
+            telegramBot: false,
+            instagramBot: false,
+        },
+        automations: [],
+        color: '#f97316',
+        popular: false,
+    },
     starter: {
         id: 'starter',
         name: 'Starter',
@@ -29,6 +77,7 @@ const PLANS = {
             analyticsBasico: true,
 
             // No incluido
+            cajaInventario: false,
             analyticsAvanzado: false,
             automatizaciones: false,
             personalizacionCompleta: false,
@@ -87,6 +136,7 @@ const PLANS = {
             instagramBot: true,
 
             // No incluido
+            cajaInventario: false,
             multiSede: false,
             integraciones: false,
             ocrPagos: false,
@@ -114,7 +164,8 @@ const PLANS = {
             maxCampaigns: -1,
             maxCalls: -1,
 
-            // Todo incluido
+            // Todo incluido (menos la caja: es un producto aparte, plan Emprendedor)
+            cajaInventario: false,
             botVentas: true,
             catalogoProductos: true,
             pedidosWhatsApp: true,
@@ -143,7 +194,7 @@ const PLANS = {
     },
 };
 
-const PLAN_ORDER = ['starter', 'professional', 'enterprise'];
+const PLAN_ORDER = ['emprendedor', 'starter', 'professional', 'enterprise'];
 
 // Etiquetas en español para mostrarle al negocio qué gana si sube de plan.
 // Única fuente de verdad para esto también — si se agrega una feature nueva
@@ -174,6 +225,7 @@ const FEATURE_LABELS = {
     voiceBot: 'Bot de llamadas con IA (voz)',
     telegramBot: 'Bot en Telegram',
     instagramBot: 'Bot en Instagram',
+    cajaInventario: 'Caja: inventario, ventas y plata',
 };
 
 const LIMIT_LABELS = {
@@ -230,7 +282,12 @@ function getPlanPrice(planId) {
 }
 
 function getPlanFeatures(planId) {
-    return PLANS[planId]?.features || PLANS.starter.features;
+    // Clon superficial a propósito: esto devolvía la misma referencia del
+    // objeto compartido en PLANS, y quien la mutara sin clonar corrompía el
+    // plan para todo el sistema (ver el bug de maxProducts=null del 16 sept,
+    // corregido entonces solo en el punto de llamada de tenant.js). Clonar
+    // acá, en la fuente, cierra la clase completa de bug de una vez.
+    return { ...(PLANS[planId]?.features || PLANS.starter.features) };
 }
 
 function hasFeature(planId, feature) {

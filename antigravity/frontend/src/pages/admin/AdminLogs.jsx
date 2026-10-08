@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { apiService } from '../../services/api';
-import toast from 'react-hot-toast';
+import Toast from '../../components/Toast';
 import './AdminLogs.css';
 
 export default function AdminLogs() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
   const [filtros, setFiltros] = useState({
     nivel: '',
     negocio: '',
@@ -52,7 +53,7 @@ export default function AdminLogs() {
       setLogs(data.logs || []);
     } catch (error) {
       console.error('Error loading logs:', error);
-      toast.error('Error al cargar logs');
+      setToast({ type: 'error', message: 'Error al cargar logs' });
     } finally {
       setLoading(false);
     }
@@ -114,6 +115,7 @@ export default function AdminLogs() {
 
   return (
     <div className="admin-logs">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
       <div className="admin-header">
         <h1>Logs</h1>
         <p>Registro de eventos del sistema</p>

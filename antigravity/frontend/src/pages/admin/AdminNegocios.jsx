@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
-import toast from 'react-hot-toast';
+import Toast from '../../components/Toast';
 import './AdminNegocios.css';
 
 export default function AdminNegocios() {
   const navigate = useNavigate();
   const [negocios, setNegocios] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -45,7 +46,7 @@ export default function AdminNegocios() {
       }));
     } catch (error) {
       console.error('Error loading negocios:', error);
-      toast.error('Error al cargar negocios');
+      setToast({ type: 'error', message: 'Error al cargar negocios' });
     } finally {
       setLoading(false);
     }
@@ -75,20 +76,20 @@ export default function AdminNegocios() {
   const cambiarPlan = async (id, nuevoPlan) => {
     try {
       await apiService.put(`/api/admin/negocios/${id}`, { plan: nuevoPlan });
-      toast.success('Plan actualizado');
+      setToast({ type: 'success', message: 'Plan actualizado' });
       loadNegocios();
     } catch (error) {
-      toast.error('Error al cambiar plan');
+      setToast({ type: 'error', message: 'Error al cambiar plan' });
     }
   };
 
   const toggleActivo = async (id, suspender) => {
     try {
       await apiService.put(`/api/admin/negocios/${id}`, { suspended: suspender });
-      toast.success(suspender ? 'Negocio suspendido' : 'Negocio reactivado');
+      setToast({ type: 'success', message: suspender ? 'Negocio suspendido' : 'Negocio reactivado' });
       loadNegocios();
     } catch (error) {
-      toast.error('Error al actualizar estado');
+      setToast({ type: 'error', message: 'Error al actualizar estado' });
     }
   };
 
@@ -113,6 +114,7 @@ export default function AdminNegocios() {
 
   return (
     <div className="admin-negocios">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
       <div className="admin-header">
         <h1>Negocios</h1>
         <p>Gestiona todos los negocios de la plataforma</p>

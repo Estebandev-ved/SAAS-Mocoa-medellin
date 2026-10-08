@@ -164,7 +164,7 @@ const RegisterPage = () => {
                                     className="mt-1 w-4 h-4 accent-[#C62828] shrink-0"
                                 />
                                 <span>
-                                    Acepto los términos y condiciones y autorizo el tratamiento de mis datos personales según la Ley 1581 de 2012.
+                                    Acepto los <Link to="/terminos" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">términos y condiciones</Link> y autorizo el <Link to="/privacidad#datos" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">tratamiento de mis datos personales</Link> según la Ley 1581 de 2012.
                                 </span>
                             </label>
 

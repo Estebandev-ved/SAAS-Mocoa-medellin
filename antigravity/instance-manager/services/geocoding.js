@@ -76,4 +76,31 @@ async function obtenerOrigenNegocio(negocioId) {
     }
 }
 
-module.exports = { geocodificarDireccion, obtenerOrigenNegocio };
+// Igual que obtenerOrigenNegocio, pero para un restaurante puntual dentro de
+// una empresa de domicilios con varios restaurantes (ver db/migrate_marketplace.js).
+// El domicilio se recoge en el restaurante, no en la dirección del negocio dueño
+// de la cuenta — que puede ni siquiera ser un punto de recogida real.
+async function obtenerOrigenRestaurante(restauranteId) {
+    const db = require('../../db/config');
+    try {
+        const [rows] = await db.execute(
+            'SELECT lat, lng, direccion, ciudad FROM restaurantes WHERE id = ?',
+            [restauranteId]
+        );
+        const r = rows[0];
+        if (!r) return null;
+        if (r.lat != null && r.lng != null) return { lat: Number(r.lat), lng: Number(r.lng) };
+        if (!r.direccion) return null;
+
+        const coords = await geocodificarDireccion(r.direccion, r.ciudad);
+        if (!coords) return null;
+
+        await db.execute('UPDATE restaurantes SET lat = ?, lng = ? WHERE id = ?', [coords.lat, coords.lng, restauranteId]);
+        return coords;
+    } catch (error) {
+        console.error('[Geocoding] Error obteniendo origen del restaurante:', error.message);
+        return null;
+    }
+}
+
+module.exports = { geocodificarDireccion, obtenerOrigenNegocio, obtenerOrigenRestaurante };

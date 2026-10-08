@@ -1,5 +1,11 @@
 version: '3.8'
 
+# Los dos frontends (agency-platform-react y antigravity/frontend) NO se
+# containerizan acá — se compilan con `npm run build` y su `dist/` lo sirve
+# nginx directo en el host (ver infra/nginx.conf). Este compose solo levanta
+# lo que sí necesita correr como proceso: base de datos, caché/cola y los
+# tres servicios de Node (api, instance-manager, queue).
+
 services:
   mysql:
     image: mysql:8.0
@@ -12,8 +18,8 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-antigravity}
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
-      - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+      - ../db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ../db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
     ports:
       - "3306:3306"
     networks:
@@ -56,6 +62,22 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-antigravity}
       REDIS_HOST: redis
       JWT_SECRET: ${JWT_SECRET}
+      SOCKET_SECRET: ${SOCKET_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      FRONTEND_URL: ${FRONTEND_URL:-https://antigravity.co}
+      TRAVELTIME_APP_ID: ${TRAVELTIME_APP_ID}
+      TRAVELTIME_API_KEY: ${TRAVELTIME_API_KEY}
+      # Pagos: Efipay es la pasarela real (manda sobre Stripe si está configurada).
+      # Antes del primer despliegue correr db/migrate_efipay.js.
+      EFIPAY_API_URL: ${EFIPAY_API_URL:-https://sag.efipay.co/api/v1}
+      EFIPAY_ACCESS_TOKEN: ${EFIPAY_ACCESS_TOKEN}
+      EFIPAY_OFFICE_ID: ${EFIPAY_OFFICE_ID}
+      EFIPAY_WEBHOOK_TOKEN: ${EFIPAY_WEBHOOK_TOKEN}
+      EFIPAY_CHECKOUT_TEMPLATE_ID: ${EFIPAY_CHECKOUT_TEMPLATE_ID}
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-https://antigravity.co}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      PAGOS_EMULADOS: ${PAGOS_EMULADOS:-false}
       INSTANCE_MANAGER_URL: http://instance-manager:3001
     depends_on:
       mysql:
@@ -66,6 +88,8 @@ services:
       - antigravity_network
     volumes:
       - ../logs:/app/logs
+    ports:
+      - "3002:3002"
 
   instance-manager:
     build:
@@ -81,8 +105,14 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-antigravity}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-antigravity}
       REDIS_HOST: redis
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      SOCKET_SECRET: ${SOCKET_SECRET}
       API_URL: http://api:3002
-      TRACKING_BASE_URL: ${TRACKING_BASE_URL:-http://localhost:5177/delivery/track}
+      TRAVELTIME_APP_ID: ${TRAVELTIME_APP_ID}
+      TRAVELTIME_API_KEY: ${TRAVELTIME_API_KEY}
+      # Enlace de seguimiento que el bot manda al cliente por WhatsApp —
+      # debe apuntar al dominio real de antigravity/frontend (ver nginx.conf).
+      TRACKING_BASE_URL: ${TRACKING_BASE_URL:-https://panel.antigravity.co/delivery/track}
     depends_on:
       mysql:
         condition: service_healthy
@@ -92,6 +122,7 @@ services:
       - antigravity_network
     volumes:
       - ../auth_info:/app/auth_info
+      - ../logs:/app/logs
 
   queue:
     build:
@@ -110,27 +141,18 @@ services:
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USER: ${SMTP_USER}
       SMTP_PASS: ${SMTP_PASS}
+      INSTANCE_MANAGER_URL: http://instance-manager:3001
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
+      instance-manager:
+        condition: service_started
     networks:
       - antigravity_network
-
-  frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-    container_name: ag-frontend
-    restart: unless-stopped
-    environment:
-      VITE_API_URL: ${FRONTEND_API_URL:-http://localhost:3002}
-      VITE_SOCKET_URL: ${FRONTEND_SOCKET_URL:-http://localhost:3001}
     volumes:
-      - ../frontend/dist:/usr/share/nginx/html
-    networks:
-      - antigravity_network
+      - ../logs:/app/logs
 
 volumes:
   mysql_data:

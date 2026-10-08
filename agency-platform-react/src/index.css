@@ -169,3 +169,70 @@
   0%, 100% { opacity: 0.1; }
   50% { opacity: 0.5; }
 }
+
+/* Sello de éxito: rebota al aparecer y el chulo se dibuja (CheckBadge) */
+.noma-badge {
+  animation: noma-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.noma-check {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: noma-draw 0.4s 0.3s ease-out forwards;
+}
+@keyframes noma-pop {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+@keyframes noma-draw {
+  to { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .noma-badge { animation: none; }
+  .noma-check { animation: none; stroke-dashoffset: 0; }
+}
+
+/* Personajes celebrando: tres saltitos al aparecer y luego respiran suave.
+   Se anima el contenedor (no el SVG) para que sirva con cualquier personaje. */
+.noma-hop {
+  transform-origin: 50% 100%;
+  animation: noma-hop 0.7s 0.35s ease-in-out 3;
+}
+.noma-breathe {
+  transform-origin: 50% 100%;
+  animation: noma-breathe 3.2s 2.6s ease-in-out infinite;
+}
+.noma-cheer {
+  transform-origin: 50% 100%;
+  animation: noma-hop 0.6s 0.15s ease-in-out 2;
+}
+@keyframes noma-hop {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  30% { transform: translateY(0) scale(1.05, 0.94); }
+  55% { transform: translateY(-14px) scale(0.97, 1.05); }
+  80% { transform: translateY(0) scale(1.04, 0.96); }
+}
+@keyframes noma-breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.015, 1.03); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .noma-hop, .noma-breathe, .noma-cheer { animation: none; }
+}
+
+/* Nova dormida: en gris y con "Zzz" que suben y se desvanecen */
+.noma-dormido {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+.noma-zzz {
+  display: inline-block;
+  animation: noma-zzz 2.4s ease-in-out infinite;
+}
+@keyframes noma-zzz {
+  0% { opacity: 0; transform: translate(0, 6px); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(6px, -8px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .noma-zzz { animation: none; opacity: 1; }
+}

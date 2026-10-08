@@ -2,16 +2,19 @@ import React, { useState } from 'react';
 import { Shuffle, RotateCcw } from 'lucide-react';
 import OwnerAvatar from './OwnerAvatar';
 import {
-  GENEROS, PIEL, PELO_ESTILOS, PELO_COLORES, BARBAS, GAFAS, TATUAJES, ROPA_TIPOS, ROPA_COLORES,
-  DEFAULT_AVATAR, sanitizeAvatar, randomAvatar,
+  GENEROS, PIEL, PELO_ESTILOS, PELO_COLORES, BARBAS, GAFAS, ARETES, PECAS, GORRA_TIPOS, GORRA_COLORES,
+  TATUAJES, ROPA_TIPOS, ROPA_COLORES, DEFAULT_AVATAR, sanitizeAvatar, randomAvatar,
 } from './avatarConfig';
 
 const TABS = [
   { id: 'genero', label: 'Cuerpo' },
   { id: 'piel', label: 'Piel' },
   { id: 'pelo', label: 'Pelo' },
+  { id: 'gorra', label: 'Gorra' },
   { id: 'barba', label: 'Barba' },
   { id: 'gafas', label: 'Gafas' },
+  { id: 'aretes', label: 'Aretes' },
+  { id: 'pecas', label: 'Pecas' },
   { id: 'tatuajes', label: 'Tatuajes' },
   { id: 'ropa', label: 'Ropa' },
 ];
@@ -143,6 +146,45 @@ export default function AvatarEditor({ value, onChange }) {
                 ))}
               </Section>
             </>
+          )}
+
+          {tab === 'gorra' && (
+            <>
+              <Section title="Gorra">
+                {GORRA_TIPOS.map((o) => (
+                  <Choice key={o.id} label={o.label} selected={v.gorra.tipo === o.id} onClick={() => set({ gorra: { ...v.gorra, tipo: o.id } })}>
+                    {thumb({ gorra: { ...v.gorra, tipo: o.id } })}
+                  </Choice>
+                ))}
+              </Section>
+              {v.gorra.tipo !== 'ninguna' && (
+                <Section title="Color">
+                  {GORRA_COLORES.map((o) => (
+                    <Swatch key={o.id} label={o.label} color={o.fill} selected={v.gorra.color === o.id} onClick={() => set({ gorra: { ...v.gorra, color: o.id } })} />
+                  ))}
+                </Section>
+              )}
+            </>
+          )}
+
+          {tab === 'aretes' && (
+            <Section title="Aretes">
+              {ARETES.map((o) => (
+                <Choice key={o.id} label={o.label} selected={v.aretes === o.id} onClick={() => set({ aretes: o.id })}>
+                  {thumb({ aretes: o.id })}
+                </Choice>
+              ))}
+            </Section>
+          )}
+
+          {tab === 'pecas' && (
+            <Section title="Pecas">
+              {PECAS.map((o) => (
+                <Choice key={o.id} label={o.label} selected={v.pecas === o.id} onClick={() => set({ pecas: o.id })}>
+                  {thumb({ pecas: o.id })}
+                </Choice>
+              ))}
+            </Section>
           )}
 
           {tab === 'barba' && (

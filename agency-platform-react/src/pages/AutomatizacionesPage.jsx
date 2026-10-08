@@ -1,19 +1,47 @@
+import TipNova from '../components/TipNova';
 import FeedbackMessage from '../components/FeedbackMessage';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Bot, MessageSquare, Clock, Users, Zap, ShoppingCart, CreditCard,
-  HelpCircle, AlertTriangle, UserMinus, Loader2, Save, Settings,
-  Brain, Package, Bell, FileText, Lock, ArrowLeft, Sparkles, X,
-  Check, ChevronDown, ChevronUp, Lightbulb, TestTube,
+  Bot,
+  Clock,
+  Zap,
+  ShoppingCart,
+  CreditCard,
+  HelpCircle,
+  AlertTriangle,
+  UserMinus,
+  Loader2,
+  Save,
+  Brain,
+  Package,
+  Lock,
+  ArrowLeft,
+  Sparkles,
+  X,
+  Lightbulb,
+  TestTube,
 } from 'lucide-react';
 import api from '../services/api';
 
+const LABEL = 'block text-sm font-semibold text-text mb-2';
+const CONTROL =
+  'w-full h-11 bg-white border border-[#C9C9C9] rounded-xl px-4 text-sm text-text placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors';
+
 const Toggle = ({ enabled, onToggle, disabled }) => (
-  <button onClick={onToggle} disabled={disabled}
-    className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${enabled ? 'bg-accent' : 'bg-bg3'}`}>
-    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+  <button
+    onClick={onToggle}
+    disabled={disabled}
+    className={`relative w-11 h-6 rounded-full border-none transition-colors duration-200 ${
+      disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+    } ${enabled ? 'bg-accent' : 'bg-[#E4E4E4]'}`}
+  >
+    <span
+      className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${
+        enabled ? 'translate-x-5' : 'translate-x-0'
+      }`}
+    />
   </button>
 );
 
@@ -51,17 +79,21 @@ const AI_SUGGESTIONS = {
 
 function SuggestionBadge({ text, emoji }) {
   return (
-    <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-accent/5 border border-accent/20 rounded-xl">
+    <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-[#FDECEA] border border-accent/20 rounded-xl">
       <Lightbulb className="w-3.5 h-3.5 text-warn-text flex-shrink-0" />
-      <span className="text-xs text-muted">{emoji} {text}</span>
+      <span className="text-xs text-muted">
+        {emoji} {text}
+      </span>
     </div>
   );
 }
 
 function AISuggestionButton({ onClick, label }) {
   return (
-    <button onClick={onClick}
-      className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 border border-accent/20 rounded-xl text-xs text-accent hover:bg-accent/20 transition-all">
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-[#FDECEA] border border-accent/20 text-xs font-semibold text-accent hover:bg-accent-dim transition-colors cursor-pointer"
+    >
       <Sparkles className="w-3 h-3" /> {label}
     </button>
   );
@@ -86,35 +118,65 @@ function TestBotModal({ onClose }) {
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-        className="bg-bg2 border border-border rounded-3xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.95 }}
+        className="bg-white border border-border rounded-2xl p-6 w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <TestTube className="w-5 h-5 text-accent" />
             <h3 className="font-head text-lg font-bold text-text">Probar el Bot</h3>
           </div>
-          <button onClick={onClose} className="text-muted hover:text-text"><X size={18} /></button>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg bg-transparent border-none text-muted hover:bg-bg2 cursor-pointer flex items-center justify-center"
+          >
+            <X size={18} />
+          </button>
         </div>
+
         <div className="space-y-3">
-          <div className="bg-bg3 rounded-2xl p-3 border border-border">
-            <span className="font-mono text-xs text-muted">Tú:</span>
-            <input value={msg} onChange={e => setMsg(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleTest()}
+          <div className="bg-bg2 rounded-xl p-3 border border-border">
+            <span className="text-xs font-semibold text-muted">Tú:</span>
+            <input
+              value={msg}
+              onChange={(e) => setMsg(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleTest()}
               placeholder="Escribe un mensaje de prueba..."
-              className="w-full bg-transparent text-text text-sm mt-1 focus:outline-none placeholder:text-muted/50" />
+              className="w-full bg-transparent text-text text-sm mt-1 focus:outline-none placeholder:text-muted"
+            />
           </div>
-          <button onClick={handleTest} disabled={loading || !msg.trim()}
-            className="w-full bg-accent text-white py-2.5 rounded-xl font-mono text-sm hover:bg-accent/90 transition-all flex items-center justify-center gap-2">
+
+          <button
+            onClick={handleTest}
+            disabled={loading || !msg.trim()}
+            className="w-full h-11 bg-accent hover:bg-accent2 text-white text-sm font-semibold rounded-xl border-none cursor-pointer transition-colors flex items-center justify-center gap-2 disabled:bg-[#F0F0F0] disabled:text-muted disabled:cursor-not-allowed"
+          >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <><Zap size={14} /> Enviar</>}
           </button>
+
           {respuesta && (
-            <div className={`rounded-2xl p-3 border ${respuesta.error ? 'bg-danger/10 border-danger/30' : 'bg-success/10 border-success/30'}`}>
-              <span className="font-mono text-xs text-muted">Bot:</span>
+            <div
+              className={`rounded-xl p-3 border ${
+                respuesta.error ? 'bg-danger/10 border-danger/30' : 'bg-success/10 border-success/30'
+              }`}
+            >
+              <span className="text-xs font-semibold text-muted">Bot:</span>
               <p className="text-sm text-text mt-1">{respuesta.respuesta || respuesta.error}</p>
               {respuesta.agente_usado && (
-                <span className="font-mono text-[10px] text-muted mt-2 block">Agente: {respuesta.agente_usado} | Tokens: {respuesta.tokens_usados}</span>
+                <span className="text-[11px] text-muted mt-2 block">
+                  Agente: {respuesta.agente_usado} | Tokens: {respuesta.tokens_usados}
+                </span>
               )}
             </div>
           )}
@@ -127,8 +189,12 @@ function TestBotModal({ onClose }) {
 export default function AutomatizacionesPage() {
   const navigate = useNavigate();
   const [config, setConfig] = useState({
-    bot_nombre: '', bot_tono: 'amigable', bot_bienvenida: '',
-    horario_inicio: '09:00', horario_fin: '18:00', mensaje_fuera_horario: '',
+    bot_nombre: '',
+    bot_tono: 'amigable',
+    bot_bienvenida: '',
+    horario_inicio: '09:00',
+    horario_fin: '18:00',
+    mensaje_fuera_horario: '',
   });
   const [agentes, setAgentes] = useState({});
   const [saving, setSaving] = useState(null);
@@ -137,7 +203,9 @@ export default function AutomatizacionesPage() {
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [plan, setPlan] = useState('starter');
 
-  useEffect(() => { loadConfig(); }, []);
+  useEffect(() => {
+    loadConfig();
+  }, []);
 
   async function loadConfig() {
     try {
@@ -156,10 +224,10 @@ export default function AutomatizacionesPage() {
       });
       setPlan(planRes.data.plan || 'starter');
 
-      // Parse agentes from array or object
+      // Los agentes activos llegan como arreglo o como objeto según el endpoint que los guardó
       const agentesArr = c.agentes_activos || [];
       const agentesObj = {};
-      AGENTES_LIST.forEach(a => {
+      AGENTES_LIST.forEach((a) => {
         agentesObj[a.id] = Array.isArray(agentesArr) ? agentesArr.includes(a.id) : !!agentesArr[a.id];
       });
       setAgentes(agentesObj);
@@ -192,7 +260,9 @@ export default function AutomatizacionesPage() {
     try {
       setSaving('agentes');
       setMessage(null);
-      const agentesArray = Object.entries(agentes).filter(([_, v]) => v).map(([k]) => k);
+      const agentesArray = Object.entries(agentes)
+        .filter(([, v]) => v)
+        .map(([k]) => k);
       await api.put('/bot/config/agentes', { agentes: agentesArray });
       setMessage({ type: 'success', text: 'Agentes actualizados' });
     } catch (e) {
@@ -203,205 +273,291 @@ export default function AutomatizacionesPage() {
   }
 
   function applySuggestion(field, value) {
-    setConfig(prev => ({ ...prev, [field]: value }));
+    setConfig((prev) => ({ ...prev, [field]: value }));
   }
 
   const tonoActual = config.bot_tono || 'amigable';
+  const activos = Object.values(agentes).filter(Boolean).length;
+  const maxAgentes = AI_SUGGESTIONS.agentes[plan]?.max || 3;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/dashboard')} className="p-2 rounded-xl bg-bg2 border border-border hover:border-accent/30 transition-all">
-            <ArrowLeft className="w-5 h-5 text-muted" />
-          </button>
-          <div>
-            <h1 className="font-head text-3xl font-bold text-text">Automatizaciones</h1>
-            <p className="text-muted mt-1">Configura la personalidad y agentes de tu bot</p>
+    <div className="min-h-screen bg-bg2 p-6 lg:p-10">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Encabezado */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/dashboard')}
+              aria-label="Volver al panel"
+              className="w-11 h-11 rounded-xl bg-white border border-border flex items-center justify-center cursor-pointer hover:border-[#C9C9C9] transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-muted" />
+            </button>
+            <div>
+              <h1 className="font-head text-3xl font-bold text-text tracking-tight">Automatizaciones</h1>
+              <p className="text-muted text-sm mt-1">Configura la personalidad y los agentes de tu bot</p>
+            </div>
           </div>
+
+          <button
+            onClick={() => setShowTest(true)}
+            className="h-11 px-4 rounded-xl bg-white border border-[#C9C9C9] text-sm font-semibold text-text hover:bg-bg2 cursor-pointer transition-colors inline-flex items-center gap-2"
+          >
+            <TestTube size={16} className="text-accent" /> Probar bot
+          </button>
         </div>
-        <button onClick={() => setShowTest(true)}
-          className="flex items-center gap-2 bg-bg2 border border-border rounded-xl px-4 py-2.5 font-mono text-sm text-text hover:border-accent/30 transition-all">
-          <TestTube size={16} className="text-accent" /> Probar Bot
-        </button>
+
+        <TipNova id="automatizaciones">
+          Aquí decides cómo habla tu bot y qué agentes lo ayudan. Usa "Probar Bot" para chatear con él antes de que
+          atienda clientes reales.
+        </TipNova>
+
+        <AnimatePresence>
+          {message && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <FeedbackMessage type={message.type}>{message.text}</FeedbackMessage>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Sección 1: Personalidad del bot */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white border border-border rounded-2xl p-6"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Bot className="w-5 h-5 text-accent" />
+              <h2 className="font-head text-xl font-bold text-text">Personalidad del bot</h2>
+            </div>
+            <button
+              onClick={saveConfig}
+              disabled={saving === 'config'}
+              className="h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors inline-flex items-center gap-2 disabled:bg-[#F0F0F0] disabled:text-muted disabled:cursor-not-allowed"
+            >
+              {saving === 'config' ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              Guardar
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            {/* Nombre del bot */}
+            <div>
+              <label className={LABEL}>Nombre del bot</label>
+              <input
+                value={config.bot_nombre}
+                onChange={(e) => setConfig((p) => ({ ...p, bot_nombre: e.target.value }))}
+                placeholder="Ej: NOMA Bot"
+                className={CONTROL}
+              />
+              {showSuggestions && config.bot_nombre && (
+                <SuggestionBadge text={`Tu bot se llama "${config.bot_nombre}" y saludará así a los clientes`} emoji="🤖" />
+              )}
+            </div>
+
+            {/* Tono de voz */}
+            <div>
+              <label className={LABEL}>Tono de voz</label>
+              <div className="grid grid-cols-3 gap-3">
+                {['formal', 'amigable', 'casual'].map((tono) => (
+                  <button
+                    key={tono}
+                    onClick={() => setConfig((p) => ({ ...p, bot_tono: tono }))}
+                    className={`h-11 rounded-xl border text-sm font-semibold capitalize cursor-pointer transition-colors ${
+                      config.bot_tono === tono
+                        ? 'border-accent bg-[#FDECEA] text-accent'
+                        : 'border-border bg-white text-text hover:border-[#C9C9C9]'
+                    }`}
+                  >
+                    {tono}
+                  </button>
+                ))}
+              </div>
+              {showSuggestions && (
+                <SuggestionBadge
+                  text={AI_SUGGESTIONS.tono[tonoActual]?.text}
+                  emoji={AI_SUGGESTIONS.tono[tonoActual]?.emoji}
+                />
+              )}
+            </div>
+
+            {/* Mensaje de bienvenida */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className={LABEL + ' mb-0'}>Mensaje de bienvenida</label>
+                <AISuggestionButton
+                  label="Sugerir"
+                  onClick={() =>
+                    applySuggestion(
+                      'bot_bienvenida',
+                      AI_SUGGESTIONS.bienvenida[tonoActual].replace(/{nombre}/g, config.bot_nombre || 'nuestro equipo')
+                    )
+                  }
+                />
+              </div>
+              <textarea
+                value={config.bot_bienvenida}
+                onChange={(e) => setConfig((p) => ({ ...p, bot_bienvenida: e.target.value }))}
+                placeholder="Mensaje que verán los clientes al escribir por primera vez..."
+                rows={3}
+                className={`${CONTROL} h-auto py-3 resize-none`}
+              />
+              <span className="text-xs text-muted mt-1 block">{(config.bot_bienvenida || '').length}/500 caracteres</span>
+            </div>
+
+            {/* Horario de atención */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={LABEL}>Hora inicio</label>
+                <input
+                  type="time"
+                  value={config.horario_inicio}
+                  onChange={(e) => setConfig((p) => ({ ...p, horario_inicio: e.target.value }))}
+                  className={CONTROL}
+                />
+              </div>
+              <div>
+                <label className={LABEL}>Hora fin</label>
+                <input
+                  type="time"
+                  value={config.horario_fin}
+                  onChange={(e) => setConfig((p) => ({ ...p, horario_fin: e.target.value }))}
+                  className={CONTROL}
+                />
+              </div>
+            </div>
+
+            {/* Mensaje fuera de horario */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className={LABEL + ' mb-0'}>Mensaje fuera de horario</label>
+                <AISuggestionButton
+                  label="Sugerir"
+                  onClick={() =>
+                    applySuggestion(
+                      'mensaje_fuera_horario',
+                      AI_SUGGESTIONS.ausencia[tonoActual]
+                        .replace(/{inicio}/g, config.horario_inicio)
+                        .replace(/{fin}/g, config.horario_fin)
+                    )
+                  }
+                />
+              </div>
+              <textarea
+                value={config.mensaje_fuera_horario}
+                onChange={(e) => setConfig((p) => ({ ...p, mensaje_fuera_horario: e.target.value }))}
+                placeholder="Mensaje cuando el bot esté fuera de horario..."
+                rows={3}
+                className={`${CONTROL} h-auto py-3 resize-none`}
+              />
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Sección 2: Agentes IA */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white border border-border rounded-2xl p-6"
+        >
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-accent" />
+              <h2 className="font-head text-xl font-bold text-text">Agentes IA</h2>
+              <span className="text-xs font-semibold text-muted bg-bg2 px-2 py-1 rounded-lg">
+                {activos}/{maxAgentes} activos
+              </span>
+            </div>
+            <button
+              onClick={saveAgentes}
+              disabled={saving === 'agentes'}
+              className="h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors inline-flex items-center gap-2 disabled:bg-[#F0F0F0] disabled:text-muted disabled:cursor-not-allowed"
+            >
+              {saving === 'agentes' ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              Guardar
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {AGENTES_LIST.map((agente) => {
+              const Icon = agente.icon;
+              const isActive = agentes[agente.id] || false;
+              const isLocked = maxAgentes <= activos && !isActive;
+              const needsUpgrade = ['professional', 'enterprise'].includes(agente.plan) && plan === 'starter';
+              const sugerido = AI_SUGGESTIONS.agentes[plan]?.sugeridos?.includes(agente.id);
+
+              return (
+                <div
+                  key={agente.id}
+                  className={`flex items-center justify-between gap-3 p-4 rounded-xl border transition-colors ${
+                    isActive ? 'border-accent/30 bg-[#FDECEA]' : 'border-border bg-white hover:border-[#C9C9C9]'
+                  } ${needsUpgrade ? 'opacity-60' : ''}`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                        isActive ? 'bg-white' : 'bg-bg2'
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 ${isActive ? 'text-accent' : 'text-muted'}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-text font-semibold text-sm">{agente.label}</span>
+                        {sugerido && (
+                          <span className="text-[11px] font-semibold bg-warn/10 text-warn-text px-1.5 py-0.5 rounded">
+                            Sugerido
+                          </span>
+                        )}
+                        {needsUpgrade && <Lock className="w-3 h-3 text-muted shrink-0" />}
+                      </div>
+                      <p className="text-muted text-xs leading-4">{agente.desc}</p>
+                    </div>
+                  </div>
+                  <Toggle
+                    enabled={isActive}
+                    onToggle={() => {
+                      if (needsUpgrade || isLocked) return;
+                      setAgentes((p) => ({ ...p, [agente.id]: !p[agente.id] }));
+                    }}
+                    disabled={needsUpgrade || isLocked}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          {showSuggestions && (
+            <div className="mt-4 flex items-center gap-2 flex-wrap">
+              <AISuggestionButton
+                label="Activar sugeridos"
+                onClick={() => {
+                  const sugeridos = AI_SUGGESTIONS.agentes[plan]?.sugeridos || [];
+                  const newObj = {};
+                  AGENTES_LIST.forEach((a) => {
+                    newObj[a.id] = sugeridos.includes(a.id);
+                  });
+                  setAgentes(newObj);
+                }}
+              />
+              <AISuggestionButton
+                label="Activar todos"
+                onClick={() => {
+                  const newObj = {};
+                  AGENTES_LIST.forEach((a) => {
+                    newObj[a.id] = true;
+                  });
+                  setAgentes(newObj);
+                }}
+              />
+            </div>
+          )}
+        </motion.div>
       </div>
 
-      {/* Messages */}
-      <AnimatePresence>
-        {message && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <FeedbackMessage type={message.type}>{message.text}</FeedbackMessage>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Section 1: Personalidad del Bot */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-bg2 border border-border rounded-3xl p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-accent" />
-            <h2 className="font-head text-xl font-bold text-text">Personalidad del Bot</h2>
-          </div>
-          <button onClick={saveConfig} disabled={saving === 'config'}
-            className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-xl font-mono text-sm hover:bg-accent/90 transition-all">
-            {saving === 'config' ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            Guardar
-          </button>
-        </div>
-
-        <div className="space-y-6">
-          {/* Nombre del Bot */}
-          <div>
-            <label className="font-mono text-xs text-muted uppercase tracking-wider block mb-2">Nombre del Bot</label>
-            <input value={config.bot_nombre} onChange={e => setConfig(p => ({ ...p, bot_nombre: e.target.value }))}
-              placeholder="Ej: NOMA Bot"
-              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text font-body placeholder:text-muted/50 focus:outline-none focus:border-accent transition-colors" />
-            {showSuggestions && config.bot_nombre && (
-              <SuggestionBadge text={`Tu bot se llama "${config.bot_nombre}" y saludará así a los clientes`} emoji="🤖" />
-            )}
-          </div>
-
-          {/* Tono de Voz */}
-          <div>
-            <label className="font-mono text-xs text-muted uppercase tracking-wider block mb-2">Tono de Voz</label>
-            <div className="grid grid-cols-3 gap-3">
-              {['formal', 'amigable', 'casual'].map(tono => (
-                <button key={tono} onClick={() => setConfig(p => ({ ...p, bot_tono: tono }))}
-                  className={`p-3 rounded-2xl border text-center transition-all ${config.bot_tono === tono ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-bg hover:border-border/80 text-text'}`}>
-                  <span className="font-mono text-sm capitalize">{tono}</span>
-                </button>
-              ))}
-            </div>
-            {showSuggestions && (
-              <SuggestionBadge text={AI_SUGGESTIONS.tono[tonoActual]?.text} emoji={AI_SUGGESTIONS.tono[tonoActual]?.emoji} />
-            )}
-          </div>
-
-          {/* Mensaje de Bienvenida */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="font-mono text-xs text-muted uppercase tracking-wider">Mensaje de Bienvenida</label>
-              <AISuggestionButton label="Sugerir" onClick={() => applySuggestion('bot_bienvenida',
-                AI_SUGGESTIONS.bienvenida[tonoActual].replace(/{nombre}/g, config.bot_nombre || 'nuestro equipo')
-              )} />
-            </div>
-            <textarea value={config.bot_bienvenida} onChange={e => setConfig(p => ({ ...p, bot_bienvenida: e.target.value }))}
-              placeholder="Mensaje que verán los clientes al escribir por primera vez..."
-              rows={3}
-              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text font-body placeholder:text-muted/50 focus:outline-none focus:border-accent transition-colors resize-none" />
-            <span className="font-mono text-[10px] text-muted mt-1 block">{(config.bot_bienvenida || '').length}/500 caracteres</span>
-          </div>
-
-          {/* Horario */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="font-mono text-xs text-muted uppercase tracking-wider block mb-2">Hora Inicio</label>
-              <input type="time" value={config.horario_inicio} onChange={e => setConfig(p => ({ ...p, horario_inicio: e.target.value }))}
-                className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text font-mono focus:outline-none focus:border-accent transition-colors" />
-            </div>
-            <div>
-              <label className="font-mono text-xs text-muted uppercase tracking-wider block mb-2">Hora Fin</label>
-              <input type="time" value={config.horario_fin} onChange={e => setConfig(p => ({ ...p, horario_fin: e.target.value }))}
-                className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text font-mono focus:outline-none focus:border-accent transition-colors" />
-            </div>
-          </div>
-
-          {/* Mensaje de Ausencia */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="font-mono text-xs text-muted uppercase tracking-wider">Mensaje Fuera de Horario</label>
-              <AISuggestionButton label="Sugerir" onClick={() => applySuggestion('mensaje_fuera_horario',
-                AI_SUGGESTIONS.ausencia[tonoActual]
-                  .replace(/{inicio}/g, config.horario_inicio)
-                  .replace(/{fin}/g, config.horario_fin)
-              )} />
-            </div>
-            <textarea value={config.mensaje_fuera_horario} onChange={e => setConfig(p => ({ ...p, mensaje_fuera_horario: e.target.value }))}
-              placeholder="Mensaje cuando el bot esté fuera de horario..."
-              rows={3}
-              className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text font-body placeholder:text-muted/50 focus:outline-none focus:border-accent transition-colors resize-none" />
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Section 2: Agentes IA */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="bg-bg2 border border-border rounded-3xl p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-accent" />
-            <h2 className="font-head text-xl font-bold text-text">Agentes IA</h2>
-            <span className="font-mono text-xs text-muted bg-bg3 px-2 py-1 rounded-lg">
-              {Object.values(agentes).filter(Boolean).length}/{AI_SUGGESTIONS.agentes[plan]?.max || 3} activos
-            </span>
-          </div>
-          <button onClick={saveAgentes} disabled={saving === 'agentes'}
-            className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-xl font-mono text-sm hover:bg-accent/90 transition-all">
-            {saving === 'agentes' ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            Guardar
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {AGENTES_LIST.map(agente => {
-            const Icon = agente.icon;
-            const isActive = agentes[agente.id] || false;
-            const isLocked = AI_SUGGESTIONS.agentes[plan]?.max <= Object.values(agentes).filter(Boolean).length && !isActive;
-            const needsUpgrade = ['professional', 'enterprise'].includes(agente.plan) && ['starter'].includes(plan);
-            const sugerido = AI_SUGGESTIONS.agentes[plan]?.sugeridos?.includes(agente.id);
-
-            return (
-              <div key={agente.id}
-                className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isActive ? 'border-accent/30 bg-accent/5' : 'border-border hover:border-border/80'} ${needsUpgrade ? 'opacity-60' : ''}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? 'bg-accent/10' : 'bg-bg3'}`}>
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-accent' : 'text-muted'}`} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-text font-medium text-sm">{agente.label}</span>
-                      {sugerido && <span className="font-mono text-[10px] bg-warn/10 text-warn-text px-1.5 py-0.5 rounded">Sugerido</span>}
-                      {needsUpgrade && <Lock className="w-3 h-3 text-muted" />}
-                    </div>
-                    <p className="text-muted text-xs">{agente.desc}</p>
-                  </div>
-                </div>
-                <Toggle enabled={isActive}
-                  onToggle={() => {
-                    if (needsUpgrade || isLocked) return;
-                    setAgentes(p => ({ ...p, [agente.id]: !p[agente.id] }));
-                  }}
-                  disabled={needsUpgrade || isLocked} />
-              </div>
-            );
-          })}
-        </div>
-
-        {showSuggestions && (
-          <div className="mt-4 flex items-center gap-2 flex-wrap">
-            <AISuggestionButton label="Activar sugeridos"
-              onClick={() => {
-                const sugeridos = AI_SUGGESTIONS.agentes[plan]?.sugeridos || [];
-                const newObj = {};
-                AGENTES_LIST.forEach(a => { newObj[a.id] = sugeridos.includes(a.id); });
-                setAgentes(newObj);
-              }} />
-            <AISuggestionButton label="Activar todos"
-              onClick={() => {
-                const newObj = {};
-                AGENTES_LIST.forEach(a => { newObj[a.id] = true; });
-                setAgentes(newObj);
-              }} />
-          </div>
-        )}
-      </motion.div>
-
-      {/* Test Modal */}
-      <AnimatePresence>
-        {showTest && <TestBotModal onClose={() => setShowTest(false)} />}
-      </AnimatePresence>
+      <AnimatePresence>{showTest && <TestBotModal onClose={() => setShowTest(false)} />}</AnimatePresence>
     </div>
   );
 }

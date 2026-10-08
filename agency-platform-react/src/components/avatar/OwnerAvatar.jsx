@@ -1,15 +1,16 @@
 import React from 'react';
-import { PIEL, PELO_COLORES, ROPA_COLORES, sanitizeAvatar, byId } from './avatarConfig';
+import { PIEL, PELO_COLORES, ROPA_COLORES, GORRA_COLORES, sanitizeAvatar, byId } from './avatarConfig';
 
 // Avatar del dueño: mismo estilo y coordenadas que el personaje "Sofía" (contorno 2px, formas planas),
-// dibujado por capas para poder combinar género, piel, pelo, barba, gafas, tatuajes y ropa.
+// dibujado por capas para poder combinar género, piel, pelo, barba, gafas, aretes, pecas, gorra, tatuajes y ropa.
 const OUT = '#0A0A0A';
 
-// Proporciones por género (hombros, cuello, cejas, detalles)
+// Proporciones por género (hombros, cuello, cejas) — los aretes ya no dependen del género,
+// son una opción propia (ver ARETES en avatarConfig.js).
 const GENERO = {
-  mujer: { sx: 1, neck: 9, brow: 2, lashes: true, earrings: true, blush: 0.6 },
-  hombre: { sx: 1.14, neck: 11, brow: 3.2, lashes: false, earrings: false, blush: 0 },
-  neutro: { sx: 1.06, neck: 10, brow: 2.5, lashes: false, earrings: false, blush: 0.35 },
+  mujer: { sx: 1, neck: 9, brow: 2, lashes: true, blush: 0.6 },
+  hombre: { sx: 1.14, neck: 11, brow: 3.2, lashes: false, blush: 0 },
+  neutro: { sx: 1.06, neck: 10, brow: 2.5, lashes: false, blush: 0.35 },
 };
 
 const RA = 'M-44 218 L-65 285 C-68 293 -62 302 -52 305 L-30 308'; // brazo con tableta
@@ -106,6 +107,16 @@ function Glasses({ tipo }) {
   return null;
 }
 
+function Cap({ tipo, cloth }) {
+  if (tipo !== 'plana') return null;
+  return (
+    <g stroke={OUT} strokeWidth="2" strokeLinejoin="round">
+      <path d="M-36 122 C-36 98 -18 84 0 84 C18 84 36 98 36 122 C36 126 33 128 29 128 L-29 128 C-33 128 -36 126 -36 122 Z" fill={cloth.fill} />
+      <path d="M-33 126 C-14 118 14 118 36 126 L40 134 C14 126 -14 126 -37 134 Z" fill={cloth.detail} />
+    </g>
+  );
+}
+
 export default function OwnerAvatar({
   config,
   variant = 'cuerpo', // 'cuerpo' | 'busto'
@@ -117,6 +128,8 @@ export default function OwnerAvatar({
   const skin = byId(PIEL, c.piel);
   const hair = byId(PELO_COLORES, c.pelo.color).hex;
   const cloth = byId(ROPA_COLORES, c.ropa.color);
+  const gorraCloth = byId(GORRA_COLORES, c.gorra.color);
+  const conGorra = c.gorra.tipo === 'plana';
   const g = GENERO[c.genero];
   const browColor = ['gris', 'blanco'].includes(c.pelo.color) ? '#666666' : hair === '#0A0A0A' ? OUT : hair;
   const camiseta = c.ropa.tipo === 'camiseta';
@@ -242,10 +255,16 @@ export default function OwnerAvatar({
       <ellipse cx="0" cy="140" rx="36" ry="40" fill={skin.base} stroke={OUT} strokeWidth="2" />
       <circle cx="-35" cy="142" r="5" fill={skin.base} stroke={OUT} strokeWidth="1.5" />
       <circle cx="35" cy="142" r="5" fill={skin.base} stroke={OUT} strokeWidth="1.5" />
-      {g.earrings && (
+      {c.aretes === 'botones' && (
         <>
           <circle cx="-35" cy="144" r="1.5" fill="#FFFFFF" />
           <circle cx="35" cy="144" r="1.5" fill="#FFFFFF" />
+        </>
+      )}
+      {c.aretes === 'aros' && (
+        <>
+          <circle cx="-35" cy="149" r="4" fill="none" stroke="#FFFFFF" strokeWidth="1.5" />
+          <circle cx="35" cy="149" r="4" fill="none" stroke="#FFFFFF" strokeWidth="1.5" />
         </>
       )}
 
@@ -272,6 +291,16 @@ export default function OwnerAvatar({
           <ellipse cx="20" cy="148" rx="6" ry="3" fill="#EF9A9A" opacity={g.blush} />
         </>
       )}
+      {c.pecas === 'con_pecas' && (
+        <g fill="#8A5333" opacity="0.55">
+          <circle cx="-22" cy="143" r="1.1" />
+          <circle cx="-18" cy="146" r="1.1" />
+          <circle cx="-24" cy="147" r="0.9" />
+          <circle cx="22" cy="143" r="1.1" />
+          <circle cx="18" cy="146" r="1.1" />
+          <circle cx="24" cy="147" r="0.9" />
+        </g>
+      )}
       <path d="M-8 155 C-4 160 4 160 8 155" stroke={OUT} strokeWidth="2.2" strokeLinecap="round" />
 
       {/* Bigote */}
@@ -279,8 +308,9 @@ export default function OwnerAvatar({
         <path d="M-15 153 C-9 146 -2 149 0 151 C2 149 9 146 15 153 C9 157 2 154 0 154 C-2 154 -9 157 -15 153 Z" fill={hair} stroke={OUT} strokeWidth="1.5" strokeLinejoin="round" />
       )}
 
-      {/* Pelo delantero y gafas */}
-      <FrontHair estilo={c.pelo.estilo} hair={hair} />
+      {/* Pelo delantero, gorra (cubre el pelo delantero si está puesta) y gafas */}
+      {!conGorra && <FrontHair estilo={c.pelo.estilo} hair={hair} />}
+      <Cap tipo={c.gorra.tipo} cloth={gorraCloth} />
       <Glasses tipo={c.gafas} />
     </svg>
   );

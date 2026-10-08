@@ -4,6 +4,7 @@ const gemini = require('./gemini');
 const { checkLimit } = require('../../config/planConfig');
 const { geocodificarDireccion } = require('../services/geocoding');
 const { calcularCondicionesDomicilio } = require('../services/domicilioTarifa');
+const { calcularEstado } = require('../../api/services/billing');
 
 const LIMITES_POR_PLAN = {
     starter: { mensajes_por_minuto: 10, mensajes_por_hora: 100, tokens_por_dia: 50000 },
@@ -11,9 +12,28 @@ const LIMITES_POR_PLAN = {
     enterprise: { mensajes_por_minuto: 50, mensajes_por_hora: 1000, tokens_por_dia: Infinity }
 };
 
-async function procesarMensaje(mensaje, negocioId, clienteId, contexto = []) {
+async function procesarMensaje(mensaje, negocioId, clienteId, contexto = [], conversacionId = null) {
     const inicio = Date.now();
-    
+
+    // Paywall duro: si el plan venció o se canceló y ya no hay acceso, el bot
+    // deja de responder a clientes nuevos hasta que el dueño pague. No se le
+    // dice al cliente que es un tema de facturación (eso lo ve el dueño en su
+    // dashboard) — solo un mensaje neutro para que no sienta que lo ignoraron.
+    // Solo afecta al bot: el resto de la API sigue abierta para que el dueño
+    // pueda entrar a pagar/reactivar.
+    const suscripcion = await verificarSuscripcion(negocioId);
+    if (!suscripcion.permitido) {
+        return {
+            respuesta: 'En este momento no podemos procesar tu pedido. Por favor intenta más tarde o contáctanos directamente.',
+            intencion: 'suscripcion_vencida',
+            agente_usado: 'none',
+            datos_accion: null,
+            tokens_usados: 0,
+            tiempo_ms: Date.now() - inicio,
+            paywall: true
+        };
+    }
+
     const rateLimit = await verificarRateLimit(negocioId);
     if (!rateLimit.permitido) {
         return {
@@ -55,7 +75,7 @@ async function procesarMensaje(mensaje, negocioId, clienteId, contexto = []) {
     
     try {
         console.log(`[Orchestrator] Llamando Gemini...`);
-        const resultado = await gemini.procesarMensaje(mensaje, negocioId, clienteId, contexto);
+        const resultado = await gemini.procesarMensaje(mensaje, negocioId, clienteId, contexto, conversacionId);
         console.log(`[Orchestrator] Gemini respondió: ${resultado.intencion} | ${resultado.agente_usado} | tokens: ${resultado.tokens_usados}`);
 
         let pedidoCreado = null;
@@ -88,6 +108,30 @@ async function procesarMensaje(mensaje, negocioId, clienteId, contexto = []) {
             tokens_usados: 0,
             tiempo_ms: Date.now() - inicio
         };
+    }
+}
+
+async function verificarSuscripcion(negocioId) {
+    try {
+        const [negocios] = await db.execute(
+            `SELECT plan, suscripcion_activa, suscripcion_fin, suscripcion_inicio, trial_hasta
+             FROM negocios WHERE id = ?`,
+            [negocioId]
+        );
+        if (negocios.length === 0) return { permitido: true };
+
+        const { estado } = calcularEstado(negocios[0]);
+        // 'vencida' e 'inactiva' son los únicos estados sin acceso vigente
+        // (ver calcularEstado en api/services/billing.js). 'cancelada' todavía
+        // conserva acceso hasta suscripcion_fin, igual que en el resto de la app.
+        if (estado === 'vencida' || estado === 'inactiva') {
+            return { permitido: false, estado };
+        }
+        return { permitido: true, estado };
+    } catch (error) {
+        // Si falla la verificación, no se bloquea al negocio por un error nuestro.
+        console.error('[Orchestrator] Error verificando suscripción:', error.message);
+        return { permitido: true };
     }
 }
 
@@ -265,10 +309,15 @@ async function crearPedido(negocioId, clienteId, datos) {
     if (!datos.productos || datos.productos.length === 0) return null;
 
     try {
-        const [productosDb] = await db.execute(
-            'SELECT * FROM productos WHERE negocio_id = ? AND activo = 1',
-            [negocioId]
-        );
+        // Empresa de domicilios con varios restaurantes (ver db/migrate_marketplace.js):
+        // el catálogo se limita al restaurante que el cliente eligió en la
+        // conversación (gemini.js). Si no hay restaurante (negocio de un solo
+        // local, el caso de siempre), se sigue usando todo el catálogo del negocio.
+        const productosQuery = datos.restaurante_id
+            ? 'SELECT * FROM productos WHERE negocio_id = ? AND restaurante_id = ? AND activo = 1'
+            : 'SELECT * FROM productos WHERE negocio_id = ? AND activo = 1';
+        const productosParams = datos.restaurante_id ? [negocioId, datos.restaurante_id] : [negocioId];
+        const [productosDb] = await db.execute(productosQuery, productosParams);
 
         // Get payment info
         const [negocios] = await db.execute(
@@ -306,9 +355,9 @@ async function crearPedido(negocioId, clienteId, datos) {
         const numeroPedido = `AG-${String(negocioId).padStart(3, '0')}-${Date.now().toString().slice(-6)}`;
 
         const [result] = await db.execute(
-            `INSERT INTO pedidos (negocio_id, cliente_id, numero_pedido, estado, subtotal, total, direccion_entrega)
-             VALUES (?, ?, ?, 'pendiente_pago', ?, ?, ?)`,
-            [negocioId, clienteId, numeroPedido, total, total, direccionEntrega]
+            `INSERT INTO pedidos (negocio_id, cliente_id, numero_pedido, estado, subtotal, total, direccion_entrega, restaurante_id)
+             VALUES (?, ?, ?, 'pendiente_pago', ?, ?, ?, ?)`,
+            [negocioId, clienteId, numeroPedido, total, total, direccionEntrega, datos.restaurante_id || null]
         );
 
         for (const item of items) {
@@ -325,6 +374,19 @@ async function crearPedido(negocioId, clienteId, datos) {
         );
 
         console.log(`[Orchestrator] Pedido ${numeroPedido} creado para cliente ${clienteId}`);
+
+        try {
+            const { emitPedidoNuevo } = require('../socketEmitter');
+            const [clienteRows] = await db.execute('SELECT nombre, whatsapp FROM clientes WHERE id = ?', [clienteId]);
+            emitPedidoNuevo(negocioId, {
+                pedido_id: result.insertId,
+                numero_pedido: numeroPedido,
+                cliente_nombre: clienteRows[0]?.nombre || 'Cliente',
+                cliente_whatsapp: clienteRows[0]?.whatsapp || null,
+                total,
+                items,
+            });
+        } catch (e) { /* si el bridge de sockets no está listo, no bloquea la creación */ }
 
         let domicilio = null;
         if (direccionEntrega) {
@@ -391,10 +453,16 @@ async function crearDomicilioAutomatico(negocioId, pedidoId) {
         const codigoConfirmacion = String(Math.floor(1000 + Math.random() * 9000));
         const cond = await calcularCondicionesDomicilio(negocioId, pedidoId, config);
 
+        // El domicilio se recoge donde esté el restaurante del pedido (si lo hay),
+        // no en la dirección del negocio dueño de la cuenta — se copia acá para
+        // que el domiciliario y el dueño lo vean sin tener que ir hasta el pedido.
+        const [pedidoRow] = await db.execute('SELECT restaurante_id FROM pedidos WHERE id = ?', [pedidoId]);
+        const restauranteId = pedidoRow[0]?.restaurante_id || null;
+
         const [result] = await db.execute(
-            `INSERT INTO domicilios (negocio_id, pedido_id, estado, tarifa_envio, km_recorridos, tiempo_minutos, ruta_coords, tracking_token, codigo_confirmacion)
-             VALUES (?, ?, 'pendiente', ?, ?, ?, ?, ?, ?)`,
-            [negocioId, pedidoId, cond.tarifa, cond.km, cond.tiempo, cond.ruta_coords, trackingToken, codigoConfirmacion]
+            `INSERT INTO domicilios (negocio_id, pedido_id, estado, tarifa_envio, km_recorridos, tiempo_minutos, ruta_coords, tracking_token, codigo_confirmacion, restaurante_id)
+             VALUES (?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?)`,
+            [negocioId, pedidoId, cond.tarifa, cond.km, cond.tiempo, cond.ruta_coords, trackingToken, codigoConfirmacion, restauranteId]
         );
 
         const trackingBase = process.env.TRACKING_BASE_URL || 'http://localhost:5177/delivery/track';
@@ -478,6 +546,7 @@ module.exports = {
     procesarMensaje,
     verificarRateLimit,
     verificarHorario,
+    verificarSuscripcion,
     ejecutarAccion,
     verificarPagoConImagen
 };

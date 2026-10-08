@@ -39,6 +39,15 @@ export const businessService = {
         const response = await api.put(`/business/onboarding/${paso}`, datos);
         return response.data;
     },
+    // Logros y consejos de los personajes ya vistos (se guardan en el servidor para no repetirse entre dispositivos)
+    getUiEstado: async () => {
+        const response = await api.get('/business/ui-estado');
+        return response.data;
+    },
+    saveUiEstado: async (vistos) => {
+        const response = await api.put('/business/ui-estado', { vistos });
+        return response.data;
+    },
     aplicarPlantilla: async (tipoNegocio) => {
         const response = await api.post('/business/plantilla', { tipo_negocio: tipoNegocio });
         return response.data;

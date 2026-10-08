@@ -71,6 +71,43 @@ router.get('/resumen', async (req, res) => {
 
         const [actual, anterior] = await Promise.all([resumenDelMes(mesActual), resumenDelMes(mesAnterior)]);
 
+        // Total histórico (no solo del mes), para el hito "100 mensajes atendidos" del dashboard.
+        const [[mensajesTotalesFila]] = await db.execute(
+            'SELECT COUNT(*) as total FROM agente_logs WHERE negocio_id = ?',
+            [negocioId]
+        );
+        const mensajes_totales = parseInt(mensajesTotalesFila.total) || 0;
+
+        // Bloque "hoy" que lee el Dashboard (tarjetas Ventas/Pedidos/Mensajes Hoy/IA Procesados).
+        // Antes el frontend leía una clave `hoy` que este endpoint nunca devolvía y las tarjetas
+        // mostraban siempre cero. `ai_procesados` = respuestas que gastaron tokens de IA (las
+        // deterministas, como el flujo de dirección, no cuentan); `cambio_ventas` = % vs ayer.
+        const ventasDelDia = async (offsetDias) => {
+            const [[f]] = await db.execute(
+                `SELECT COUNT(*) as total_pedidos,
+                        COALESCE(SUM(CASE WHEN estado IN (?, ?, ?, ?) THEN total ELSE 0 END), 0) as total_ventas
+                 FROM pedidos
+                 WHERE negocio_id = ? AND DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL ? DAY)`,
+                [...ESTADOS_CONFIRMADOS, negocioId, offsetDias]
+            );
+            return { total_pedidos: parseInt(f.total_pedidos) || 0, total_ventas: parseFloat(f.total_ventas) || 0 };
+        };
+        const [hoyVentas, ayerVentas] = await Promise.all([ventasDelDia(0), ventasDelDia(1)]);
+        const [[hoyMensajes]] = await db.execute(
+            `SELECT COUNT(*) as mensajes, COALESCE(SUM(CASE WHEN tokens_usados > 0 THEN 1 ELSE 0 END), 0) as ai_procesados
+             FROM agente_logs WHERE negocio_id = ? AND DATE(created_at) = CURDATE()`,
+            [negocioId]
+        );
+        const mensajesHoy = parseInt(hoyMensajes.mensajes) || 0;
+        const hoy = {
+            total_ventas: hoyVentas.total_ventas,
+            total_pedidos: hoyVentas.total_pedidos,
+            mensajes: mensajesHoy,
+            ai_procesados: parseInt(hoyMensajes.ai_procesados) || 0,
+            tasa_conversion: mensajesHoy > 0 ? parseFloat(((hoyVentas.total_pedidos / mensajesHoy) * 100).toFixed(1)) : 0,
+            cambio_ventas: variacion(hoyVentas.total_ventas, ayerVentas.total_ventas)
+        };
+
         // Ventas de los últimos 7 días, con los días sin pedidos en cero.
         const [ventasPorDia] = await db.execute(
             `SELECT DATE(created_at) as fecha, COUNT(*) as pedidos, COALESCE(SUM(total), 0) as ventas
@@ -118,6 +155,7 @@ router.get('/resumen', async (req, res) => {
         );
 
         res.json({
+            hoy,
             resumen: {
                 total_ventas: actual.total_ventas,
                 ventas_variacion: variacion(actual.total_ventas, anterior.total_ventas),
@@ -130,7 +168,8 @@ router.get('/resumen', async (req, res) => {
                 tiempo_respuesta_ms: actual.tiempo_respuesta_ms,
                 tiempo_respuesta_variacion: variacion(actual.tiempo_respuesta_ms, anterior.tiempo_respuesta_ms),
                 pedidos_perdidos: actual.pedidos_perdidos,
-                pedidos_perdidos_variacion: variacion(actual.pedidos_perdidos, anterior.pedidos_perdidos)
+                pedidos_perdidos_variacion: variacion(actual.pedidos_perdidos, anterior.pedidos_perdidos),
+                mensajes_totales
             },
             ventas_diarias,
             top_productos: topProductos.map(p => ({

@@ -9,7 +9,7 @@ const PricingCard = ({ tier, price, desc, features, featured, isAnnual }) => {
   return (
     <motion.div 
       whileHover={{ y: -10 }}
-      className={`relative p-10 flex flex-col gap-6 ${
+      className={`relative p-8 flex flex-col gap-6 ${
         featured ? 'bg-bg3 border-2 border-accent z-10' : 'bg-bg border border-border'
       } first:rounded-l-2xl last:rounded-r-2xl max-lg:rounded-2xl`}
     >
@@ -25,7 +25,7 @@ const PricingCard = ({ tier, price, desc, features, featured, isAnnual }) => {
           key={displayPrice}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`text-6xl font-head font-black ${featured ? 'text-accent' : ''}`}
+          className={`text-5xl font-head font-black ${featured ? 'text-accent' : ''}`}
         >
           {displayPrice.toLocaleString('es-CO')}
         </motion.span>
@@ -62,6 +62,18 @@ const Pricing = () => {
   const [isAnnual, setIsAnnual] = useState(false);
 
   const plans = [
+    {
+      tier: "Emprendedor",
+      price: 25000,
+      desc: "Para llevar el inventario, las ventas y la plata de tu emprendimiento.",
+      features: [
+        { text: "Caja: inventario, ventas y plata" },
+        { text: "Acceso con tu cuenta Antigravity" },
+        { text: "Soporte por email" },
+        { text: "Bot de WhatsApp con IA", disabled: true },
+        { text: "Domicilios", disabled: true }
+      ]
+    },
     {
       tier: "Starter",
       price: 450000,
@@ -132,7 +144,7 @@ const Pricing = () => {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-0 max-lg:gap-8 items-stretch">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-0 max-lg:gap-8 items-stretch">
           {plans.map((p, i) => (
             <PricingCard key={i} {...p} isAnnual={isAnnual} />
           ))}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
-import toast from 'react-hot-toast';
+import Toast from '../../components/Toast';
 import './AdminOverview.css';
 
 export default function AdminOverview() {
@@ -9,6 +9,7 @@ export default function AdminOverview() {
   const [stats, setStats] = useState(null);
   const [negocios, setNegocios] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -26,7 +27,7 @@ export default function AdminOverview() {
       setNegocios(negociosRes.negocios || []);
     } catch (error) {
       console.error('Error loading admin data:', error);
-      toast.error('Error al cargar datos');
+      setToast({ type: 'error', message: 'Error al cargar datos' });
     } finally {
       setLoading(false);
     }
@@ -38,10 +39,10 @@ export default function AdminOverview() {
         nombre: `Demo ${Date.now()}`,
         email: `demo_${Date.now()}@test.com`
       });
-      toast.success('Negocio demo creado');
+      setToast({ type: 'success', message: 'Negocio demo creado' });
       loadData();
     } catch (error) {
-      toast.error('Error al crear demo');
+      setToast({ type: 'error', message: 'Error al crear demo' });
     }
   };
 
@@ -64,6 +65,7 @@ export default function AdminOverview() {
 
   return (
     <div className="admin-overview">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
       <div className="admin-header">
         <h1>Panel de Administración</h1>
         <p>Resumen global del sistema Antigravity</p>

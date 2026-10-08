@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import TipNova from '../components/TipNova';
 import {
   ArrowLeft,
   Activity,
@@ -99,6 +100,8 @@ export default function MonitoreoPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        <TipNova id="monitoreo">Acá ves si la API y la base de datos están respondiendo, cuántos negocios y mensajes hay en total, y puedes descargar un respaldo. Es más para ti que para tus clientes.</TipNova>
+
         {/* Estado del sistema */}
         <div className="bg-bg2 border border-border rounded-2xl p-6">
           <h2 className="font-head text-lg text-text mb-4 flex items-center gap-2">

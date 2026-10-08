@@ -106,7 +106,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(0, 255, 209, 0.1);
+  background: var(--color-accent-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -309,7 +309,7 @@
 }
 
 .status-badge-sm.en_ruta {
-  background: rgba(0, 255, 209, 0.1);
+  background: var(--color-accent-soft);
   color: var(--accent-primary);
 }
 
@@ -380,12 +380,19 @@
 
 .queue-item-actions .assign-select {
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text-primary);
   font-size: 13px;
   min-width: 150px;
+}
+
+.assign-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: right;
+  max-width: 180px;
 }
 
 .empty-queue {

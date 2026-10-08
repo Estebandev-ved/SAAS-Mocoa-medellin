@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '../../services/api';
-import toast from 'react-hot-toast';
+import Toast from '../../components/Toast';
 import './AdminConfig.css';
 
 export default function AdminConfig() {
   const [activeTab, setActiveTab] = useState('plataforma');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
   const [config, setConfig] = useState({
     plataforma: {
       nombre: 'Antigravity',
@@ -61,9 +62,9 @@ export default function AdminConfig() {
         seccion,
         datos: config[seccion]
       });
-      toast.success(`${seccion.charAt(0).toUpperCase() + seccion.slice(1)} guardado correctamente`);
+      setToast({ type: 'success', message: `${seccion.charAt(0).toUpperCase() + seccion.slice(1)} guardado correctamente` });
     } catch (error) {
-      toast.error('Error al guardar configuración');
+      setToast({ type: 'error', message: 'Error al guardar configuración' });
     } finally {
       setSaving(false);
     }
@@ -111,6 +112,7 @@ export default function AdminConfig() {
 
   return (
     <div className="admin-config">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
       <div className="admin-header">
         <h1>Configuración</h1>
         <p>Configuración global de la plataforma</p>

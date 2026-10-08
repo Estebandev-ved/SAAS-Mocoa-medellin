@@ -22,6 +22,9 @@ out/
 .env.production.local
 *.env
 *.env.*
+# Excepción: plantillas sin secretos reales, deben quedar versionadas
+!.env.example
+!*.env.example
 
 # Credenciales de WhatsApp (CRÍTICO - Evita secuestro de sesión)
 auth/

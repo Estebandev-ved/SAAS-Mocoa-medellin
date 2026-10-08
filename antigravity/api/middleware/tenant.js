@@ -11,7 +11,7 @@ async function injectTenantId(req, res, next) {
 
   try {
     const [negocios] = await db.execute(
-      `SELECT plan, suscripcion_activa, suscripcion_fin, trial_hasta, trial_inicio
+      `SELECT plan, plan_pendiente, suscripcion_activa, suscripcion_fin, trial_hasta, trial_inicio
        FROM negocios WHERE id = ?`,
       [req.negocioId]
     );
@@ -19,9 +19,13 @@ async function injectTenantId(req, res, next) {
     const negocio = negocios[0];
     const now = new Date();
 
+    // Un ciclo pagado sigue dando acceso aunque el negocio ya haya cancelado la
+    // renovación (suscripcion_activa=0): conserva todo hasta suscripcion_fin.
+    const cicloVigente = negocio.suscripcion_fin && new Date(negocio.suscripcion_fin) > now;
+
     // Check trial expiry
     const enTrial = negocio.trial_hasta && new Date(negocio.trial_hasta) > now && !negocio.suscripcion_activa;
-    const trialVencido = negocio.trial_hasta && new Date(negocio.trial_hasta) < now && !negocio.suscripcion_activa;
+    const trialVencido = negocio.trial_hasta && new Date(negocio.trial_hasta) < now && !negocio.suscripcion_activa && !cicloVigente;
 
     if (trialVencido) {
       return res.status(402).json({
@@ -34,9 +38,26 @@ async function injectTenantId(req, res, next) {
     // Check subscription expiry
     const subVencida = negocio.suscripcion_fin && new Date(negocio.suscripcion_fin) < now && negocio.suscripcion_activa;
     if (subVencida) {
-      await db.execute('UPDATE negocios SET suscripcion_activa = 0 WHERE id = ?', [req.negocioId]);
+      // Si había un downgrade programado, entra en vigor al terminar el ciclo.
+      await db.execute(
+        'UPDATE negocios SET suscripcion_activa = 0, plan = COALESCE(plan_pendiente, plan), plan_pendiente = NULL WHERE id = ?',
+        [req.negocioId]
+      );
       return res.status(402).json({
         error: 'Tu suscripción ha vencido. Renueva para continuar.',
+        codigo: 'SUSCRIPCION_VENCIDA',
+        necesitaRenovar: true
+      });
+    }
+
+    // Canceló y el ciclo que ya había pagado terminó: se acabó el acceso.
+    const cancelacionCumplida = !negocio.suscripcion_activa && negocio.suscripcion_fin && new Date(negocio.suscripcion_fin) < now;
+    if (cancelacionCumplida) {
+      if (negocio.plan_pendiente) {
+        await db.execute('UPDATE negocios SET plan = plan_pendiente, plan_pendiente = NULL WHERE id = ?', [req.negocioId]);
+      }
+      return res.status(402).json({
+        error: 'Tu suscripción terminó. Elige un plan para continuar.',
         codigo: 'SUSCRIPCION_VENCIDA',
         necesitaRenovar: true
       });

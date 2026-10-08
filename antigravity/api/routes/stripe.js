@@ -2,118 +2,94 @@ const express = require('express');
 const router = express.Router();
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
-const { getPlan, getPlanPrice } = require('../../config/planConfig');
+const { getPlan, PLAN_ORDER } = require('../../config/planConfig');
+const billing = require('../services/billing');
+const efipay = require('../services/efipay');
 
-const STRIPE_CONFIGURADO = !!process.env.STRIPE_SECRET_KEY;
-let stripe = null;
-if (STRIPE_CONFIGURADO) {
-    stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-}
+// El webhook de Stripe vive en api/index.js: necesita el body crudo, así que se
+// registra antes de express.json().
 
-// ===== MODO EMULADO =====
-// Simula pagos instantáneos sin Stripe real
-// Ideal para desarrollo y demostración
+const FRONTEND_URL = () => process.env.FRONTEND_URL || 'http://localhost:5173';
 
-async function simularPago(negocioId, plan) {
-    const planData = getPlan(plan);
-    const now = new Date();
-    const fin = new Date(now);
-    fin.setMonth(fin.getMonth() + 1);
+// Comprueba que este negocio pueda pagar por `plan` y devuelve un error listo
+// para responder, o null si todo está bien.
+async function errorDeCompra(negocioId, plan) {
+    if (!billing.planValido(plan)) return { status: 400, body: { error: 'Plan inválido' } };
 
-    // 1. Actualizar negocio
-    await db.execute(
-        `UPDATE negocios SET plan = ?, suscripcion_activa = 1,
-         suscripcion_inicio = ?, suscripcion_fin = ?
-         WHERE id = ?`,
-        [plan, now, fin, negocioId]
-    );
-
-    // 2. Actualizar/crear suscripción
-        const [existSub] = await db.execute(
-        'SELECT id FROM suscripciones WHERE negocio_id = ? ORDER BY id DESC LIMIT 1',
+    const [rows] = await db.execute(
+        `SELECT plan, plan_pendiente, suscripcion_activa, suscripcion_inicio, suscripcion_fin, trial_hasta
+         FROM negocios WHERE id = ?`,
         [negocioId]
     );
+    const n = rows[0];
+    if (!n) return { status: 404, body: { error: 'Negocio no encontrado' } };
 
-    if (existSub.length > 0) {
-        await db.execute(
-            `UPDATE suscripciones SET plan = ?, estado = 'activa',
-             pago_inicio = ?, pago_fin = ?, monto_mensual = ?
-             WHERE id = ?`,
-            [plan, now, fin, planData.price, existSub[0].id]
-        );
-    } else {
-        await db.execute(
-            `INSERT INTO suscripciones (negocio_id, plan, estado, trial_inicio, pago_inicio, pago_fin, monto_mensual)
-             VALUES (?, ?, 'activa', ?, ?, ?, ?)`,
-            [negocioId, plan, now, now, fin, planData.price]
-        );
+    const motivo = billing.validarCompra(n, plan);
+    if (motivo) return { status: 400, body: { error: motivo } };
+
+    // Bajar de plan pagando uno menor no puede dejar el catálogo por encima del límite.
+    if (PLAN_ORDER.indexOf(plan) < PLAN_ORDER.indexOf(n.plan)) {
+        const bloqueos = await billing.bloqueosDowngrade(negocioId, plan);
+        if (bloqueos.length) return { status: 409, body: { error: bloqueos[0], codigo: 'LIMITES_EXCEDIDOS', bloqueos } };
     }
-
-    // 3. Crear factura
-    const invoiceNum = `INV-EMULADO-${Date.now()}-${negocioId}`;
-    await db.execute(
-        `INSERT INTO invoices (negocio_id, numero, plan, monto, estado, metodo_pago, fecha_pago, fecha_vencimiento, descripcion)
-         VALUES (?, ?, ?, ?, 'pagada', 'emulado', NOW(), ?, ?)`,
-        [negocioId, invoiceNum, plan, planData.price, fin, `Pago emulado plan ${planData.nameEs}`]
-    );
-
-    // 4. Registrar en historial
-    await db.execute(
-        `INSERT INTO billing_history (negocio_id, tipo, plan_nuevo, monto, descripcion)
-         VALUES (?, 'payment_success', ?, ?, ?)`,
-        [negocioId, plan, planData.price, `Pago emulado exitoso - Plan ${planData.nameEs}`]
-    );
-
-    console.log(`[Stripe-Emulado] Pago simulado: negocio ${negocioId}, plan ${plan}, $${planData.price}`);
-
-    return { invoiceNum, nuevoFin: fin, monto: planData.price };
+    return null;
 }
 
 // POST /api/stripe/checkout
+// Con Stripe: devuelve la URL de pago. Sin Stripe y solo en desarrollo: activa
+// el plan como pago de prueba. En producción sin Stripe no cambia nada.
 router.post('/checkout', verificarAuth, async (req, res) => {
     try {
         const { plan } = req.body;
+        const error = await errorDeCompra(req.negocioId, plan);
+        if (error) return res.status(error.status).json(error.body);
+
         const planData = getPlan(plan);
 
-        if (!planData) {
-            return res.status(400).json({ error: 'Plan inválido' });
-        }
-
-        // ===== MODO EMULADO =====
-        if (!STRIPE_CONFIGURADO) {
-            console.log(`[Stripe] Modo emulado - procesando pago simulado para plan ${plan}`);
-
-            const resultado = await simularPago(req.negocioId, plan);
-
-            // Redirect directo al success
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-            return res.json({
-                emulado: true,
-                mensaje: `Pago simulado exitoso. Plan ${planData.nameEs} activado.`,
-                invoice: resultado.invoiceNum,
-                redirect: `${frontendUrl}/dashboard/plan?success=true&emulado=true`,
+        if (billing.modoPagos() === 'no_disponible') {
+            return res.status(503).json({
+                error: 'Los pagos no están disponibles en este momento. Escríbenos y activamos tu plan.',
+                codigo: 'PAGOS_NO_DISPONIBLES',
             });
         }
 
-        // ===== MODO STRIPE REAL =====
+        // ===== Pago de prueba (solo desarrollo) =====
+        if (billing.modoPagos() === 'emulado') {
+            const resultado = await billing.activarPlan(req.negocioId, plan, { metodo: 'emulado' });
+            return res.json({
+                emulado: true,
+                mensaje: `Pago de prueba registrado. Plan ${planData.nameEs} activado.`,
+                invoice: resultado.invoiceNum,
+                monto: resultado.monto,
+                nuevo_fin: resultado.nuevoFin,
+            });
+        }
+
+        // ===== Efipay (pasarela real del negocio): redirige al checkout; el plan lo activa el webhook =====
+        if (billing.modoPagos() === 'efipay') {
+            const { url } = await efipay.crearPago(req.negocioId, plan, planData);
+            return res.json({ url });
+        }
+
+        // ===== Stripe real =====
         const [negocios] = await db.execute(
-            'SELECT nombre, email, stripe_customer_id FROM negocios WHERE id = ?',
+            'SELECT nombre, email_dueno, stripe_customer_id FROM negocios WHERE id = ?',
             [req.negocioId]
         );
         const negocio = negocios[0];
 
         let customerId = negocio.stripe_customer_id;
         if (!customerId) {
-            const customer = await stripe.customers.create({
+            const customer = await billing.stripe.customers.create({
                 name: negocio.nombre,
-                email: negocio.email,
-                metadata: { negocio_id: req.negocioId },
+                email: negocio.email_dueno,
+                metadata: { negocio_id: String(req.negocioId) },
             });
             customerId = customer.id;
             await db.execute('UPDATE negocios SET stripe_customer_id = ? WHERE id = ?', [customerId, req.negocioId]);
         }
 
-        const session = await stripe.checkout.sessions.create({
+        const session = await billing.stripe.checkout.sessions.create({
             customer: customerId,
             payment_method_types: ['card'],
             line_items: [{
@@ -123,15 +99,16 @@ router.post('/checkout', verificarAuth, async (req, res) => {
                         name: `Plan ${planData.nameEs} - Antigravity`,
                         description: `Suscripción mensual plan ${planData.nameEs}`,
                     },
-                    unit_amount: planData.price,
+                    // Stripe recibe el monto en la unidad menor de la moneda (centavos).
+                    unit_amount: planData.price * 100,
                     recurring: { interval: 'month' },
                 },
                 quantity: 1,
             }],
             mode: 'subscription',
-            success_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/plan?success=true&session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/plan?cancelled=true`,
-            metadata: { negocio_id: req.negocioId, plan },
+            success_url: `${FRONTEND_URL()}/suscripcion?success=true&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${FRONTEND_URL()}/suscripcion?cancelled=true`,
+            metadata: { negocio_id: String(req.negocioId), plan },
         });
 
         res.json({ sessionId: session.id, url: session.url });
@@ -141,128 +118,51 @@ router.post('/checkout', verificarAuth, async (req, res) => {
     }
 });
 
-// POST /api/stripe/confirm - Confirmar pago emulado (para testing)
+// POST /api/stripe/confirm - Igual que /checkout en modo de prueba (se conserva por compatibilidad)
 router.post('/confirm', verificarAuth, async (req, res) => {
     try {
-        if (STRIPE_CONFIGURADO) {
-            return res.status(400).json({ error: 'Esta ruta solo funciona en modo emulado' });
+        if (billing.modoPagos() !== 'emulado') {
+            return res.status(403).json({ error: 'Esta ruta solo funciona con pagos de prueba en desarrollo' });
         }
 
         const { plan } = req.body;
-        const planData = getPlan(plan);
+        const error = await errorDeCompra(req.negocioId, plan);
+        if (error) return res.status(error.status).json(error.body);
 
-        if (!planData) {
-            return res.status(400).json({ error: 'Plan inválido' });
-        }
-
-        const resultado = await simularPago(req.negocioId, plan);
-
+        const resultado = await billing.activarPlan(req.negocioId, plan, { metodo: 'emulado' });
         res.json({
             success: true,
             emulado: true,
-            mensaje: `Plan ${planData.nameEs} activado correctamente (pago emulado)`,
+            mensaje: `Plan ${getPlan(plan).nameEs} activado (pago de prueba)`,
             invoice: resultado.invoiceNum,
             monto: resultado.monto,
             nuevo_fin: resultado.nuevoFin,
         });
     } catch (error) {
         console.error('[Stripe-Emulado] Error:', error.message);
-        res.status(500).json({ error: 'Error procesando pago emulado' });
+        res.status(500).json({ error: 'Error procesando pago de prueba' });
     }
 });
 
-// POST /api/stripe/webhook - Solo para Stripe real
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-    if (!STRIPE_CONFIGURADO) {
-        return res.status(400).json({ error: 'Stripe no configurado - usa /confirm en modo emulado' });
-    }
-
-    const sig = req.headers['stripe-signature'];
-    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-    let event;
-    try {
-        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    } catch (err) {
-        console.error('[Stripe] Webhook signature failed:', err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    try {
-        if (event.type === 'checkout.session.completed') {
-            const session = event.data.object;
-            const { negocio_id, plan } = session.metadata;
-            await simularPago(parseInt(negocio_id), plan);
-        }
-
-        if (event.type === 'invoice.payment_failed') {
-            const invoice = event.data.object;
-            const customer = await stripe.customers.retrieve(invoice.customer);
-            const negocioId = customer.metadata.negocio_id;
-            if (negocioId) {
-                await db.execute(`UPDATE negocios SET suscripcion_activa = 0 WHERE id = ?`, [negocioId]);
-                await db.execute(
-                    `INSERT INTO billing_history (negocio_id, tipo, monto, descripcion) VALUES (?, 'payment_failed', ?, ?)`,
-                    [negocioId, invoice.amount_due, `Pago fallido - ${invoice.failure_reason}`]
-                );
-            }
-        }
-
-        if (event.type === 'invoice.paid') {
-            const invoice = event.data.object;
-            if (invoice.subscription) {
-                const customer = await stripe.customers.retrieve(invoice.customer);
-                const negocioId = customer.metadata.negocio_id;
-                if (negocioId) {
-                    const now = new Date();
-                    const fin = new Date(now);
-                    fin.setMonth(fin.getMonth() + 1);
-                    await db.execute(`UPDATE negocios SET suscripcion_fin = ?, suscripcion_activa = 1 WHERE id = ?`, [fin, negocioId]);
-                    await db.execute(`UPDATE suscripciones SET pago_fin = ?, estado = 'activa' WHERE stripe_sub_id = ?`, [fin, invoice.subscription]);
-                }
-            }
-        }
-
-        if (event.type === 'customer.subscription.deleted') {
-            const subscription = event.data.object;
-            await db.execute(`UPDATE negocios SET suscripcion_activa = 0 WHERE stripe_customer_id = ?`, [subscription.customer]);
-            await db.execute(`UPDATE suscripciones SET estado = 'cancelada' WHERE stripe_sub_id = ?`, [subscription.id]);
-        }
-
-        res.json({ received: true });
-    } catch (error) {
-        console.error('[Stripe] Error procesando webhook:', error.message);
-        res.status(500).json({ error: 'Error procesando webhook' });
-    }
-});
-
-// POST /api/stripe/portal
+// POST /api/stripe/portal - Portal de facturación de Stripe (cambiar tarjeta, facturas, plan)
 router.post('/portal', verificarAuth, async (req, res) => {
     try {
-        // En modo emulado, redirigir a la página de plan
-        if (!STRIPE_CONFIGURADO) {
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-            return res.json({
-                emulado: true,
-                url: `${frontendUrl}/dashboard/plan`,
-                mensaje: 'Modo emulado - gestiona tu plan desde el panel',
-            });
+        if (!billing.STRIPE_CONFIGURADO) {
+            return res.status(400).json({ error: 'El portal de facturación solo existe con Stripe configurado' });
         }
 
         const [negocios] = await db.execute(
             'SELECT stripe_customer_id FROM negocios WHERE id = ?',
             [req.negocioId]
         );
-
         if (!negocios[0]?.stripe_customer_id) {
             return res.status(400).json({ error: 'No tienes cuenta de facturación asociada' });
         }
 
-        const session = await stripe.billingPortal.sessions.create({
+        const session = await billing.stripe.billingPortal.sessions.create({
             customer: negocios[0].stripe_customer_id,
-            return_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard/plan`,
+            return_url: `${FRONTEND_URL()}/suscripcion`,
         });
-
         res.json({ url: session.url });
     } catch (error) {
         console.error('[Stripe] Error portal:', error.message);
@@ -271,16 +171,30 @@ router.post('/portal', verificarAuth, async (req, res) => {
 });
 
 // GET /api/stripe/status
-router.get('/status', verificarAuth, async (req, res) => {
+router.get('/status', verificarAuth, (req, res) => {
+    const modo = billing.modoPagos();
+    res.json({
+        stripe_configurado: billing.STRIPE_CONFIGURADO,
+        efipay_configurado: billing.EFIPAY_CONFIGURADO,
+        webhook_configurado: modo === 'efipay' ? !!process.env.EFIPAY_WEBHOOK_TOKEN : !!process.env.STRIPE_WEBHOOK_SECRET,
+        modo: modo === 'stripe' || modo === 'efipay' ? 'live' : modo,
+        pasarela: modo === 'stripe' || modo === 'efipay' ? modo : null,
+        mensaje: modo === 'efipay' ? 'Efipay conectado'
+            : modo === 'stripe' ? 'Stripe conectado'
+            : modo === 'emulado' ? 'Pagos de prueba (solo desarrollo)'
+            : 'Pagos no disponibles',
+    });
+});
+
+// POST /api/stripe/efipay/verificar — al volver del checkout de Efipay: consulta el estado de los
+// pagos pendientes de este negocio y activa el plan si ya fue aprobado (respaldo del webhook).
+router.post('/efipay/verificar', verificarAuth, async (req, res) => {
+    if (billing.modoPagos() !== 'efipay') return res.json({ revisados: 0, aprobados: 0 });
     try {
-        res.json({
-            stripe_configurado: STRIPE_CONFIGURADO,
-            webhook_configurado: !!process.env.STRIPE_WEBHOOK_SECRET,
-            modo: STRIPE_CONFIGURADO ? 'live' : 'emulado',
-            mensaje: STRIPE_CONFIGURADO ? 'Stripe conectado' : 'Funcionando en modo emulado (pagos simulados)',
-        });
+        res.json(await efipay.verificarPendientes(req.negocioId));
     } catch (error) {
-        res.status(500).json({ error: 'Error verificando estado' });
+        console.error('[Efipay] Error verificando pagos:', error.message);
+        res.status(500).json({ error: 'No se pudo verificar el pago' });
     }
 });
 

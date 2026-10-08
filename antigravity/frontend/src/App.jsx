@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
 import { Suspense, lazy, useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -21,6 +20,7 @@ const WhatsAppPage = lazy(() => import('./pages/dashboard/WhatsAppPage'));
 const DomiciliosPage = lazy(() => import('./pages/dashboard/DomiciliosPage'));
 const UsersPage = lazy(() => import('./pages/dashboard/UsersPage'));
 const PortalDomiciliario = lazy(() => import('./pages/dashboard/PortalDomiciliario'));
+const TerminosDomiciliarioPage = lazy(() => import('./pages/dashboard/TerminosDomiciliarioPage'));
 const TrackingCliente = lazy(() => import('./pages/dashboard/TrackingCliente'));
 
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
@@ -199,6 +199,7 @@ export default function App() {
 
             <Route path="/delivery/login" element={<Suspense fallback={<DashboardLoadingScreen />}><PortalDomiciliario /></Suspense>} />
             <Route path="/delivery/portal" element={<Suspense fallback={<DashboardLoadingScreen />}><PortalDomiciliario /></Suspense>} />
+            <Route path="/delivery/terminos" element={<Suspense fallback={<DashboardLoadingScreen />}><TerminosDomiciliarioPage /></Suspense>} />
             <Route path="/delivery/track/:token" element={<Suspense fallback={<DashboardLoadingScreen />}><TrackingCliente /></Suspense>} />
             
             <Route path="/admin" element={
@@ -221,14 +222,6 @@ export default function App() {
             
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              style: { background: '#0A0F14', color: '#E8F0F7', border: '1px solid #00FFD1' },
-              success: { iconTheme: { primary: '#00FFD1', secondary: '#0A0F14' } },
-              error: { iconTheme: { primary: '#FF5252', secondary: '#0A0F14' } }
-            }}
-          />
         </BrowserRouter>
       </AuthProvider>
     </ErrorBoundary>

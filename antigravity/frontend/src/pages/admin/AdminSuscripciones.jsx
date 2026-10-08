@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
-import toast from 'react-hot-toast';
+import Toast from '../../components/Toast';
 import './AdminSuscripciones.css';
 
 export default function AdminSuscripciones() {
   const navigate = useNavigate();
   const [suscripciones, setSuscripciones] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
   const [filtros, setFiltros] = useState({
     plan: '',
     estado: ''
@@ -34,7 +35,7 @@ export default function AdminSuscripciones() {
       setStats(data.stats || { mrr: 0, churn_mes: 0, trials_activos: 0 });
     } catch (error) {
       console.error('Error loading suscripciones:', error);
-      toast.error('Error al cargar suscripciones');
+      setToast({ type: 'error', message: 'Error al cargar suscripciones' });
     } finally {
       setLoading(false);
     }
@@ -69,10 +70,10 @@ export default function AdminSuscripciones() {
   const cambiarPlan = async (id, nuevoPlan) => {
     try {
       await apiService.put(`/api/admin/suscripciones/${id}`, { plan: nuevoPlan });
-      toast.success('Plan actualizado');
+      setToast({ type: 'success', message: 'Plan actualizado' });
       loadSuscripciones();
     } catch (error) {
-      toast.error('Error al cambiar plan');
+      setToast({ type: 'error', message: 'Error al cambiar plan' });
     }
   };
 
@@ -80,10 +81,10 @@ export default function AdminSuscripciones() {
     if (!confirm('¿Estás seguro de que quieres cancelar esta suscripción?')) return;
     try {
       await apiService.put(`/api/admin/suscripciones/${id}`, { estado: 'cancelada' });
-      toast.success('Suscripción cancelada');
+      setToast({ type: 'success', message: 'Suscripción cancelada' });
       loadSuscripciones();
     } catch (error) {
-      toast.error('Error al cancelar');
+      setToast({ type: 'error', message: 'Error al cancelar' });
     }
   };
 
@@ -108,6 +109,7 @@ export default function AdminSuscripciones() {
 
   return (
     <div className="admin-suscripciones">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
       <div className="admin-header">
         <h1>Suscripciones</h1>
         <p>Gestión de planes y suscripciones</p>

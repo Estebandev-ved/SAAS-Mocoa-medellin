@@ -1,9 +1,11 @@
 import Toast from '../components/Toast';
+import TipNova from '../components/TipNova';
 import AvatarEditor from '../components/avatar/AvatarEditor';
 import OwnerAvatar from '../components/avatar/OwnerAvatar';
 import Illustration from '../components/Illustration';
 import { sanitizeAvatar } from '../components/avatar/avatarConfig';
-import { useState, useEffect, useCallback } from 'react';
+import { exportAvatarPng } from '../components/avatar/exportAvatar';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -47,6 +49,7 @@ import {
   Info,
   ArrowLeft,
   Smile,
+  Download,
 } from 'lucide-react';
 
 const TABS = [
@@ -163,8 +166,15 @@ function NegocioTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
+  // La dirección del local solo sirve para el punto de recogida de los domicilios,
+  // así que solo se pide en planes que los incluyen (mismo criterio que DomiciliosPage).
+  const [conDomicilios, setConDomicilios] = useState(false);
 
   useEffect(() => {
+    api
+      .get('/business/plan')
+      .then((res) => setConDomicilios((res.data?.plan?.tipo || 'starter') !== 'starter'))
+      .catch(() => {});
     api
       .get('/business/perfil')
       .then((res) => {
@@ -203,6 +213,7 @@ function NegocioTab() {
           onClose={() => setToast(null)}
         />
       )}
+      <TipNova id="ajustes">Configura acá los datos de tu negocio, tu avatar, cómo responde el bot y a qué números. Los cambios se guardan por sección — no olvides el botón "Guardar" de cada pestaña.</TipNova>
       <GlassCard>
         <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
           <Building2 className="w-5 h-5 text-accent" />
@@ -235,22 +246,6 @@ function NegocioTab() {
                 placeholder="+57 300 123 4567"
               />
             </FormField>
-            <FormField label="NIT" icon={Hash} mono>
-              <InputField
-                name="nit"
-                value={form.nit}
-                onChange={handleChange}
-                placeholder="900123456-7"
-              />
-            </FormField>
-            <FormField label="Razón Social" icon={FileText}>
-              <InputField
-                name="razon_social"
-                value={form.razon_social}
-                onChange={handleChange}
-                placeholder="Razón social S.A.S"
-              />
-            </FormField>
             <FormField label="Tipo de Negocio" icon={Info}>
               <InputField
                 name="tipo_negocio"
@@ -275,14 +270,16 @@ function NegocioTab() {
                 placeholder="Cundinamarca"
               />
             </FormField>
-            <FormField label="Dirección" icon={MapPin}>
-              <InputField
-                name="direccion"
-                value={form.direccion}
-                onChange={handleChange}
-                placeholder="Calle 123 #45-67"
-              />
-            </FormField>
+            {conDomicilios && (
+              <FormField label="Dirección del local (punto de recogida de domicilios)" icon={MapPin}>
+                <InputField
+                  name="direccion"
+                  value={form.direccion}
+                  onChange={handleChange}
+                  placeholder="Calle 123 #45-67"
+                />
+              </FormField>
+            )}
             <FormField label="Teléfono" icon={Phone}>
               <InputField
                 name="telefono"
@@ -343,7 +340,9 @@ function AvatarTab() {
   const { user, updateUser } = useAuth();
   const [avatar, setAvatar] = useState(() => sanitizeAvatar(user?.avatar));
   const [saving, setSaving] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [toast, setToast] = useState(null);
+  const exportRef = useRef(null);
 
   const handleSave = async () => {
     setSaving(true);
@@ -358,6 +357,23 @@ function AvatarTab() {
     }
   };
 
+  // Descarga el avatar como PNG (foto de perfil de WhatsApp, firmas de correo, etc.)
+  // — el SVG por sí solo no sirve para eso. Se exporta desde un nodo aparte, oculto,
+  // en vez del que ve el usuario en la vista previa, para no depender de qué tan
+  // grande esté renderizado ese SVG en pantalla.
+  const handleDownload = async () => {
+    const svgEl = exportRef.current?.querySelector('svg');
+    if (!svgEl) return;
+    setDownloading(true);
+    try {
+      await exportAvatarPng(svgEl, 'mi-avatar-noma.png');
+    } catch {
+      setToast({ type: 'error', message: 'No se pudo generar la imagen' });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
@@ -367,10 +383,24 @@ function AvatarTab() {
           Tu personaje
         </h3>
         <p className="text-muted text-sm mb-8 max-w-xl">
-          Es la cara que te saluda en el panel. Hazlo parecido a ti: cuerpo, piel, pelo, barba, gafas, tatuajes y ropa.
+          Es la cara que te saluda en el panel. Hazlo parecido a ti: cuerpo, piel, pelo, barba, gafas, aretes, pecas, gorra, tatuajes y ropa.
         </p>
         <AvatarEditor value={avatar} onChange={setAvatar} />
-        <div className="flex justify-end mt-8">
+        <div style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)' }} aria-hidden="true">
+          <div ref={exportRef}>
+            <OwnerAvatar config={avatar} variant="busto" height={480} />
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 mt-8">
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={downloading}
+            className="h-11 px-6 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold inline-flex items-center gap-2 border border-[#C9C9C9] cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Descargar imagen
+          </button>
           <button
             type="button"
             onClick={handleSave}
@@ -854,25 +884,42 @@ function WhatsAppTab() {
 function PagoTab() {
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [facturacion, setFacturacion] = useState({ nit: '', razon_social: '' });
+  const [guardando, setGuardando] = useState(false);
+  const [toast, setToast] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    api
-      .get('/business/plan')
-      .then((res) => setPlan(res.data.plan || res.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      api.get('/business/plan').then((res) => setPlan(res.data.plan || res.data)).catch(() => {}),
+      api
+        .get('/business/perfil')
+        .then((res) => {
+          const n = res.data.negocio || res.data;
+          setFacturacion({ nit: n.nit || '', razon_social: n.razon_social || '' });
+        })
+        .catch(() => {}),
+    ]).finally(() => setLoading(false));
   }, []);
+
+  const guardarFacturacion = async (e) => {
+    e.preventDefault();
+    setGuardando(true);
+    try {
+      await api.put('/business/perfil', facturacion);
+      setToast({ type: 'success', message: 'Datos de facturación guardados' });
+    } catch {
+      setToast({ type: 'error', message: 'No se pudieron guardar los datos de facturación' });
+    } finally {
+      setGuardando(false);
+    }
+  };
 
   if (loading) return <LoadingSpinner />;
 
-  const mockMethods = [
-    { id: 1, tipo: 'Visa', ultimos: '4242', expira: '12/27' },
-    { id: 2, tipo: 'Mastercard', ultimos: '8888', expira: '03/28' },
-  ];
-
   return (
     <div className="space-y-8">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
       <GlassCard>
         <h3 className="font-head text-xl text-text mb-6 flex items-center gap-3">
           <CreditCard className="w-5 h-5 text-accent" />
@@ -883,18 +930,22 @@ function PagoTab() {
             <div className="flex items-center justify-between p-5 rounded-xl bg-[#FDECEA] border border-accent/20">
               <div>
                 <p className="font-head text-2xl text-text">
-                  {plan.nombre || 'Plan Básico'}
+                  {plan.nombre || 'Plan actual'}
                 </p>
-                <p className="text-sm font-body text-muted mt-1">
-                  {plan.descripcion || 'Funcionalidades esenciales para tu negocio'}
-                </p>
+                {plan.en_trial && (
+                  <p className="text-sm font-body text-muted mt-1">
+                    Prueba gratis: te quedan {plan.dias_trial_restantes} día{plan.dias_trial_restantes === 1 ? '' : 's'}
+                  </p>
+                )}
               </div>
-              <div className="text-right">
-                <p className="font-mono text-3xl text-accent font-bold">
-                  ${plan.precio || '49.990'}
-                </p>
-                <p className="text-sm font-body text-muted">/mes</p>
-              </div>
+              {plan.precio > 0 && (
+                <div className="text-right">
+                  <p className="font-mono text-3xl text-accent font-bold">
+                    ${Number(plan.precio).toLocaleString('es-CO')}
+                  </p>
+                  <p className="text-sm font-body text-muted">/mes</p>
+                </div>
+              )}
             </div>
             {plan.limite_mensajes && (
               <div className="grid grid-cols-2 gap-4">
@@ -904,12 +955,14 @@ function PagoTab() {
                     {plan.mensajes_usados || 0} / {plan.limite_mensajes}
                   </p>
                 </div>
-                <div className="p-4 rounded-xl bg-white border border-[#C9C9C9]">
-                  <p className="text-sm font-body text-muted">Próxima facturación</p>
-                  <p className="font-mono text-text text-lg mt-1">
-                    {plan.fecha_renovacion || '01/10/2026'}
-                  </p>
-                </div>
+                {plan.fin && (
+                  <div className="p-4 rounded-xl bg-white border border-[#C9C9C9]">
+                    <p className="text-sm font-body text-muted">Plan vigente hasta</p>
+                    <p className="font-mono text-text text-lg mt-1">
+                      {new Date(plan.fin).toLocaleDateString('es-CO')}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -922,7 +975,7 @@ function PagoTab() {
         <div className="flex items-center justify-between mb-6">
           <h3 className="font-head text-xl text-text flex items-center gap-3">
             <CreditCardIcon className="w-5 h-5 text-accent" />
-            Métodos de Pago
+            Suscripción y pagos
           </h3>
           <button
             onClick={() => navigate('/suscripcion')}
@@ -932,25 +985,49 @@ function PagoTab() {
             Gestionar Suscripción
           </button>
         </div>
-        <div className="space-y-3">
-          {mockMethods.map((m) => (
-            <div
-              key={m.id}
-              className="flex items-center justify-between p-4 rounded-xl bg-white border border-[#C9C9C9]"
+        <p className="text-sm text-muted">
+          Para cambiar de plan, pagar o cancelar, entra a Gestionar Suscripción.
+        </p>
+      </GlassCard>
+
+      <GlassCard>
+        <h3 className="font-head text-xl text-text mb-2 flex items-center gap-3">
+          <FileText className="w-5 h-5 text-accent" />
+          Datos de facturación
+        </h3>
+        <p className="text-sm text-muted mb-6 max-w-xl">
+          Opcionales hasta que pagues: son los que irán en tus facturas.
+        </p>
+        <form onSubmit={guardarFacturacion} className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <FormField label="NIT" icon={Hash} mono>
+              <InputField
+                name="nit"
+                value={facturacion.nit}
+                onChange={(e) => setFacturacion((p) => ({ ...p, nit: e.target.value }))}
+                placeholder="900123456-7"
+              />
+            </FormField>
+            <FormField label="Razón Social" icon={FileText}>
+              <InputField
+                name="razon_social"
+                value={facturacion.razon_social}
+                onChange={(e) => setFacturacion((p) => ({ ...p, razon_social: e.target.value }))}
+                placeholder="Razón social S.A.S"
+              />
+            </FormField>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={guardando}
+              className="h-11 px-6 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold inline-flex items-center gap-2 border-none cursor-pointer transition-colors disabled:bg-[#F0F0F0] disabled:text-muted disabled:cursor-not-allowed"
             >
-              <div className="flex items-center gap-3">
-                <CreditCard className="w-5 h-5 text-muted" />
-                <div>
-                  <p className="font-head text-text text-sm">{m.tipo}</p>
-                  <p className="font-mono text-xs text-muted">
-                    •••• •••• •••• {m.ultimos}
-                  </p>
-                </div>
-              </div>
-              <span className="font-mono text-xs text-muted">Exp: {m.expira}</span>
-            </div>
-          ))}
-        </div>
+              {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Guardar datos
+            </button>
+          </div>
+        </form>
       </GlassCard>
     </div>
   );
@@ -1320,6 +1397,15 @@ export default function AjustesPage() {
 
           <main className="min-w-0">
             <ActiveComponent />
+            <p className="text-xs text-muted text-center mt-8">
+              <a href="/terminos" target="_blank" rel="noopener noreferrer" className="hover:text-text underline">
+                Términos y condiciones
+              </a>
+              {' · '}
+              <a href="/privacidad" target="_blank" rel="noopener noreferrer" className="hover:text-text underline">
+                Tratamiento de datos
+              </a>
+            </p>
           </main>
         </div>
       </div>

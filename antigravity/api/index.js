@@ -52,9 +52,19 @@ app.use('/api', apiRateLimit);
 // Logger de auditoría
 app.use(auditLogger);
 
+// Efipay webhook - igual que el de Stripe: la firma HMAC es sobre el body crudo, así que
+// va ANTES de express.json. Cualquier content-type (Efipay no garantiza application/json).
+app.post('/api/webhook/efipay', express.raw({ type: () => true, limit: '1mb' }), (req, res) => {
+    require('./services/efipay').manejarWebhook(req, res);
+});
+
 // Stripe webhook - DEBE ir ANTES de express.json para recibir body raw
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const billing = require('./services/billing');
+    if (!billing.STRIPE_CONFIGURADO) {
+        return res.status(400).json({ error: 'Stripe no está configurado' });
+    }
+    const stripe = billing.stripe;
     const sig = req.headers['stripe-signature'];
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -69,34 +79,16 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
     try {
         if (event.type === 'checkout.session.completed') {
             const session = event.data.object;
-            const { negocio_id, plan } = session.metadata;
-            const now = new Date();
-            const fin = new Date(now);
-            fin.setMonth(fin.getMonth() + 1);
-
-            await db.execute(
-                `UPDATE negocios SET plan = ?, suscripcion_activa = 1, suscripcion_inicio = ?, suscripcion_fin = ?, stripe_customer_id = ? WHERE id = ?`,
-                [plan, now, fin, session.customer, negocio_id]
-            );
-
-            await db.execute(
-                `UPDATE suscripciones SET estado = 'activa', plan = ?, pago_inicio = ?, pago_fin = ?, stripe_sub_id = ? WHERE negocio_id = ? AND estado IN ('trial','vencida') ORDER BY id DESC LIMIT 1`,
-                [plan, now, fin, session.subscription, negocio_id]
-            );
-
-            const { getPlanPrice } = require('../config/planConfig');
-            const invoiceNum = `INV-${Date.now()}-${negocio_id}`;
-            await db.execute(
-                `INSERT INTO invoices (negocio_id, numero, plan, monto, estado, metodo_pago, stripe_invoice_id, fecha_pago, fecha_vencimiento, descripcion) VALUES (?, ?, ?, ?, 'pagada', 'stripe', ?, NOW(), ?, ?)`,
-                [negocio_id, invoiceNum, plan, getPlanPrice(plan), session.payment_intent, fin, `Pago inicial plan ${plan}`]
-            );
-
-            await db.execute(
-                `INSERT INTO billing_history (negocio_id, tipo, plan_nuevo, monto, descripcion) VALUES (?, 'payment_success', ?, ?, ?)`,
-                [negocio_id, plan, getPlanPrice(plan), `Pago exitoso plan ${plan}`]
-            );
-
-            console.log(`[Stripe] Pago exitoso: negocio ${negocio_id}, plan ${plan}`);
+            const { negocio_id, plan } = session.metadata || {};
+            if (negocio_id && billing.planValido(plan)) {
+                await db.execute('UPDATE negocios SET stripe_customer_id = ? WHERE id = ?', [session.customer, negocio_id]);
+                await billing.activarPlan(parseInt(negocio_id, 10), plan, {
+                    metodo: 'stripe',
+                    stripeSubId: session.subscription,
+                    stripePaymentIntent: session.payment_intent,
+                });
+                console.log(`[Stripe] Pago exitoso: negocio ${negocio_id}, plan ${plan}`);
+            }
         }
 
         if (event.type === 'invoice.payment_failed') {
@@ -107,7 +99,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
                 await db.execute(`UPDATE negocios SET suscripcion_activa = 0 WHERE id = ?`, [negocioId]);
                 await db.execute(
                     `INSERT INTO billing_history (negocio_id, tipo, monto, descripcion) VALUES (?, 'payment_failed', ?, ?)`,
-                    [negocioId, invoice.amount_due, `Pago fallido - ${invoice.failure_reason}`]
+                    [negocioId, invoice.amount_due / 100, 'Pago fallido en Stripe']
                 );
                 console.log(`[Stripe] Pago fallido: negocio ${negocioId}`);
             }
@@ -253,6 +245,8 @@ const analyticsAdvancedRoutes = require('./routes/analyticsAdvanced');
 const telegramRoutes = require('./routes/telegram');
 const instagramRoutes = require('./routes/instagram');
 const voiceRoutes = require('./routes/voice');
+const restaurantesRoutes = require('./routes/restaurantes');
+const cajaRoutes = require('./routes/caja');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/automations', automationsToggleRoutes);
@@ -277,6 +271,8 @@ app.use('/api/analytics', analyticsAdvancedRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/instagram', instagramRoutes);
 app.use('/api/voice', voiceRoutes);
+app.use('/api/restaurantes', restaurantesRoutes);
+app.use('/api/caja', cajaRoutes);
 // automationsRoutes define sus propios prefijos internos (/automatizaciones,
 // /campañas) y se monta en la raíz /api, pero su router aplica
 // `router.use(verificarAuth)` SIN restringir la ruta — eso exigía login de
@@ -431,6 +427,15 @@ io.on('connection', (socket) => {
         socket.on('domicilio_nuevo', (data) => {
             const room = `negocio_${data.negocio_id}`;
             io.to(room).emit('domicilio_nuevo', data);
+        });
+
+        // Pedido con pago ya verificado ("tipo Rappi": hay dinero real, hay que
+        // prepararlo ya) — ver instance-manager/socketEmitter.js. El evento
+        // 'nuevo_pedido' de arriba ya existía (y `OrdersPage.jsx` ya lo escucha);
+        // nada lo emitía todavía porque `crearPedido()` nunca llamaba al emisor.
+        socket.on('pedido_confirmado', (data) => {
+            const room = `negocio_${data.negocio_id}`;
+            io.to(room).emit('pedido_confirmado', data);
         });
 
         return;

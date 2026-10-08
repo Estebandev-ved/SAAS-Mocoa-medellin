@@ -41,18 +41,28 @@ async function obtenerConfigNegocio(negocioId) {
             [negocioId]
         );
         const [productos] = await db.execute(
-            `SELECT nombre, precio, descripcion, stock
+            `SELECT id, nombre, precio, descripcion, stock, categoria, restaurante_id
              FROM productos WHERE negocio_id = ? AND activo = 1`,
             [negocioId]
         );
         const moduloDomicilios = await obtenerModuloDomicilios(negocioId);
+
+        // Empresa de domicilios con varios restaurantes (db/migrate_marketplace.js):
+        // el modo "elige tu restaurante" se activa solo con tener filas acá, sin
+        // bandera aparte que se pueda desincronizar de la realidad.
+        const [restaurantes] = await db.execute(
+            `SELECT id, nombre, descripcion, categoria FROM restaurantes WHERE negocio_id = ? AND activo = 1 ORDER BY nombre`,
+            [negocioId]
+        );
+
         return {
             negocio: negocios[0] || {},
             productos,
-            moduloDomicilios
+            moduloDomicilios,
+            restaurantes,
         };
     } catch (error) {
-        return { negocio: {}, productos: {}, moduloDomicilios: { activo: false } };
+        return { negocio: {}, productos: {}, moduloDomicilios: { activo: false }, restaurantes: [] };
     }
 }
 
@@ -170,6 +180,9 @@ function construirSystemPrompt(config, contexto) {
     if (config.negocio.numero_bancolombia) {
         prompt += `\nBancolombia: ${config.negocio.numero_bancolombia}`;
     }
+    if (config.restauranteActual) {
+        prompt += `\n\nEl cliente ya eligió el restaurante *${config.restauranteActual.nombre}*: todo lo que recomiendes y vendas es de ese restaurante, no de otro.`;
+    }
     if (config.productos.length > 0) {
         prompt += `\n\n=== PRODUCTOS DISPONIBLES ===`;
         config.productos.forEach(p => {
@@ -191,7 +204,7 @@ Este negocio SÍ hace entregas a domicilio. Antes de dar por cerrado un pedido, 
     return prompt;
 }
 
-async function procesarMensaje(mensaje, negocioId, clienteId, contexto = []) {
+async function procesarMensaje(mensaje, negocioId, clienteId, contexto = [], conversacionId = null) {
     const apiKey = getApiKey();
     console.log(`[Gemini] procesarMensaje called. Key exists: ${!!apiKey}, length: ${apiKey.length}`);
 
@@ -207,6 +220,30 @@ async function procesarMensaje(mensaje, negocioId, clienteId, contexto = []) {
     try {
         const config = await obtenerConfigNegocio(negocioId);
         config.contexto = contexto; // Pass conversation context for order matching
+
+        // Bloqueo suave: un negocio recién registrado que todavía no cargó su
+        // catálogo (ni tiene el texto libre de "Productos y Servicios" en
+        // Ajustes → Bot como respaldo) no tiene nada real que el bot pueda
+        // vender. Antes el bot igual intentaba conversar con la IA sin saber
+        // qué ofrecer, arriesgando inventarse productos o precios. No aplica a
+        // una empresa de domicilios con restaurantes (cada uno trae su propia
+        // carta, se valida más abajo en manejarFlujoRestaurante).
+        const sinNadaQueVender = config.productos.length === 0
+            && config.restaurantes.length === 0
+            && !config.negocio.productos_servicios?.trim();
+        if (sinNadaQueVender) {
+            return {
+                respuesta: '¡Hola! Gracias por escribirnos 🙂 Estamos terminando de configurar nuestro catálogo, muy pronto podremos atenderte por acá. Mientras tanto, contáctanos directamente si es urgente.',
+                intencion: 'sin_catalogo', agente_usado: 'none', datos_accion: null, tokens_usados: 0,
+                tiempo_ms: Date.now() - inicio
+            };
+        }
+
+        // Empresa de domicilios con varios restaurantes: hay que saber cuál antes
+        // de poder recomendar nada de su carta. Si config.restaurantes está vacío
+        // (negocio de un solo local, el caso normal) esto no hace nada.
+        const flujoRestaurante = await manejarFlujoRestaurante(mensaje, config, contexto, conversacionId);
+        if (flujoRestaurante) return { ...flujoRestaurante, tiempo_ms: Date.now() - inicio };
 
         // Flujo determinista de confirmación de dirección (no consume tokens de IA).
         const flujoDireccion = await manejarFlujoDireccion(mensaje, config, contexto, clienteId, inicio);
@@ -397,6 +434,94 @@ async function manejarFlujoDireccion(mensaje, config, contexto, clienteId, inici
     return null;
 }
 
+// ===== Selección de restaurante (empresa de domicilios con varios locales) =====
+// Mismo patrón que manejarFlujoDireccion: un flujo determinista, sin gastar
+// tokens de IA, que resuelve el mensaje directamente o devuelve null para que
+// siga el flujo normal. El restaurante elegido se guarda en la propia
+// conversación (conversaciones.restaurante_id) — dura mientras esa conversación
+// siga activa, igual que el resto del contexto de venta.
+const CAMBIAR_RESTAURANTE_KEYWORDS = ['cambiar restaurante', 'otro restaurante', 'ver restaurantes', 'ver locales', 'menu de otro'];
+
+function listaRestaurantesTexto(restaurantes) {
+    return restaurantes
+        .map((r, i) => `${i + 1}. *${r.nombre}*${r.categoria ? ` (${r.categoria})` : ''}${r.descripcion ? `\n   ${r.descripcion}` : ''}`)
+        .join('\n');
+}
+
+function resolverRestauranteElegido(mensaje, restaurantes) {
+    const msg = mensaje.toLowerCase().trim();
+
+    // Por número: "2", "el 2", "opcion 2"
+    const numMatch = msg.match(/\b(\d{1,2})\b/);
+    if (numMatch) {
+        const idx = parseInt(numMatch[1], 10) - 1;
+        if (restaurantes[idx]) return restaurantes[idx];
+    }
+
+    // Por nombre, exacto o parcial
+    for (const r of restaurantes) {
+        if (msg.includes(r.nombre.toLowerCase())) return r;
+    }
+    for (const r of restaurantes) {
+        const palabras = r.nombre.toLowerCase().split(' ').filter(p => p.length > 3);
+        if (palabras.some(p => msg.includes(p))) return r;
+    }
+
+    return null;
+}
+
+async function manejarFlujoRestaurante(mensaje, config, contexto, conversacionId) {
+    if (!config.restaurantes || config.restaurantes.length === 0) return null;
+
+    const base = { intencion: 'consulta', agente_usado: 'ventas', tokens_usados: 0, datos_accion: null };
+    const msg = mensaje.toLowerCase().trim();
+
+    let restauranteIdActual = null;
+    if (conversacionId) {
+        try {
+            const [rows] = await db.execute('SELECT restaurante_id FROM conversaciones WHERE id = ?', [conversacionId]);
+            restauranteIdActual = rows[0]?.restaurante_id || null;
+        } catch (e) { /* si falla la lectura, se trata como si no hubiera elegido todavía */ }
+    }
+
+    if (restauranteIdActual && CAMBIAR_RESTAURANTE_KEYWORDS.some(k => msg.includes(k))) {
+        if (conversacionId) {
+            await db.execute('UPDATE conversaciones SET restaurante_id = NULL WHERE id = ?', [conversacionId]);
+        }
+        restauranteIdActual = null;
+    }
+
+    if (restauranteIdActual) {
+        // Ya eligió: se limita el catálogo a ese restaurante y sigue el flujo normal
+        // (esta función no resuelve el mensaje, solo deja config lista).
+        config.productos = config.productos.filter(p => p.restaurante_id === restauranteIdActual);
+        config.restauranteActual = config.restaurantes.find(r => r.id === restauranteIdActual) || null;
+        return null;
+    }
+
+    // Todavía no eligió: si el mensaje ya nombra un restaurante de la lista, se
+    // guarda y se confirma sin gastar una llamada a la IA en este turno.
+    const elegido = resolverRestauranteElegido(mensaje, config.restaurantes);
+    if (elegido) {
+        if (conversacionId) {
+            await db.execute('UPDATE conversaciones SET restaurante_id = ? WHERE id = ?', [elegido.id, conversacionId]);
+        }
+        config.productos = config.productos.filter(p => p.restaurante_id === elegido.id);
+        config.restauranteActual = elegido;
+        return {
+            ...base,
+            respuesta: `¡Perfecto! Estás pidiendo en *${elegido.nombre}* 🍽️. Cuéntame qué se te antoja, o escribe *ver carta* para que te muestre todo.`,
+        };
+    }
+
+    // No eligió todavía y no se entendió cuál: se le muestra la lista (primer
+    // mensaje de la conversación, o cualquier intento que no coincidió con nada).
+    return {
+        ...base,
+        respuesta: `¡Hola! 👋 Estos son los restaurantes disponibles hoy:\n\n${listaRestaurantesTexto(config.restaurantes)}\n\nEscríbeme el número o el nombre del que quieras.`,
+    };
+}
+
 async function construirAccionPedido(mensaje, config, clienteId, opts = {}) {
     const requiereDomicilio = !!config.moduloDomicilios?.activo;
     // Con domicilios activos la dirección solo cuenta si el cliente ya la
@@ -436,7 +561,13 @@ async function construirAccionPedido(mensaje, config, clienteId, opts = {}) {
         } catch (e) { /* no bloquea la creación del pedido si esto falla */ }
     }
 
-    return { tipo: 'crear_pedido', productos: productosEncontrados, cliente_id: clienteId, direccion_entrega: direccionEntrega };
+    return {
+        tipo: 'crear_pedido',
+        productos: productosEncontrados,
+        cliente_id: clienteId,
+        direccion_entrega: direccionEntrega,
+        restaurante_id: config.restauranteActual?.id || null,
+    };
 }
 
 async function verificarPagoConImagen(imagenBase64, negocioId, totalEsperado) {
@@ -476,4 +607,77 @@ async function verificarPagoConImagen(imagenBase64, negocioId, totalEsperado) {
     }
 }
 
-module.exports = { procesarMensaje, verificarPagoConImagen };
+// Carga rápida de catálogo: el dueño manda una foto de su carta/menú físico (o
+// una lista de precios) y la IA la convierte en productos listos para revisar
+// y guardar — evita tener que escribir cada plato a mano. El dueño siempre ve
+// y confirma la lista extraída antes de que se guarde nada (ver
+// POST /productos/importar-foto), porque la IA puede leer mal un precio o un
+// nombre borroso.
+async function extraerCatalogoDeImagen(imagenBase64) {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+        return { items: [], error: 'Servicio de IA no configurado' };
+    }
+
+    try {
+        const instrucciones = `Esta imagen es la carta o el menú de precios de un negocio colombiano. `
+            + `Identifica cada producto o servicio con su precio. Ignora textos que no sean productos `
+            + `(horarios, teléfonos, promociones sin precio claro, decoración). Si un ítem tiene varias `
+            + `presentaciones o tamaños con precios distintos, sepáralos en productos distintos con el `
+            + `tamaño en el nombre. Agrupa por categoría usando los títulos de sección que ya traiga la `
+            + `carta (Entradas, Platos fuertes, Bebidas, Postres, etc.); si no hay secciones, usa "Otros". `
+            + `El precio debe ser el número final en pesos colombianos, sin puntos ni símbolo de moneda. `
+            + `Responde SOLO con JSON, sin explicación ni texto adicional: `
+            + `{"items": [{"nombre": "", "descripcion": "", "precio": 0, "categoria": ""}]}`;
+
+        const body = {
+            contents: [{
+                parts: [
+                    { text: instrucciones },
+                    { inlineData: { mimeType: 'image/jpeg', data: imagenBase64 } }
+                ]
+            }]
+        };
+
+        const controller = new AbortController();
+        // Leer una carta entera (varias secciones, muchos ítems) tarda más que
+        // verificar un solo comprobante de pago — con 20-30s se cortaba antes
+        // de que el modelo terminara.
+        const timeout = setTimeout(() => controller.abort(), 55000);
+
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal }
+        );
+        clearTimeout(timeout);
+
+        if (!response.ok) return { items: [], error: 'No se pudo leer la imagen' };
+
+        const data = await response.json();
+        const texto = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const jsonMatch = texto.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) return { items: [], error: 'No se encontraron productos en la imagen' };
+
+        const parsed = JSON.parse(jsonMatch[0]);
+        const items = Array.isArray(parsed.items) ? parsed.items : [];
+
+        // La IA puede alucinar campos o tipos raros: se sanea acá, no se confía
+        // el string crudo hasta la base de datos.
+        const limpios = items
+            .map((it) => ({
+                nombre: (it?.nombre || '').toString().trim().slice(0, 150),
+                descripcion: (it?.descripcion || '').toString().trim().slice(0, 500),
+                precio: Math.max(0, Math.round(Number(it?.precio) || 0)),
+                categoria: (it?.categoria || 'Otros').toString().trim().slice(0, 80),
+            }))
+            .filter((it) => it.nombre && it.precio > 0)
+            .slice(0, 60); // una carta real no debería superar esto; evita respuestas desbordadas
+
+        if (limpios.length === 0) return { items: [], error: 'No se encontraron productos con precio en la imagen' };
+        return { items: limpios };
+    } catch (error) {
+        return { items: [], error: 'Error: ' + error.message };
+    }
+}
+
+module.exports = { procesarMensaje, verificarPagoConImagen, extraerCatalogoDeImagen };

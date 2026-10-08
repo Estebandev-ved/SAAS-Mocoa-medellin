@@ -1,4 +1,6 @@
+import TipNova from '../components/TipNova';
 import EmptyState from '../components/EmptyState';
+import PageLoader from '../components/PageLoader';
 import Toast from '../components/Toast';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,13 +28,25 @@ import {
   AlertTriangle,
   Star,
   CheckCircle2,
+  Settings,
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { usePlan } from '../components/PlanGate';
+import { useHitos } from '../context/HitosContext';
 import Illustration from '../components/Illustration';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3002';
+
+// Mismas categorías que el domiciliario elige al reportar un problema
+// (antigravity/frontend/PortalDomiciliario.jsx > TIPOS_PROBLEMA).
+const TIPO_INCIDENTE_LABEL = {
+  direccion: 'No encuentra la dirección',
+  cliente_ausente: 'Cliente no contesta',
+  robo_sospecha: 'Posible robo o fraude',
+  accidente: 'Accidente del domiciliario',
+  otro: 'Otro problema',
+};
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -84,6 +98,7 @@ function MapAutoFit({ points }) {
 export default function DomiciliosPage() {
   const { hasFeature } = usePlan();
   const { user } = useAuth();
+  const { celebrar } = useHitos();
   const navigate = useNavigate();
   const [apiPlan, setApiPlan] = useState(null);
 
@@ -100,7 +115,7 @@ export default function DomiciliosPage() {
   }, []);
 
   const effectivePlan = apiPlan || 'starter';
-  const domiciliosAllowed = effectivePlan !== 'starter';
+  const domiciliosAllowed = effectivePlan !== 'starter' && effectivePlan !== 'emprendedor';
 
   const [activeTab, setActiveTab] = useState('pendientes');
   const [pendientes, setPendientes] = useState([]);
@@ -112,6 +127,9 @@ export default function DomiciliosPage() {
   const [loading, setLoading] = useState(true);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDriverForm, setShowDriverForm] = useState(false);
+  const [showTarifaForm, setShowTarifaForm] = useState(false);
+  const [tarifaForm, setTarifaForm] = useState({ tarifa_por_km: '', tarifa_minima: '', tarifa_maxima: '', valor_fijo: '' });
+  const [tarifaSaving, setTarifaSaving] = useState(false);
   const [driverForm, setDriverForm] = useState({ nombre: '', telefono: '', pin: '' });
   const [assignLoading, setAssignLoading] = useState(false);
   const [selectedDomicilioId, setSelectedDomicilioId] = useState(null);
@@ -130,7 +148,9 @@ export default function DomiciliosPage() {
       ]);
       setPendientes(activeRes.data?.data?.pendientes || []);
       setEnCurso(activeRes.data?.data?.en_curso || []);
-      setCompletados(activeRes.data?.data?.completados || []);
+      const completadosData = activeRes.data?.data?.completados || [];
+      setCompletados(completadosData);
+      if (completadosData.length > 0) celebrar('domicilio');
       setNegocioUbicacion(activeRes.data?.data?.negocio_ubicacion || null);
       setDrivers(driversRes.data?.data || []);
       setIncidentes(incidentesRes.data?.data || []);
@@ -205,6 +225,36 @@ export default function DomiciliosPage() {
       showToast('error', error.response?.data?.error || 'Error al crear domiciliario');
     } finally {
       setAssignLoading(false);
+    }
+  };
+
+  const abrirTarifas = async () => {
+    setShowTarifaForm(true);
+    try {
+      const res = await api.get('/domicilios/modulos/check');
+      const config = res.data?.config ? JSON.parse(res.data.config) : {};
+      setTarifaForm({
+        tarifa_por_km: config.tarifa_por_km ?? '',
+        tarifa_minima: config.tarifa_minima ?? '',
+        tarifa_maxima: config.tarifa_maxima ?? '',
+        valor_fijo: config.valor_fijo ?? '',
+      });
+    } catch {
+      showToast('error', 'No se pudo cargar la configuración actual');
+    }
+  };
+
+  const handleGuardarTarifas = async (e) => {
+    e.preventDefault();
+    try {
+      setTarifaSaving(true);
+      await api.put('/domicilios/modulos/config', tarifaForm);
+      setShowTarifaForm(false);
+      showToast('success', 'Tarifas actualizadas');
+    } catch (error) {
+      showToast('error', error.response?.data?.error || 'Error al guardar las tarifas');
+    } finally {
+      setTarifaSaving(false);
     }
   };
 
@@ -319,6 +369,13 @@ export default function DomiciliosPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={abrirTarifas}
+              className="flex items-center gap-2 bg-bg2 border border-border rounded-lg px-4 py-2 text-text hover:bg-bg3 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              Tarifas
+            </button>
+            <button
               onClick={() => setShowDriverForm(true)}
               className="flex items-center gap-2 bg-accent text-bg px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity"
             >
@@ -334,6 +391,8 @@ export default function DomiciliosPage() {
             </button>
           </div>
         </div>
+
+        <TipNova id="domicilios" className="mb-6">Registra a tus domiciliarios y asígnales los pedidos. Tus clientes pueden seguir su entrega con un enlace de rastreo.</TipNova>
 
         <div className="bg-bg2 border border-border rounded-xl overflow-hidden mb-6 isolate">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
@@ -411,9 +470,7 @@ export default function DomiciliosPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-accent animate-spin" />
-          </div>
+          <PageLoader />
         ) : (
           <AnimatePresence mode="wait">
             {activeTab === 'pendientes' && (
@@ -441,7 +498,10 @@ export default function DomiciliosPage() {
                         <tr key={d.id} className="border-b border-border last:border-0 hover:bg-bg3 transition-colors">
                           <td className="p-4 text-text font-mono text-sm">{d.numero_pedido}</td>
                           <td className="p-4 text-text">{d.cliente_nombre}</td>
-                          <td className="p-4 text-text">{d.direccion_entrega}</td>
+                          <td className="p-4 text-text">
+                            {d.direccion_entrega}
+                            {d.restaurante_nombre && <span className="block text-xs text-muted">Recoger en {d.restaurante_nombre}</span>}
+                          </td>
                           <td className="p-4 text-accent font-semibold">{formatCOP(d.total)}</td>
                           <td className="p-4 text-muted flex items-center gap-1">
                             <Clock className="w-3 h-3" />
@@ -597,18 +657,27 @@ export default function DomiciliosPage() {
                 className="bg-bg2 border border-border rounded-xl overflow-hidden"
               >
                 <div className="divide-y divide-border">
-                  {incidentes.map((inc) => (
+                  {incidentes.map((inc) => {
+                    // La etiqueta viene de lo que el domiciliario reportó (tipo_incidente), no de
+                    // estado_incidente — antes todo caía en "en_disputa" y se mostraba como
+                    // "posible robo" sin importar la causa real (dirección, cliente ausente, etc.)
+                    const esRetraso = inc.estado_incidente === 'retrasado';
+                    const esSospechaRobo = inc.tipo_incidente === 'robo_sospecha';
+                    return (
                     <div key={inc.id} className="p-4 flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <AlertTriangle className="w-4 h-4 text-danger-text" />
                           <span className="font-mono text-sm text-text">{inc.numero_pedido}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${inc.estado_incidente === 'en_disputa' ? 'bg-danger/10 text-danger-text' : 'bg-warn/10 text-warn-text'}`}>
-                            {inc.estado_incidente === 'en_disputa' ? 'Posible pérdida/robo' : 'Retrasado'}
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${esSospechaRobo ? 'bg-danger/10 text-danger-text' : 'bg-warn/10 text-warn-text'}`}>
+                            {esRetraso ? 'Retrasado' : TIPO_INCIDENTE_LABEL[inc.tipo_incidente] || 'Problema reportado'}
                           </span>
                         </div>
                         <p className="text-sm text-text">{inc.cliente_nombre} · {inc.direccion_entrega}</p>
-                        <p className="text-xs text-muted">
+                        {inc.motivo_incidente && (
+                          <p className="text-sm text-muted italic mt-1">"{inc.motivo_incidente}"</p>
+                        )}
+                        <p className="text-xs text-muted mt-1">
                           Domiciliario: {inc.domiciliario_nombre || 'Sin asignar'} {inc.score != null && `(⭐ ${inc.score}, ${inc.strikes} strikes)`}
                         </p>
                       </div>
@@ -623,11 +692,12 @@ export default function DomiciliosPage() {
                           onClick={() => handleResolverIncidente(inc.id, 'robo_confirmado')}
                           className="px-3 py-1.5 rounded-lg text-sm font-medium bg-danger/10 text-danger-text border border-danger/30 hover:bg-danger/20 transition-colors"
                         >
-                          Confirmar robo/pérdida
+                          {esSospechaRobo ? 'Confirmar robo/pérdida' : 'Marcar como grave'}
                         </button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                   {incidentes.length === 0 && (
                     <EmptyState name="exito" size={130} title="Sin incidentes abiertos" description="Todas las entregas van en orden." />
                   )}
@@ -672,8 +742,17 @@ export default function DomiciliosPage() {
                               <Phone className="w-3 h-3" />
                               {driver.telefono}
                             </p>
+                            {driver.calificaciones_recibidas > 0 && (
+                              <p className="text-muted text-xs flex items-center gap-1 mt-0.5">
+                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                                {driver.calificacion_promedio} de sus clientes ({driver.calificaciones_recibidas})
+                              </p>
+                            )}
                           </div>
-                          <span className="flex items-center gap-1 text-sm font-semibold text-warn-text">
+                          <span
+                            className="flex items-center gap-1 text-sm font-semibold text-warn-text"
+                            title="Puntaje interno de cumplimiento (entregas a tiempo, incidentes)"
+                          >
                             <Star className="w-4 h-4 fill-yellow-400" />
                             {driver.score ?? 100}
                           </span>
@@ -856,6 +935,112 @@ export default function DomiciliosPage() {
                         Agregar
                       </>
                     )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {showTarifaForm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000] p-4"
+            onClick={() => setShowTarifaForm(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-bg2 border border-border rounded-xl w-full max-w-md"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <h3 className="text-lg font-semibold text-text">Tarifas de domicilio</h3>
+                <button
+                  onClick={() => setShowTarifaForm(false)}
+                  className="text-muted hover:text-text transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleGuardarTarifas} className="p-4 space-y-4">
+                <p className="text-muted text-sm">
+                  Si defines un valor por km, la tarifa de cada domicilio se calcula con la distancia real de la ruta.
+                  Déjalo vacío para seguir cobrando el valor fijo.
+                </p>
+
+                <div>
+                  <label className="block text-muted text-sm mb-1">Tarifa por km (COP)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={tarifaForm.tarifa_por_km}
+                    onChange={(e) => setTarifaForm({ ...tarifaForm, tarifa_por_km: e.target.value })}
+                    className="w-full bg-bg3 border border-border rounded-lg px-4 py-2 text-text focus:outline-none focus:border-accent transition-colors"
+                    placeholder="Ej: 1600"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-muted text-sm mb-1">Tarifa mínima</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={tarifaForm.tarifa_minima}
+                      onChange={(e) => setTarifaForm({ ...tarifaForm, tarifa_minima: e.target.value })}
+                      className="w-full bg-bg3 border border-border rounded-lg px-4 py-2 text-text focus:outline-none focus:border-accent transition-colors"
+                      placeholder="Opcional"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-muted text-sm mb-1">Tarifa máxima</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={tarifaForm.tarifa_maxima}
+                      onChange={(e) => setTarifaForm({ ...tarifaForm, tarifa_maxima: e.target.value })}
+                      className="w-full bg-bg3 border border-border rounded-lg px-4 py-2 text-text focus:outline-none focus:border-accent transition-colors"
+                      placeholder="Opcional"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-muted text-sm mb-1">Valor fijo de respaldo (COP)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={tarifaForm.valor_fijo}
+                    onChange={(e) => setTarifaForm({ ...tarifaForm, valor_fijo: e.target.value })}
+                    className="w-full bg-bg3 border border-border rounded-lg px-4 py-2 text-text focus:outline-none focus:border-accent transition-colors"
+                    placeholder="Ej: 5000"
+                  />
+                  <p className="text-muted text-xs mt-1">Se usa si no hay tarifa por km, o si no se pudo calcular la ruta.</p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowTarifaForm(false)}
+                    className="flex-1 bg-bg3 text-text py-2 rounded-lg font-medium hover:bg-border transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={tarifaSaving}
+                    className="flex-1 bg-accent text-bg py-2 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                  >
+                    {tarifaSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar'}
                   </button>
                 </div>
               </form>

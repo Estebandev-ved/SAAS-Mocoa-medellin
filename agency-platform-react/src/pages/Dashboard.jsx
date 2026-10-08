@@ -28,11 +28,15 @@ import {
   PowerOff,
   Smartphone,
   Phone,
+  UtensilsCrossed,
+  Store,
 } from 'lucide-react'
 import api, { analyticsService } from '../services/api'
 import { usePlan } from '../components/PlanGate'
+import { useHitos } from '../context/HitosContext'
 import OwnerAvatar from '../components/avatar/OwnerAvatar'
 import ActivationChecklist from '../components/ActivationChecklist'
+import EstadoNegocio from '../components/EstadoNegocio'
 
 const NavItem = ({ icon: Icon, label, active, onClick, locked, lockTooltip }) => (
   <button
@@ -94,6 +98,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const location = useLocation()
   const { plan, hasFeature } = usePlan()
+  const { celebrar } = useHitos()
   const [stats, setStats] = useState({
     ventasHoy: 0,
     pedidosHoy: 0,
@@ -106,9 +111,11 @@ export default function Dashboard() {
   const [botConfig, setBotConfig] = useState(null)
   const [loading, setLoading] = useState(true)
   const [apiPlan, setApiPlan] = useState(null)
+  const [planInfo, setPlanInfo] = useState(null)
+  const [activando, setActivando] = useState(false)
 
   const effectivePlan = apiPlan || plan
-  const domiciliosLocked = effectivePlan === 'starter'
+  const domiciliosLocked = effectivePlan === 'starter' || effectivePlan === 'emprendedor'
 
   const getPlanIcon = () => {
     switch (effectivePlan) {
@@ -118,6 +125,8 @@ export default function Dashboard() {
         return <Star size={16} className="text-[#E53935]" />
       case 'starter':
         return <Shield size={16} className="text-[#A0A0A0]" />
+      case 'emprendedor':
+        return <Store size={16} className="text-[#E53935]" />
       default:
         return <Shield size={16} className="text-[#A0A0A0]" />
     }
@@ -131,6 +140,8 @@ export default function Dashboard() {
         return 'Profesional'
       case 'starter':
         return 'Inicial'
+      case 'emprendedor':
+        return 'Emprendedor'
       default:
         return 'Inicial'
     }
@@ -147,7 +158,7 @@ export default function Dashboard() {
       try {
         setLoading(true)
         const response = await analyticsService.getDaily()
-        const hoy = response?.data?.hoy || {}
+        const hoy = response?.hoy || {}
         setStats({
           ventasHoy: hoy.total_ventas || 0,
           pedidosHoy: hoy.total_pedidos || 0,
@@ -156,6 +167,8 @@ export default function Dashboard() {
           aiProcesados: hoy.ai_procesados || 0,
           cambioVentas: hoy.cambio_ventas || 0,
         })
+        const mensajesTotales = response?.resumen?.mensajes_totales || 0
+        if (mensajesTotales >= 100) celebrar('cien_mensajes')
       } catch (error) {
         console.error('Error fetching analytics:', error)
       } finally {
@@ -188,6 +201,7 @@ export default function Dashboard() {
         const res = await api.get('/business/plan')
         if (res.data?.plan?.tipo) {
           setApiPlan(res.data.plan.tipo)
+          setPlanInfo(res.data.plan)
         }
       } catch (e) {}
     }
@@ -213,12 +227,33 @@ export default function Dashboard() {
       locked: domiciliosLocked,
       lockTooltip: 'Mejora tu plan para acceder a Domicilios'
     },
+    {
+      icon: UtensilsCrossed,
+      label: 'Restaurantes',
+      path: '/restaurantes',
+      locked: domiciliosLocked,
+      lockTooltip: 'Mejora tu plan para acceder a Domicilios'
+    },
+    {
+      icon: Store,
+      label: 'Caja',
+      path: '/caja',
+      locked: effectivePlan !== 'emprendedor',
+      lockTooltip: 'La caja es del plan Emprendedor'
+    },
     { icon: CreditCard, label: 'Suscripcion', path: '/suscripcion' }
   ]
 
   const bottomItems = [
     { icon: Settings, label: 'Ajustes', path: '/ajustes' }
   ]
+
+  const hora = new Date().getHours()
+  const saludo = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches'
+  const resumenHoy =
+    stats.pedidosHoy > 0
+      ? `Hoy llevas ${stats.pedidosHoy} ${stats.pedidosHoy === 1 ? 'pedido' : 'pedidos'} y $${stats.ventasHoy.toLocaleString()} en ventas.`
+      : 'Aún no hay pedidos hoy.'
 
   if (loading) {
     return (
@@ -299,8 +334,9 @@ export default function Dashboard() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-text">
-                Hola, {user?.nombre}!
+                {saludo}, {user?.nombre}!
               </h1>
+              <p className="text-muted mt-1">{resumenHoy}</p>
               <div className="flex items-center gap-4 mt-2">
                 <span className="text-muted">{user?.email}</span>
                 <div className="flex items-center gap-1 px-2 py-1 bg-accent-dim rounded-lg">
@@ -311,7 +347,8 @@ export default function Dashboard() {
             </div>
           </motion.div>
 
-          <ActivationChecklist user={user} />
+          <ActivationChecklist user={user} onActivando={setActivando} />
+          <EstadoNegocio plan={planInfo} activando={activando} domicilios={!domiciliosLocked} />
 
           <motion.div
             variants={containerVariants}
@@ -393,7 +430,7 @@ export default function Dashboard() {
                   </div>
                   {alerta.accion && (
                     <button
-                      onClick={() => navigate('/dashboard/suscripcion')}
+                      onClick={() => navigate('/suscripcion')}
                       className={`px-3 py-1.5 rounded-xl font-mono text-xs flex-shrink-0 transition-all ${
                         alerta.severidad === 'critica'
                           ? 'bg-danger text-white hover:bg-danger/90'

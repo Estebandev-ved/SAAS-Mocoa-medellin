@@ -1,3 +1,4 @@
+import TipNova from '../components/TipNova';
 import EmptyState from '../components/EmptyState';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -106,6 +107,8 @@ const ClientesPage = () => {
                     </button>
                 </div>
 
+                <TipNova id="clientes" className="mb-6">Cada persona que le escribe a tu bot queda registrada aquí con su historial. Tus clientes se crean solos.</TipNova>
+
                 {/* Búsqueda */}
                 <div className="flex gap-4 mb-6">
                     <form onSubmit={(e) => { e.preventDefault(); fetchClientes(); }} className="flex-1 flex gap-2">
@@ -151,8 +154,8 @@ const ClientesPage = () => {
                     </div>
                     <div className="glass p-4 rounded-2xl border border-border">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
-                                <DollarSign className="text-purple-500" size={20} />
+                            <div className="w-10 h-10 bg-info/20 rounded-xl flex items-center justify-center">
+                                <DollarSign className="text-info" size={20} />
                             </div>
                             <div>
                                 <p className="text-xs text-muted">Ingreso Total</p>
@@ -169,6 +172,7 @@ const ClientesPage = () => {
                     </div>
                 ) : clientes.length === 0 ? (
                     <EmptyState
+                        character="lucia"
                         title="No hay clientes"
                         description="Los clientes aparecerán cuando interactúen con tu bot"
                         className="bg-white border border-border rounded-3xl"

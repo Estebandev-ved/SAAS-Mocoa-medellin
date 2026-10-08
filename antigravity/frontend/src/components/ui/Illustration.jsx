@@ -46,3 +46,25 @@ export default function Illustration({ name, size = 160, alt = '', framed = true
     </div>
   );
 }
+
+// Personajes del elenco NOMA de cuerpo entero, sin fondo (para el portal del domiciliario: Mateo).
+import sofia from '../../assets/illustrations/personaje-sofia.svg';
+import mateo from '../../assets/illustrations/personaje-mateo.svg';
+import lucia from '../../assets/illustrations/personaje-lucia.svg';
+import nova from '../../assets/illustrations/personaje-nova.svg';
+
+const CHARACTERS = { sofia, mateo, lucia, nova };
+
+export function Character({ name, height = 280, alt = '', className = '', style }) {
+  const src = CHARACTERS[name];
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      height={height}
+      className={className}
+      style={{ display: 'block', height, width: 'auto', maxWidth: '100%', ...style }}
+    />
+  );
+}

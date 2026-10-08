@@ -1,4 +1,6 @@
+import TipNova from '../components/TipNova';
 import EmptyState from '../components/EmptyState';
+import { Character } from '../components/Illustration';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -120,6 +122,7 @@ const ConversacionesPage = () => {
                         </button>
                     </form>
                 </div>
+                <TipNova id="conversaciones" className="m-3">Aquí ves todo lo que tu bot conversa con tus clientes, con su historial completo.</TipNova>
 
                 <div className="flex-1 overflow-y-auto">
                     {loading ? (
@@ -135,7 +138,13 @@ const ConversacionesPage = () => {
                             action={<button onClick={fetchConversaciones} className="h-11 px-5 rounded-xl bg-accent text-white text-sm font-semibold border-none cursor-pointer hover:bg-accent2 transition-colors">Reintentar</button>}
                         />
                     ) : conversaciones.length === 0 ? (
-                        <EmptyState size={130} title="No hay conversaciones aún" description="Cuando un cliente escriba a tu bot, la conversación aparecerá aquí." />
+                        <div className="flex flex-col items-center text-center py-12 px-4">
+                            <div className="w-[130px] h-[130px] rounded-2xl bg-[#FDECEA] flex items-end justify-center overflow-hidden">
+                                <Character name="lucia" height={140} alt="Lucía, encargada de la atención al cliente" />
+                            </div>
+                            <h3 className="text-xl font-bold mt-6 mb-2">No hay conversaciones aún</h3>
+                            <p className="text-muted text-sm max-w-md">Cuando un cliente escriba a tu bot, Lucía te lo avisa aquí con todo el historial.</p>
+                        </div>
                     ) : (
                         conversaciones.map((conv) => (
                             <motion.div
@@ -199,7 +208,7 @@ const ConversacionesPage = () => {
                                     <Loader2 className="animate-spin text-accent" size={24} />
                                 </div>
                             ) : mensajes.length === 0 ? (
-                                <EmptyState size={130} title="No hay mensajes" description="Esta conversación todavía no tiene mensajes." />
+                                <EmptyState character="lucia" size={130} title="No hay mensajes" description="Esta conversación todavía no tiene mensajes." />
                             ) : (
                                 mensajes.map((msg) => (
                                     <div 

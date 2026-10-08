@@ -10,12 +10,12 @@
   font-family: 'Syne', sans-serif;
   font-size: 28px;
   font-weight: 700;
-  color: #E8F0F7;
+  color: var(--color-text);
   margin: 0 0 8px 0;
 }
 
 .admin-header p {
-  color: #8892A0;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -27,8 +27,8 @@
 }
 
 .kpi-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(0, 255, 209, 0.1);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 24px;
   display: flex;
@@ -45,7 +45,7 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: rgba(0, 255, 209, 0.1);
+  background: var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,12 +67,12 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 28px;
   font-weight: 700;
-  color: #E8F0F7;
+  color: var(--color-text);
 }
 
 .kpi-label {
   font-size: 14px;
-  color: #8892A0;
+  color: var(--text-muted);
 }
 
 .kpi-change {
@@ -85,7 +85,7 @@
 
 .kpi-progress {
   height: 4px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border);
   border-radius: 2px;
   margin-top: 8px;
   overflow: hidden;
@@ -113,13 +113,13 @@
   font-family: 'Syne', sans-serif;
   font-size: 18px;
   font-weight: 600;
-  color: #E8F0F7;
+  color: var(--color-text);
   margin: 0;
 }
 
 .businesses-table {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(0, 255, 209, 0.1);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -136,17 +136,17 @@
 }
 
 .businesses-table th {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-tertiary);
   font-size: 12px;
   font-weight: 600;
-  color: #8892A0;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .businesses-table td {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  color: #E8F0F7;
+  border-top: 1px solid var(--surface);
+  color: var(--color-text);
 }
 
 .business-name {
@@ -175,7 +175,7 @@
 .business-name .email {
   display: block;
   font-size: 12px;
-  color: #8892A0;
+  color: var(--text-muted);
 }
 
 .status-badge {
@@ -228,7 +228,7 @@
 
 .plan-badge.professional,
 .plan-badge.pro {
-  background: rgba(0, 255, 209, 0.15);
+  background: var(--color-accent-soft);
   color: var(--accent-primary);
 }
 
@@ -271,7 +271,7 @@
 }
 
 .btn-action:hover {
-  background: rgba(0, 255, 209, 0.1);
+  background: var(--border);
   border-color: var(--accent-primary);
 }
 
@@ -295,8 +295,8 @@
 }
 
 .stat-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(0, 255, 209, 0.1);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 24px;
 }
@@ -305,7 +305,7 @@
   font-family: 'Syne', sans-serif;
   font-size: 16px;
   font-weight: 600;
-  color: #E8F0F7;
+  color: var(--color-text);
   margin: 0 0 20px 0;
 }
 
@@ -324,13 +324,13 @@
 .plan-bar-label {
   width: 80px;
   font-size: 13px;
-  color: #8892A0;
+  color: var(--text-muted);
 }
 
 .plan-bar-track {
   flex: 1;
   height: 8px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -350,7 +350,7 @@
   text-align: right;
   font-family: 'JetBrains Mono', monospace;
   font-size: 14px;
-  color: #E8F0F7;
+  color: var(--color-text);
 }
 
 .wa-summary {
@@ -371,13 +371,13 @@
 .wa-label {
   display: block;
   font-size: 14px;
-  color: #8892A0;
+  color: var(--text-muted);
   margin-top: 4px;
 }
 
 .wa-progress {
   height: 8px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border);
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 8px;
@@ -392,7 +392,7 @@
 
 .wa-total {
   font-size: 13px;
-  color: #8892A0;
+  color: var(--text-muted);
 }
 
 .admin-actions {
@@ -428,7 +428,7 @@
 }
 
 .btn-secondary:hover {
-  background: rgba(0, 255, 209, 0.1);
+  background: var(--border);
 }
 
 .admin-loading {
@@ -438,7 +438,7 @@
   justify-content: center;
   height: 60vh;
   gap: 16px;
-  color: #8892A0;
+  color: var(--text-muted);
 }
 
 .loading-spinner {

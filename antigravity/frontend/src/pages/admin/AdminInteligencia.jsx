@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
-import toast from 'react-hot-toast';
+import Toast from '../../components/Toast';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import './AdminInteligencia.css';
 
@@ -28,6 +28,7 @@ export default function AdminInteligencia() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -40,7 +41,7 @@ export default function AdminInteligencia() {
       setData(res);
     } catch (error) {
       console.error('Error loading inteligencia:', error);
-      toast.error('Error al cargar la inteligencia de negocio');
+      setToast({ type: 'error', message: 'Error al cargar la inteligencia de negocio' });
     } finally {
       setLoading(false);
     }
@@ -74,6 +75,7 @@ export default function AdminInteligencia() {
 
   return (
     <div className="admin-inteligencia">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
       <div className="admin-header">
         <h1>Inteligencia de Negocio</h1>
         <p>Cómo se comportan tus clientes, para decidir qué hacer</p>
@@ -117,10 +119,10 @@ export default function AdminInteligencia() {
         ) : (
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={actividad}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="label" stroke="#5A7080" fontSize={12} />
-              <YAxis stroke="#5A7080" fontSize={12} />
-              <Tooltip contentStyle={{ background: '#0A0F14', border: '1px solid #00FFD1' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
+              <XAxis dataKey="label" stroke="#8A8A8A" fontSize={12} />
+              <YAxis stroke="#8A8A8A" fontSize={12} />
+              <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #E4E4E4', borderRadius: 8, color: '#1A1A1A' }} labelStyle={{ color: '#1A1A1A' }} itemStyle={{ color: '#1A1A1A' }} />
               <Legend />
               <Line type="monotone" dataKey="mensajes" name="Mensajes" stroke="#00FFD1" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="pedidos" name="Pedidos" stroke="#FFB840" strokeWidth={2} dot={false} />
@@ -215,9 +217,9 @@ export default function AdminInteligencia() {
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={altas}>
-                <XAxis dataKey="label" stroke="#5A7080" fontSize={12} />
-                <YAxis stroke="#5A7080" fontSize={12} allowDecimals={false} />
-                <Tooltip contentStyle={{ background: '#0A0F14', border: '1px solid #00FFD1' }} />
+                <XAxis dataKey="label" stroke="#8A8A8A" fontSize={12} />
+                <YAxis stroke="#8A8A8A" fontSize={12} allowDecimals={false} />
+                <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #E4E4E4', borderRadius: 8, color: '#1A1A1A' }} labelStyle={{ color: '#1A1A1A' }} itemStyle={{ color: '#1A1A1A' }} />
                 <Bar dataKey="altas" name="Altas" fill="#00FFD1" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -261,9 +263,9 @@ export default function AdminInteligencia() {
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={tokens}>
-                <XAxis dataKey="label" stroke="#5A7080" fontSize={12} />
-                <YAxis stroke="#5A7080" fontSize={12} />
-                <Tooltip contentStyle={{ background: '#0A0F14', border: '1px solid #00FFD1' }} />
+                <XAxis dataKey="label" stroke="#8A8A8A" fontSize={12} />
+                <YAxis stroke="#8A8A8A" fontSize={12} />
+                <Tooltip contentStyle={{ background: '#FFFFFF', border: '1px solid #E4E4E4', borderRadius: 8, color: '#1A1A1A' }} labelStyle={{ color: '#1A1A1A' }} itemStyle={{ color: '#1A1A1A' }} />
                 <Bar dataKey="tokens" name="Tokens" fill="#A855F7" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

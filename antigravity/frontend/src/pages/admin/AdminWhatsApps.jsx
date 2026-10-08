@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
-import toast from 'react-hot-toast';
+import Toast from '../../components/Toast';
 import './AdminWhatsApps.css';
 
 export default function AdminWhatsApps() {
@@ -9,6 +9,7 @@ export default function AdminWhatsApps() {
   const [whatsapps, setWhatsapps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState({});
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     loadWhatsApps();
@@ -22,7 +23,7 @@ export default function AdminWhatsApps() {
       setWhatsapps(data.whatsapps || []);
     } catch (error) {
       console.error('Error loading WhatsApps:', error);
-      toast.error('Error al cargar WhatsApps');
+      setToast({ type: 'error', message: 'Error al cargar WhatsApps' });
     } finally {
       setLoading(false);
     }
@@ -32,10 +33,10 @@ export default function AdminWhatsApps() {
     try {
       setRefreshing(prev => ({ ...prev, [id]: true }));
       await apiService.post(`/api/admin/whatsapps/${id}/reconectar`);
-      toast.success('Reconexión iniciada');
+      setToast({ type: 'success', message: 'Reconexión iniciada' });
       setTimeout(loadWhatsApps, 2000);
     } catch (error) {
-      toast.error('Error al reconectar');
+      setToast({ type: 'error', message: 'Error al reconectar' });
     } finally {
       setRefreshing(prev => ({ ...prev, [id]: false }));
     }
@@ -44,7 +45,7 @@ export default function AdminWhatsApps() {
   const reconectarTodos = async () => {
     const offline = whatsapps.filter(w => !w.conectado);
     if (offline.length === 0) {
-      toast.success('Todos los WhatsApps ya están conectados');
+      setToast({ type: 'success', message: 'Todos los WhatsApps ya están conectados' });
       return;
     }
     
@@ -52,10 +53,10 @@ export default function AdminWhatsApps() {
       for (const wa of offline) {
         await apiService.post(`/api/admin/whatsapps/${wa.id}/reconectar`);
       }
-      toast.success(`Reconexión iniciada para ${offline.length} WhatsApps`);
+      setToast({ type: 'success', message: `Reconexión iniciada para ${offline.length} WhatsApps` });
       setTimeout(loadWhatsApps, 3000);
     } catch (error) {
-      toast.error('Error al reconectar');
+      setToast({ type: 'error', message: 'Error al reconectar' });
     }
   };
 
@@ -86,6 +87,7 @@ export default function AdminWhatsApps() {
 
   return (
     <div className="admin-whatsapps">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
       <div className="admin-header">
         <h1>WhatsApps</h1>
         <p>Estado de conexiones de WhatsApp</p>

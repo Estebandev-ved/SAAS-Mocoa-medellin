@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import MetricCard from '../../components/dashboard/MetricCard';
 import StatusBadge from '../../components/ui/StatusBadge';
-import { ordersService, analyticsService } from '../../services/api';
+import { ordersService, analyticsService, conversationsService } from '../../services/api';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import './OverviewPage.css';
@@ -12,6 +12,7 @@ export default function OverviewPage() {
   const [loading, setLoading] = useState(true);
   const [pedidos, setPedidos] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+  const [conversaciones, setConversaciones] = useState([]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -27,12 +28,14 @@ export default function OverviewPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [pedidosData, analyticsData] = await Promise.all([
+        const [pedidosData, analyticsData, conversacionesData] = await Promise.all([
           ordersService.getAll({ limit: 5 }),
-          analyticsService.getResumen()
+          analyticsService.getResumen(),
+          conversationsService.getAll()
         ]);
         setPedidos(pedidosData.pedidos || []);
         setAnalytics(analyticsData);
+        setConversaciones((conversacionesData.conversaciones || []).slice(0, 3));
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -46,6 +49,13 @@ export default function OverviewPage() {
     return formatDistanceToNow(new Date(date), { addSuffix: true, locale: es });
   };
 
+  // Antes decía "Tienes días de prueba restantes" sin el número — no ayudaba
+  // a nadie a decidir si activar ya o no. Redondea hacia arriba (si vence
+  // dentro de 30 min todavía cuenta como "1 día", no "0").
+  const diasPruebaRestantes = user?.trial_hasta
+    ? Math.ceil((new Date(user.trial_hasta) - new Date()) / (1000 * 60 * 60 * 24))
+    : null;
+
   return (
     <div className="overview-page">
       <div className="overview-header">
@@ -57,10 +67,14 @@ export default function OverviewPage() {
         </p>
       </div>
 
-      {user?.trial_hasta && !user?.suscripcion_activa && (
+      {diasPruebaRestantes !== null && !user?.suscripcion_activa && (
         <div className="trial-alert">
-          <span>⚡ Tienes días de prueba restantes. Activa tu plan para no perder el acceso.</span>
-          <button className="trial-cta">Activar ahora</button>
+          <span>
+            {diasPruebaRestantes > 0
+              ? `⚡ Te quedan ${diasPruebaRestantes} día${diasPruebaRestantes === 1 ? '' : 's'} de prueba. Activa tu plan para no perder el acceso.`
+              : '⚡ Tu prueba venció. Activa tu plan para seguir usando el bot.'}
+          </span>
+          <a href="/dashboard/ajustes" className="trial-cta">Activar ahora</a>
         </div>
       )}
 
@@ -163,18 +177,20 @@ export default function OverviewPage() {
               <div className="skeleton-list">
                 {[1, 2, 3].map(i => <div key={i} className="skeleton skeleton-row"></div>)}
               </div>
+            ) : conversaciones.length === 0 ? (
+              <p className="empty-section">Todavía no hay conversaciones.</p>
             ) : (
               <div className="conversations-list">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="conversation-item">
-                    <div className="conv-avatar">J</div>
+                {conversaciones.map(conv => (
+                  <div key={conv.id} className="conversation-item">
+                    <div className="conv-avatar">{conv.cliente?.nombre?.charAt(0)?.toUpperCase() || 'C'}</div>
                     <div className="conv-info">
-                      <span className="conv-name">Juan Pérez</span>
-                      <span className="conv-preview">¿Tienen disponibilidad para...</span>
+                      <span className="conv-name">{conv.cliente?.nombre || 'Cliente'}</span>
+                      <span className="conv-preview">{conv.ultimo_mensaje || 'Sin mensajes'}</span>
                     </div>
                     <div className="conv-meta">
-                      <span className="conv-time">2 min</span>
-                      <StatusBadge estado="activo" variant="dot" size="sm" />
+                      <span className="conv-time">{getDateFormatted(conv.updated_at)}</span>
+                      <StatusBadge estado={conv.activa ? 'activo' : 'inactivo'} variant="dot" size="sm" />
                     </div>
                   </div>
                 ))}

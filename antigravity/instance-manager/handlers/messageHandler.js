@@ -1,6 +1,6 @@
 const db = require('../../db/config');
 const instanceManager = require('../InstanceManager');
-const { emitNewMessage } = require('../socketEmitter');
+const { emitNewMessage, emitPedidoConfirmado } = require('../socketEmitter');
 const orchestrator = require('../agents/orchestrator');
 
 async function handleMessage(sock, msg, negocioId) {
@@ -363,6 +363,16 @@ Tus datos no serán usados para marketing. ¿En qué puedo ayudarte?`;
                             [negocioId, `+${numero}`, msgExito]
                         );
                         console.log(`[Handler] Pago confirmado: pedido ${pedidos[0].numero_pedido}, monto $${resultado.monto}`);
+
+                        try {
+                            emitPedidoConfirmado(negocioId, {
+                                pedido_id: pedidos[0].id,
+                                numero_pedido: pedidos[0].numero_pedido,
+                                cliente_nombre: cliente.nombre,
+                                total: resultado.monto || pedidos[0].total,
+                                metodo_pago: resultado.banco || 'desconocido',
+                            });
+                        } catch (e) { /* si el bridge de sockets no está listo, no bloquea el flujo */ }
                     } else {
                         const msgFallo = `⚠️ *No se pudo verificar el pago*\n\n`
                             + `Motivo: ${resultado.error || 'El monto no coincide con el pedido'}\n\n`
@@ -412,7 +422,7 @@ Tus datos no serán usados para marketing. ¿En qué puedo ayudarte?`;
 
         // Procesar con IA
         console.log(`[Handler] Llamando orchestrator para negocio ${negocioId}...`);
-        const respuesta = await orchestrator.procesarMensaje(texto, negocioId, cliente.id, contexto);
+        const respuesta = await orchestrator.procesarMensaje(texto, negocioId, cliente.id, contexto, conversacion.id);
         console.log(`[Handler] Respuesta IA: ${respuesta.intencion} | agente: ${respuesta.agente_usado} | tokens: ${respuesta.tokens_usados}`);
         console.log(`[Handler] Texto: ${respuesta.respuesta?.substring(0, 80)}`);
 

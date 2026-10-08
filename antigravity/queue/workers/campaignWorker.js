@@ -1,4 +1,7 @@
+const axios = require('axios');
 const db = require('../../db/config');
+
+const INSTANCE_MANAGER_URL = process.env.INSTANCE_MANAGER_URL || 'http://localhost:3001';
 
 async function campaignWorker(queue) {
   queue.process(async (job) => {
@@ -35,15 +38,18 @@ async function campaignWorker(queue) {
     
     console.log(`[CampaignWorker] ${clientes.length} destinatarios para campaña ${campañaId}`);
     
-    const instanceManager = require('../../instance-manager/InstanceManager');
     let enviados = 0;
     let fallidos = 0;
-    
+
     for (let i = 0; i < clientes.length; i++) {
       const cliente = clientes[i];
-      
+
       try {
-        await instanceManager.sendMessage(negocioId, cliente.whatsapp, campaña.mensaje);
+        await axios.post(`${INSTANCE_MANAGER_URL}/internal/message`, {
+          negocio_id: negocioId,
+          numero: cliente.whatsapp,
+          mensaje: campaña.mensaje
+        });
         
         await delay(2000 + Math.random() * 3000);
         

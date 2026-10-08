@@ -210,7 +210,23 @@ function construirPromptVentas(config) {
 
     let productosTexto;
     if (config.productos && config.productos.length > 0) {
-        productosTexto = config.productos.map(p => `- ${p.nombre}: $${parseInt(p.precio).toLocaleString('es-CO')}`).join('\n');
+        // Si hay categorías cargadas (catálogo de restaurante: Entradas, Platos
+        // fuertes, Bebidas...), se agrupan para que el bot las use al recomendar
+        // ("¿de una vez quieres algo de bebidas?") — si nadie usó categoría,
+        // queda como antes: una lista plana.
+        const conCategoria = config.productos.some(p => p.categoria);
+        if (conCategoria) {
+            const porCategoria = {};
+            for (const p of config.productos) {
+                const cat = p.categoria || 'Otros';
+                (porCategoria[cat] = porCategoria[cat] || []).push(p);
+            }
+            productosTexto = Object.entries(porCategoria)
+                .map(([cat, items]) => `${cat}:\n${items.map(p => `- ${p.nombre}: $${parseInt(p.precio).toLocaleString('es-CO')}`).join('\n')}`)
+                .join('\n\n');
+        } else {
+            productosTexto = config.productos.map(p => `- ${p.nombre}: $${parseInt(p.precio).toLocaleString('es-CO')}`).join('\n');
+        }
     } else if (negocio.productos_servicios) {
         productosTexto = negocio.productos_servicios;
     } else {

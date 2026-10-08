@@ -1,5 +1,6 @@
 import React from 'react';
 import { Layers, Instagram, Twitter, Linkedin, Mail } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useBranding } from '../context/BrandingContext';
 
 const Footer = () => {
@@ -45,7 +46,8 @@ const Footer = () => {
               <li><a href="#" className="text-muted hover:text-accent text-sm no-underline transition-colors">Sobre nosotros</a></li>
               <li><a href="#" className="text-muted hover:text-accent text-sm no-underline transition-colors">Blog</a></li>
               <li><a href="#contact" className="text-muted hover:text-accent text-sm no-underline transition-colors">Contacto</a></li>
-              <li><a href="#" className="text-muted hover:text-accent text-sm no-underline transition-colors">Privacidad</a></li>
+              <li><Link to="/terminos" className="text-muted hover:text-accent text-sm no-underline transition-colors">Términos y condiciones</Link></li>
+              <li><Link to="/privacidad#datos" className="text-muted hover:text-accent text-sm no-underline transition-colors">Tratamiento de datos</Link></li>
             </ul>
           </div>
         </div>

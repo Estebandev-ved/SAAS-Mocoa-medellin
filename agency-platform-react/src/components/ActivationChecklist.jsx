@@ -6,7 +6,7 @@ import { Character } from './Illustration';
 
 // Activación guiada: al registrarse solo se piden los datos mínimos; aquí se completa lo que el bot necesita,
 // paso a paso. La prueba gratuita de 7 días empieza con la primera conexión de WhatsApp.
-export default function ActivationChecklist({ user }) {
+export default function ActivationChecklist({ user, onActivando }) {
   const navigate = useNavigate();
   const [estado, setEstado] = useState(null); // null = cargando
 
@@ -32,6 +32,11 @@ export default function ActivationChecklist({ user }) {
       vivo = false;
     };
   }, []);
+
+  // Avisa al panel si aún hay pasos pendientes (para no repetir a Nova en otras tarjetas)
+  useEffect(() => {
+    if (estado && onActivando) onActivando(!(estado.catalogo && estado.pagos && estado.whatsapp));
+  }, [estado, onActivando]);
 
   if (!estado) return null;
 

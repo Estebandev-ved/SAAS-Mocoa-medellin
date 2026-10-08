@@ -121,16 +121,16 @@ const LoginPage = () => {
                 <div className="mt-8 text-center">
                     <p className="text-muted text-xs">
                         ¿No tienes cuenta?{' '}
-                        <a href={`${import.meta.env.VITE_ANTIGRAVITY_URL || 'http://localhost:5174'}/register`} className="text-accent hover:underline">
+                        <Link to="/register" className="text-accent hover:underline">
                             Crear Cuenta
-                        </a>
+                        </Link>
                     </p>
                 </div>
 
                 <div className="mt-4 text-center">
-                    <a href={import.meta.env.VITE_ANTIGRAVITY_URL || 'http://localhost:5174'} className="text-muted text-xs hover:text-accent transition-colors">
+                    <Link to="/" className="text-muted text-xs hover:text-accent transition-colors">
                         ← Volver a la página principal
-                    </a>
+                    </Link>
                 </div>
             </motion.div>
         </div>

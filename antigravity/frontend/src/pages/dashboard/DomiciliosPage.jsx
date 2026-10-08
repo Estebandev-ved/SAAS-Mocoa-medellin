@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { apiService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { initSocket, subscribeToNegocio, disconnectSocket } from '../../services/socket';
-import toast from 'react-hot-toast';
+import Toast from '../../components/Toast';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Illustration from '../../components/ui/Illustration';
@@ -20,14 +20,14 @@ L.Icon.Default.mergeOptions({
 
 const driverIcon = L.divIcon({
     className: 'driver-marker',
-    html: '<div class="driver-pulse"></div><svg viewBox="0 0 24 24" width="24" height="24"><path d="M5 8l6-6 6 6H5zm0 8h12l-6 6-6-6z" fill="#00FFD1"/></svg>',
+    html: '<div class="driver-pulse"></div><svg viewBox="0 0 24 24" width="24" height="24"><path d="M5 8l6-6 6 6H5zm0 8h12l-6 6-6-6z" fill="#0288D1"/></svg>',
     iconSize: [32, 32],
     iconAnchor: [16, 16]
 });
 
 const activeDriverIcon = L.divIcon({
     className: 'driver-marker active',
-    html: '<div class="driver-pulse active"></div><svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#00FFD1"/></svg>',
+    html: '<div class="driver-pulse active"></div><svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#0288D1"/></svg>',
     iconSize: [36, 36],
     iconAnchor: [18, 18]
 });
@@ -75,6 +75,7 @@ export default function DomiciliosPage() {
     const [showAddDriver, setShowAddDriver] = useState(false);
     const [newDriver, setNewDriver] = useState({ nombre: '', telefono: '', pin: '' });
     const [activeTab, setActiveTab] = useState('pendientes');
+    const [toast, setToast] = useState(null);
     const socketInitialized = useRef(false);
 
     useEffect(() => {
@@ -111,11 +112,11 @@ export default function DomiciliosPage() {
         socket.on('domicilio_en_ruta', () => fetchData());
         socket.on('domicilio_entregado', () => fetchData());
         socket.on('domicilio_nuevo', () => {
-            toast('🛵 Nuevo pedido con domicilio recibido por WhatsApp');
+            setToast({ type: 'success', message: '🛵 Nuevo pedido con domicilio recibido por WhatsApp' });
             fetchData();
         });
         socket.on('domicilio_incidente', () => {
-            toast.error('⚠️ Un domiciliario reportó un problema en una entrega');
+            setToast({ type: 'error', message: '⚠️ Un domiciliario reportó un problema en una entrega' });
             fetchData();
         });
     };
@@ -147,10 +148,10 @@ export default function DomiciliosPage() {
         if (!window.confirm(confirmMsg)) return;
         try {
             await apiService.post(`/api/domicilios/incidentes/${id}/resolver`, { resultado });
-            toast.success(resultado === 'robo_confirmado' ? 'Domiciliario penalizado' : 'Incidente resuelto');
+            setToast({ type: 'success', message: resultado === 'robo_confirmado' ? 'Domiciliario penalizado' : 'Incidente resuelto' });
             fetchData();
         } catch (err) {
-            toast.error(err.response?.data?.error || 'Error al resolver el incidente');
+            setToast({ type: 'error', message: err.response?.data?.error || 'Error al resolver el incidente' });
         }
     };
 
@@ -159,13 +160,13 @@ export default function DomiciliosPage() {
         try {
             const res = await apiService.post('/api/domicilios/drivers', newDriver);
             if (res.success) {
-                toast.success('Domiciliario creado');
+                setToast({ type: 'success', message: 'Domiciliario creado' });
                 setShowAddDriver(false);
                 setNewDriver({ nombre: '', telefono: '', pin: '' });
                 fetchData();
             }
         } catch (err) {
-            toast.error(err.response?.data?.error || 'Error al crear domiciliario');
+            setToast({ type: 'error', message: err.response?.data?.error || 'Error al crear domiciliario' });
         }
     };
 
@@ -173,20 +174,20 @@ export default function DomiciliosPage() {
         if (!window.confirm('¿Desactivar este domiciliario?')) return;
         try {
             await apiService.delete(`/api/domicilios/drivers/${id}`);
-            toast.success('Domiciliario desactivado');
+            setToast({ type: 'success', message: 'Domiciliario desactivado' });
             fetchData();
         } catch (err) {
-            toast.error('Error al desactivar');
+            setToast({ type: 'error', message: 'Error al desactivar' });
         }
     };
 
     const handleAssign = async (domicilioId, driverId) => {
         try {
             await apiService.post('/api/domicilios/assign', { domicilio_id: domicilioId, domiciliario_id: driverId });
-            toast.success('Domicilio asignado');
+            setToast({ type: 'success', message: 'Domicilio asignado' });
             fetchData();
         } catch (err) {
-            toast.error(err.response?.data?.error || 'Error al asignar');
+            setToast({ type: 'error', message: err.response?.data?.error || 'Error al asignar' });
         }
     };
 
@@ -206,6 +207,7 @@ export default function DomiciliosPage() {
 
     return (
         <div className="domicilios-page">
+            {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
             <div className="page-header">
                 <div>
                     <h2>Centro de Despacho</h2>
@@ -352,12 +354,20 @@ export default function DomiciliosPage() {
                                 <span className="order-total">{formatCOP(d.total)}</span>
                             </div>
                             <div className="queue-item-actions">
-                                <select className="assign-select" onChange={(e) => e.target.value && handleAssign(d.id, e.target.value)} defaultValue="">
-                                    <option value="" disabled>Asignar a...</option>
-                                    {drivers.filter(drv => drv.estado_activo && (!drv.suspendido_hasta || new Date(drv.suspendido_hasta) <= new Date())).map(drv => (
-                                        <option key={drv.id} value={drv.id}>{drv.nombre} (⭐ {drv.score ?? 100})</option>
-                                    ))}
-                                </select>
+                                {(() => {
+                                    const disponibles = drivers.filter(drv => drv.estado_activo && (!drv.suspendido_hasta || new Date(drv.suspendido_hasta) <= new Date()));
+                                    if (disponibles.length === 0) {
+                                        return <span className="assign-hint">Ningún domiciliario conectado. Deben entrar a su portal y activar "Conectado".</span>;
+                                    }
+                                    return (
+                                        <select className="assign-select" onChange={(e) => e.target.value && handleAssign(d.id, e.target.value)} defaultValue="">
+                                            <option value="" disabled>Asignar a...</option>
+                                            {disponibles.map(drv => (
+                                                <option key={drv.id} value={drv.id}>{drv.nombre} (⭐ {drv.score ?? 100})</option>
+                                            ))}
+                                        </select>
+                                    );
+                                })()}
                             </div>
                         </div>
                     ))}

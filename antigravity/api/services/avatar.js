@@ -9,6 +9,10 @@ const OPCIONES = {
   peloColor: ['negro', 'castano_oscuro', 'castano', 'rubio', 'pelirrojo', 'gris', 'blanco'],
   barba: ['ninguna', 'sombra', 'bigote', 'corta', 'larga'],
   gafas: ['ninguna', 'redondas', 'cuadradas', 'sol'],
+  aretes: ['ninguno', 'botones', 'aros'],
+  pecas: ['ninguna', 'con_pecas'],
+  gorraTipo: ['ninguna', 'plana'],
+  gorraColor: ['rojo', 'negro', 'blanco'],
   tatuajes: ['ninguno', 'brazo', 'cuello', 'ambos'],
   ropaTipo: ['chaqueta', 'camiseta'],
   ropaColor: ['rojo', 'negro', 'blanco', 'gris'],
@@ -21,6 +25,9 @@ const DEFAULT_AVATAR = {
   pelo: { estilo: 'mono', color: 'negro' },
   barba: 'ninguna',
   gafas: 'ninguna',
+  aretes: 'botones',
+  pecas: 'ninguna',
+  gorra: { tipo: 'ninguna', color: 'rojo' },
   tatuajes: 'ninguno',
   ropa: { tipo: 'chaqueta', color: 'rojo' },
 };
@@ -40,6 +47,12 @@ function sanitizeAvatar(input) {
     },
     barba: pick(a.barba, OPCIONES.barba, d.barba),
     gafas: pick(a.gafas, OPCIONES.gafas, d.gafas),
+    aretes: pick(a.aretes, OPCIONES.aretes, d.aretes),
+    pecas: pick(a.pecas, OPCIONES.pecas, d.pecas),
+    gorra: {
+      tipo: pick(a.gorra && a.gorra.tipo, OPCIONES.gorraTipo, d.gorra.tipo),
+      color: pick(a.gorra && a.gorra.color, OPCIONES.gorraColor, d.gorra.color),
+    },
     tatuajes: pick(a.tatuajes, OPCIONES.tatuajes, d.tatuajes),
     ropa: {
       tipo: pick(a.ropa && a.ropa.tipo, OPCIONES.ropaTipo, d.ropa.tipo),

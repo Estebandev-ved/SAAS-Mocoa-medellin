@@ -230,7 +230,10 @@ mysql -u root -p antigravity < antigravity/db/schema.sql
 mysql -u root -p antigravity < antigravity/db/seed.sql     # opcional: datos demo
 
 cd antigravity
-node run-migrations.js                                      # migraciones incrementales
+node run-migrations.js                                      # módulos, domicilios y bot de llamadas
+node db/migrate_plan_emprendedor.js                         # agrega el plan 'emprendedor' (idempotente)
+node db/migrate_plan_pendiente.js                           # el resto son scripts sueltos db/migrate_*.js:
+                                                            # córrelos según lo que tu base todavía no tenga
 ```
 
 ### 4. Arrancar
@@ -268,6 +271,15 @@ npm run dev            # Landing + dashboard en :5173
 
 **Cuenta demo** (solo local, creada por `seed.sql`): `demo@antigravity.co` / `Demo2024#`. Cámbiala antes de cualquier despliegue.
 
+### Tests
+
+```bash
+cd antigravity
+npm test              # unitarios: planes, estado de suscripción, hitos — no necesitan nada corriendo
+npm run test:smoke    # contra servidores reales: health, login, flujo completo de un pedido
+                       # (necesita npm run dev:api / dev:bot arriba, y MySQL con la cuenta demo)
+```
+
 ### Conectar tu WhatsApp
 
 1. Inicia sesión en el dashboard → **WhatsApp** → **Conectar**.
@@ -286,6 +298,8 @@ Plantilla completa en [`antigravity/.env.example`](antigravity/.env.example). Nu
 | **MySQL** | `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE` |
 | **Redis** (opcional) | `REDIS_HOST`, `REDIS_PORT` |
 | **Seguridad** | `JWT_SECRET`, `SOCKET_SECRET` — sin valor por defecto, defínelos siempre |
+| **Caja** (plan Emprendedor) | `CAJA_JWT_SECRET` (secreto con el que se firma el token que la caja valida; distinto de `JWT_SECRET`, sin valor por defecto) y `CAJA_URL` (URL pública de la caja, sin barra final). Sin ellas, `POST /api/caja/token` responde 503 |
+| **Pagos** (opcional) | Efipay (pasarela real): `EFIPAY_ACCESS_TOKEN`, `EFIPAY_OFFICE_ID`, `EFIPAY_WEBHOOK_TOKEN`, `API_PUBLIC_URL`, `FRONTEND_URL` (+ `node db/migrate_efipay.js` una vez; webhook en `/api/webhook/efipay`). Alternativa: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`. Sin ninguna pasarela, los pagos son **de prueba** y solo funcionan fuera de producción; `PAGOS_EMULADOS=true` los habilita a propósito (nunca en un despliegue real) |
 | **Correo** | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `OWNER_EMAIL` |
 | **Puertos / URLs** | `PORT_API` (3002), `PORT_INSTANCE_MANAGER` / `PORT_BOT` (3001), `FRONTEND_URL`, `FRONTEND_API_URL`, `FRONTEND_SOCKET_URL`, `NODE_ENV` |
 | **Mapas** | `TRAVELTIME_APP_ID`, `TRAVELTIME_API_KEY` (geocoding y rutas; la key nunca va al frontend) |
@@ -297,17 +311,18 @@ Plantilla completa en [`antigravity/.env.example`](antigravity/.env.example). Nu
 
 Definidos en un solo lugar: [`antigravity/config/planConfig.js`](antigravity/config/planConfig.js). Precios en COP por mes.
 
-| | **Starter** | **Professional** | **Enterprise** |
-|---|---|---|---|
-| Precio | $450.000 | $850.000 | $1.800.000 |
-| Números de WhatsApp | 1 | 3 | Ilimitados |
-| Clientes | 100 | 500 | Ilimitados |
-| Productos | 20 | Ilimitados | Ilimitados |
-| Mensajes / mes | 1.000 | 5.000 | Ilimitados |
-| Analytics avanzado y automatizaciones | — | ✅ | ✅ |
-| Domicilios | — | ✅ | ✅ |
-| Multi-sede, integraciones, OCR de pagos | — | — | ✅ |
-| Bot de llamadas | — | — | ✅ |
+| | **Emprendedor** | **Starter** | **Professional** | **Enterprise** |
+|---|---|---|---|---|
+| Precio | $25.000 | $450.000 | $850.000 | $1.800.000 |
+| Números de WhatsApp | — | 1 | 3 | Ilimitados |
+| Clientes | — | 100 | 500 | Ilimitados |
+| Productos | — | 20 | Ilimitados | Ilimitados |
+| Mensajes / mes | — | 1.000 | 5.000 | Ilimitados |
+| Analytics avanzado y automatizaciones | — | — | ✅ | ✅ |
+| Domicilios | — | — | ✅ | ✅ |
+| Multi-sede, integraciones, OCR de pagos | — | — | — | ✅ |
+| Bot de llamadas | — | — | — | ✅ |
+| Caja (inventario, ventas y plata) | ✅ | — | — | — |
 
 ---
 
@@ -327,6 +342,7 @@ Todas las rutas cuelgan de `/api` y, salvo `auth` y el tracking público, requie
 | `/api/automations`, `/api/campanas`, `/api/horarios` | Automatizaciones, campañas masivas y horarios |
 | `/api/analytics`, `/api/agentes` | Métricas y uso del cerebro IA |
 | `/api/suscripcion`, `/api/stripe` | Suscripción, upgrade/downgrade, facturas y pagos |
+| `/api/caja` | `POST /token`: JWT de 12 h para entrar a la caja (solo plan Emprendedor) |
 | `/api/voice`, `/api/telegram`, `/api/instagram` | Bot de llamadas y canales adicionales |
 | `/api/admin`, `/api/usuarios`, `/api/backup` | Superadmin, usuarios del negocio y respaldos |
 
@@ -348,6 +364,7 @@ curl -X POST http://localhost:3002/api/auth/login \
 - Contraseñas con bcrypt, bloqueo por intentos fallidos y consentimiento de datos (Ley 1581).
 - Avatar validado con lista blanca en el servidor.
 - Firma de webhook de Twilio verificada en el bot de llamadas.
+- Un plan solo cambia tras un pago: los pagos de prueba están deshabilitados en producción y las rutas de upgrade sin cobro se eliminaron.
 - Sesiones de WhatsApp (`auth_info/`) y `.env` fuera del repositorio.
 
 ---
@@ -356,20 +373,14 @@ curl -X POST http://localhost:3002/api/auth/login \
 
 Rama de trabajo actual: **`redisenio-noma`** (rediseño visual completo con el sistema NOMA).
 
-**Hecho**
-- Cerebro único con Gemini dentro del Instance Manager; auditoría de seguridad multi-tenant.
-- Flujo de domicilios completo: dirección confirmada, geocoding, ruta por calles, tarifa por km, portal del domiciliario y tracking.
-- Onboarding progresivo con checklist y prueba de 7 días desde la primera conexión.
-- Rediseño NOMA: tokens, personajes, avatar del dueño, hitos, estados vacíos y avisos de éxito/error.
-- Bot de llamadas con Twilio + Clonar-voz.
+**Funcionalmente listo y probado de punta a punta** (bot de ventas, catálogo con categorías/fotos, domicilios con tarifa por km y portal del domiciliario (instalable como PWA), empresa de domicilios con varios restaurantes bajo un solo WhatsApp, paywall duro, bloqueo suave del bot sin catálogo, registro completo probado tecleando en la UI real, hitos y consejos de Nova persistidos en el servidor).
 
-**Pendiente**
-- Pantalla en el dashboard para configurar la **tarifa por km** (el backend ya existe).
-- Catálogo por categorías y fotos para restaurantes.
-- UI de cancelar/downgrade/facturas en Suscripción (el backend ya existe).
-- Persistir hitos y consejos de Nova en backend (hoy en `localStorage`).
-- Probar el bot de llamadas con una llamada real (ngrok + webhook de Twilio).
-- Tests automatizados y `docker-compose` de producción completo.
+**Lo que falta antes de operar con clientes y dinero reales:**
+- **Pagos reales**: el proveedor elegido es **Efipay** (no Stripe). La integración ya está escrita (`api/services/efipay.js`, checkout por redirección + webhook firmado + verificación de estado) y probada con tests, pero **falta activarla con credenciales reales y hacer un primer pago de prueba**. Es pago único, sin cobro recurrente automático: cada mes el negocio vuelve a pagar.
+- **`antigravity/infra/`** (`docker-compose.yml`, `nginx.conf`, `ecosystem.config.js`, `Dockerfile.*`) actualizados el 26 sept para la arquitectura real — agregado `agency-platform-react` como sitio servido (antes no existía en absoluto), quitado el proxy muerto a `/brain/`, corregidos los `Dockerfile` (copiaban `brain/` retirado y no copiaban `config/`, se habrían caído al desplegar). Sigue **sin probarse en un servidor real** (este entorno no tiene Docker) — falta esa primera prueba en una VPS antes de confiar en ellos del todo.
+- **Tests automatizados**: suite mínima agregada el 26 sept con `node:test` (sin dependencias nuevas) — `npm test` corre unitarios (planes, estado de suscripción, hitos) y `npm run test:smoke` corre contra servidores reales (health, login, flujo completo de un pedido). Falta ampliarla con más casos y, más adelante, correrla en CI.
+- Probar el bot de llamadas con una llamada real (ngrok + webhook de Twilio) — pospuesto a una actualización posterior a producción, decisión del socio.
+- Limpieza menor: dos negocios distintos comparten el mismo `email_dueno` en la base de datos de pruebas (no es un bug de código, es dato de prueba sin limpiar).
 
 El detalle día a día está en [`.claude/DAILY_LOG.md`](.claude/DAILY_LOG.md).
 

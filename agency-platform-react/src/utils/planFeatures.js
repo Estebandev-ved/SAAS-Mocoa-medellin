@@ -1,4 +1,36 @@
 const planFeatures = {
+  emprendedor: {
+    nombre: 'Emprendedor',
+    precio: 25000,
+    maxNumerosWhatsApp: 0,
+    maxContactos: 0,
+    maxAgentesIA: 0,
+    maxUsuarios: 1,
+    features: {
+      // Solo la caja (app aparte de inventario, ventas y plata): no incluye el bot.
+      caja: true,
+
+      chatbot: false,
+      catalogoProductos: false,
+      pedidosBasicos: false,
+
+      respuestaCatalogo: false,
+      extraccionPedidos: false,
+      notificacionesSeguimiento: false,
+      agenteIAGPT: false,
+      agentesEspecializados: [],
+
+      domicilios: false,
+      multiUsuario: false,
+      analyticsAvanzado: false,
+      exportarDatos: false,
+      apiAcceso: false,
+
+      soporteEmail: true,
+      soportePrioritario: false,
+      managerDedicado: false,
+    },
+  },
   starter: {
     nombre: 'Starter',
     precio: 450000,
@@ -7,6 +39,8 @@ const planFeatures = {
     maxAgentesIA: 1,
     maxUsuarios: 1,
     features: {
+      caja: false,
+
       // Core
       chatbot: true,
       catalogoProductos: true,
@@ -40,6 +74,8 @@ const planFeatures = {
     maxAgentesIA: 3,
     maxUsuarios: 5,
     features: {
+      caja: false,
+
       // Core
       chatbot: true,
       catalogoProductos: true,
@@ -73,6 +109,8 @@ const planFeatures = {
     maxAgentesIA: -1, // ilimitado
     maxUsuarios: -1, // ilimitado
     features: {
+      caja: false,
+
       // Core
       chatbot: true,
       catalogoProductos: true,
@@ -133,7 +171,7 @@ export function getLimit(plan, limitKey) {
 }
 
 export function getPlanUpgradeMessage(plan, feature) {
-  const plans = ['starter', 'professional', 'enterprise'];
+  const plans = ['emprendedor', 'starter', 'professional', 'enterprise'];
   const currentIndex = plans.indexOf(plan);
 
   for (let i = currentIndex + 1; i < plans.length; i++) {

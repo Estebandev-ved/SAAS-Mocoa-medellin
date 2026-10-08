@@ -64,7 +64,32 @@ export default function TrackingCliente() {
     const [error, setError] = useState(null);
     const [driverPos, setDriverPos] = useState(null);
     const [currentStep, setCurrentStep] = useState(0);
+    const [calificando, setCalificando] = useState(false);
+    const [calificacionError, setCalificacionError] = useState('');
     const socketRef = useRef(null);
+
+    const enviarCalificacion = async (valor) => {
+        if (calificando || data?.calificacion_cliente) return;
+        setCalificando(true);
+        setCalificacionError('');
+        try {
+            const res = await fetch(`${API_URL}/api/domicilios/public/track/${token}/calificar`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ calificacion: valor })
+            });
+            const json = await res.json();
+            if (json.success) {
+                setData((prev) => (prev ? { ...prev, calificacion_cliente: valor } : prev));
+            } else {
+                setCalificacionError(json.error || 'No se pudo guardar tu calificación');
+            }
+        } catch (err) {
+            setCalificacionError('Error de conexión');
+        } finally {
+            setCalificando(false);
+        }
+    };
 
     useEffect(() => {
         fetchTracking();
@@ -180,13 +205,51 @@ export default function TrackingCliente() {
             </div>
 
             {data?.estado === 'entregado' ? (
-                <div className="delivered-banner">
-                    <span><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg></span>
-                    <div>
-                        <h3>¡Pedido Entregado!</h3>
-                        <p>Gracias por comprar con nosotros</p>
+                <>
+                    <div className="delivered-banner">
+                        <span><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        <div>
+                            <h3>¡Pedido Entregado!</h3>
+                            <p>Gracias por comprar con nosotros</p>
+                        </div>
                     </div>
-                </div>
+
+                    <div className="rating-card">
+                        {data.calificacion_cliente ? (
+                            <>
+                                <span className="rating-title">Gracias por calificar tu entrega</span>
+                                <div className="rating-stars" aria-label={`Calificaste con ${data.calificacion_cliente} de 5 estrellas`}>
+                                    {[1, 2, 3, 4, 5].map((n) => (
+                                        <svg key={n} width="28" height="28" viewBox="0 0 24 24" fill={n <= data.calificacion_cliente ? '#F9A825' : 'none'} stroke="#F9A825" strokeWidth="1.5">
+                                            <polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9" />
+                                        </svg>
+                                    ))}
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <span className="rating-title">¿Cómo estuvo tu entrega?</span>
+                                <div className="rating-stars rating-stars-interactive" role="radiogroup" aria-label="Califica tu entrega de 1 a 5 estrellas">
+                                    {[1, 2, 3, 4, 5].map((n) => (
+                                        <button
+                                            key={n}
+                                            type="button"
+                                            aria-label={`${n} estrella${n > 1 ? 's' : ''}`}
+                                            onClick={() => enviarCalificacion(n)}
+                                            disabled={calificando}
+                                            className="rating-star-btn"
+                                        >
+                                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F9A825" strokeWidth="1.5">
+                                                <polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18 5.5 22 7 14.5 2 9.5 9 9" />
+                                            </svg>
+                                        </button>
+                                    ))}
+                                </div>
+                                {calificacionError && <p className="rating-error">{calificacionError}</p>}
+                            </>
+                        )}
+                    </div>
+                </>
             ) : data?.estado === 'cancelado' ? (
                 <div className="cancelled-banner">
                     <span><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>

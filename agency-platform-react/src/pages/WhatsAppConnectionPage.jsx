@@ -1,9 +1,11 @@
 import FeedbackMessage from '../components/FeedbackMessage';
+import PageLoader from '../components/PageLoader';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { io } from 'socket.io-client';
 import api from '../services/api';
+import { useHitos } from '../context/HitosContext';
 import {
   Smartphone,
   ArrowLeft,
@@ -27,6 +29,8 @@ const SOCKET_URL = API_URL.replace('/api', '');
 
 export default function WhatsAppConnectionPage() {
   const navigate = useNavigate();
+  const { celebrar } = useHitos();
+  const vioQrRef = useRef(false);
   const [status, setStatus] = useState({ conectado: false, numero: null });
   const [qr, setQr] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -56,6 +60,15 @@ export default function WhatsAppConnectionPage() {
     };
   }, []);
 
+  // Solo se celebra una conexión real: este usuario vio el QR y luego el bot quedó en línea
+  useEffect(() => {
+    if (qr) vioQrRef.current = true;
+  }, [qr]);
+
+  useEffect(() => {
+    if (status.conectado && vioQrRef.current) celebrar('whatsapp');
+  }, [status.conectado, celebrar]);
+
   useEffect(() => {
     if (!status.conectado || !connectedSince) {
       setElapsed('');
@@ -74,6 +87,12 @@ export default function WhatsAppConnectionPage() {
   function startStatusPolling() {
     if (statusPollRef.current) clearInterval(statusPollRef.current);
     statusPollRef.current = setInterval(async () => {
+      // Mientras hay un poll de QR activo (handleConnect/handleRefreshQR) ya se
+      // consulta /whatsapp/status en ese mismo ciclo — evita duplicar peticiones
+      // (antes corrían ambos intervalos en paralelo, hasta ~50 req/min solo en
+      // esta pantalla, suficiente para agotar el límite de la API compartido
+      // con el resto del dashboard).
+      if (pollingRef.current) return;
       try {
         const res = await api.get('/whatsapp/status');
         const newConectado = res.data.conectado;
@@ -88,7 +107,7 @@ export default function WhatsAppConnectionPage() {
         if (newConectado) setQr(null);
         else if (res.data.qr_data) setQr(res.data.qr_data);
       } catch {}
-    }, 3000);
+    }, 6000);
   }
 
   function connectSocket() {
@@ -163,7 +182,7 @@ export default function WhatsAppConnectionPage() {
     let attempts = 0;
     pollingRef.current = setInterval(async () => {
       attempts++;
-      if (attempts > 30) {
+      if (attempts > 20) {
         clearInterval(pollingRef.current);
         setConnecting(false);
         setError('Tiempo de espera agotado. Intenta de nuevo.');
@@ -189,7 +208,7 @@ export default function WhatsAppConnectionPage() {
           addEvent('connected', 'Conectado exitosamente');
         }
       } catch {}
-    }, 2000);
+    }, 3000);
   }
 
   async function handleConnect() {
@@ -248,7 +267,7 @@ export default function WhatsAppConnectionPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 text-accent animate-spin" />
+        <PageLoader />
       </div>
     );
   }

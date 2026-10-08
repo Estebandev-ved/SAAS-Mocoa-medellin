@@ -44,6 +44,9 @@
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 .metrics-grid {
@@ -194,6 +197,13 @@
 .conv-time {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+.empty-section {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px 0;
 }
 
 .skeleton-list {

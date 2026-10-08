@@ -9,7 +9,7 @@
 //   volver a llamar al proveedor de ruteo en cada refresco.
 
 const db = require('../../db/config');
-const { obtenerOrigenNegocio } = require('./geocoding');
+const { obtenerOrigenNegocio, obtenerOrigenRestaurante } = require('./geocoding');
 const { calcularRuta, calcularTarifa } = require('./routing');
 
 async function calcularCondicionesDomicilio(negocioId, pedidoId, config = {}) {
@@ -22,13 +22,18 @@ async function calcularCondicionesDomicilio(negocioId, pedidoId, config = {}) {
 
     try {
         const [pedidos] = await db.execute(
-            'SELECT direccion_lat, direccion_lng FROM pedidos WHERE id = ?',
+            'SELECT direccion_lat, direccion_lng, restaurante_id FROM pedidos WHERE id = ?',
             [pedidoId]
         );
         const destino = pedidos[0];
         if (destino?.direccion_lat == null || destino?.direccion_lng == null) return resultado;
 
-        const origen = await obtenerOrigenNegocio(negocioId);
+        // En una empresa de domicilios con varios restaurantes, el domicilio se
+        // recoge en el restaurante que el cliente eligió — no en la dirección
+        // del negocio dueño de la cuenta, que puede ni ser un punto de recogida.
+        const origen = destino.restaurante_id
+            ? await obtenerOrigenRestaurante(destino.restaurante_id)
+            : await obtenerOrigenNegocio(negocioId);
         if (!origen) return resultado;
 
         const ruta = await calcularRuta(origen, { lat: Number(destino.direccion_lat), lng: Number(destino.direccion_lng) });

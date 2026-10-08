@@ -4,6 +4,7 @@ const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
 const { checkPlan } = require('../middleware/tenant');
 const { sanitizeAvatar, parseAvatar } = require('../services/avatar');
+const { sanitizeVistos, parseVistos } = require('../services/uiEstado');
 const { getPlan, getPlanFeatures, checkLimit, getNextPlan, getPlanPrice, getIncludedFeatureLabels, getUpgradeBenefits, getAllPlans } = require('../../config/planConfig');
 
 // Router canónico para /api/business (antes montado en /api/negocio, que
@@ -34,6 +35,31 @@ router.put('/avatar', async (req, res) => {
     } catch (error) {
         console.error('[Business] Error saving avatar:', error);
         res.status(500).json({ error: 'Error al guardar el avatar' });
+    }
+});
+
+// Logros y consejos de los personajes que el panel ya mostró (para no repetirlos al cambiar de navegador).
+// PUT une lo enviado con lo guardado: nunca se pierde un "visto" por escribir desde otro dispositivo.
+router.get('/ui-estado', async (req, res) => {
+    try {
+        const [rows] = await db.execute('SELECT ui_estado FROM negocios WHERE id = ?', [req.negocio.id]);
+        res.json({ vistos: parseVistos(rows[0] && rows[0].ui_estado) });
+    } catch (error) {
+        console.error('[Business] Error getting ui-estado:', error);
+        res.status(500).json({ error: 'Error al obtener el estado de la interfaz' });
+    }
+});
+
+router.put('/ui-estado', async (req, res) => {
+    try {
+        const nuevos = sanitizeVistos(req.body && req.body.vistos);
+        const [rows] = await db.execute('SELECT ui_estado FROM negocios WHERE id = ?', [req.negocio.id]);
+        const vistos = sanitizeVistos([...parseVistos(rows[0] && rows[0].ui_estado), ...nuevos]);
+        await db.execute('UPDATE negocios SET ui_estado = ? WHERE id = ?', [JSON.stringify({ vistos }), req.negocio.id]);
+        res.json({ vistos });
+    } catch (error) {
+        console.error('[Business] Error saving ui-estado:', error);
+        res.status(500).json({ error: 'Error al guardar el estado de la interfaz' });
     }
 });
 
@@ -102,6 +128,16 @@ router.put('/perfil', async (req, res) => {
 
         if (updates.length === 0) {
             return res.status(400).json({ error: 'No hay campos válidos para actualizar' });
+        }
+
+        // Si cambió la dirección o la ciudad, las coordenadas guardadas (lat/lng)
+        // quedan obsoletas y apuntando al punto viejo — obtenerOrigenNegocio() las
+        // reutiliza como "origen" de todos los domicilios de este negocio sin
+        // volver a geocodificar mientras existan. Sin este reseteo, un negocio
+        // que se muda o corrige su dirección seguiría mandando domiciliarios al
+        // punto anterior para siempre (y calculando mal la tarifa por km).
+        if (updates.some((u) => u.startsWith('direccion') || u.startsWith('ciudad'))) {
+            updates.push('lat = NULL', 'lng = NULL');
         }
 
         values.push(negocioId);
@@ -211,7 +247,8 @@ router.get('/plan', async (req, res) => {
         const productosCreados = productosStats[0]?.total || 0;
 
         const now = new Date();
-        const enTrial = !!(negocio.trial_hasta && new Date(negocio.trial_hasta) > now && !negocio.suscripcion_activa);
+        // Prueba gratis: cuentas nuevas quedan con suscripcion_activa=1 y fin a 7 días (sin suscripcion_inicio, que solo fija un pago)
+        const enTrial = !!(negocio.trial_hasta && new Date(negocio.trial_hasta) > now && !negocio.suscripcion_inicio);
         const diasTrialRestantes = negocio.trial_hasta
             ? Math.max(0, Math.ceil((new Date(negocio.trial_hasta) - now) / (1000 * 60 * 60 * 24)))
             : 0;
@@ -412,9 +449,15 @@ router.put('/onboarding/:paso', async (req, res) => {
             updatesNegocios.push('terminos_fecha = NOW()');
         }
 
+        // Mismo caso que en PUT /perfil: si esta vez el onboarding trajo dirección
+        // o ciudad, las coordenadas cacheadas quedan obsoletas.
+        if (updatesNegocios.some((u) => u.startsWith('direccion') || u.startsWith('ciudad'))) {
+            updatesNegocios.push('lat = NULL', 'lng = NULL');
+        }
+
         if (updatesNegocios.length > 0) {
             valuesNegocios.push(negocioId);
-            
+
             const query = updatesNegocios.join(', ');
             await db.execute(
                 `UPDATE negocios SET ${query} WHERE id = ?`,
@@ -617,70 +660,14 @@ router.put('/whatsapp/config', async (req, res) => {
     }
 });
 
-router.post('/plan/upgrade', checkPlan('starter'), async (req, res) => {
-    try {
-        const negocioId = req.negocio.id;
-        const { nuevoPlan } = req.body;
-
-        if (!['starter', 'professional', 'enterprise'].includes(nuevoPlan)) {
-            return res.status(400).json({ error: 'Plan inválido' });
-        }
-
-        const planOrden = { starter: 1, professional: 2, enterprise: 3 };
-        if (planOrden[nuevoPlan] <= planOrden[req.negocio.plan]) {
-            return res.status(400).json({ error: 'Ya tienes este plan o uno superior' });
-        }
-
-        await db.execute(
-            `UPDATE negocios SET 
-                plan = ?,
-                suscripcion_activa = true,
-                suscripcion_inicio = NOW(),
-                suscripcion_fin = DATE_ADD(NOW(), INTERVAL 1 MONTH)
-             WHERE id = ?`,
-            [nuevoPlan, negocioId]
-        );
-
-        const [suscripciones] = await db.execute(
-            'SELECT * FROM suscripciones WHERE negocio_id = ? ORDER BY created_at DESC LIMIT 1',
-            [negocioId]
-        );
-
-        // El precio siempre sale de planConfig.js (fuente única de verdad) —
-        // antes había un precio hardcodeado acá (249000/499000) que ni
-        // siquiera coincidía con lo que cobra Stripe según el plan real.
-        const montoMensual = getPlanPrice(nuevoPlan);
-
-        if (suscripciones.length > 0) {
-            await db.execute(
-                `UPDATE suscripciones SET
-                    plan = ?,
-                    estado = 'activa',
-                    pago_inicio = NOW(),
-                    pago_fin = DATE_ADD(NOW(), INTERVAL 1 MONTH),
-                    monto_mensual = ?
-                 WHERE id = ?`,
-                [nuevoPlan, montoMensual, suscripciones[0].id]
-            );
-        } else {
-            await db.execute(
-                `INSERT INTO suscripciones
-                    (negocio_id, plan, estado, pago_inicio, pago_fin, monto_mensual)
-                 VALUES (?, ?, 'activa', NOW(), DATE_ADD(NOW(), INTERVAL 1 MONTH), ?)`,
-                [negocioId, nuevoPlan, montoMensual]
-            );
-        }
-
-        res.json({
-            success: true,
-            mensaje: `Plan actualizado a ${getPlan(nuevoPlan).nameEs}`,
-            nuevo_plan: nuevoPlan,
-            precio: montoMensual,
-        });
-    } catch (error) {
-        console.error('[Plan Upgrade] Error:', error.message);
-        res.status(500).json({ error: 'Error al actualizar plan' });
-    }
+// Antes esta ruta activaba cualquier plan sin cobrar nada (bastaba estar
+// autenticado). Los cambios de plan pasan ahora por /api/stripe/checkout, que
+// solo activa el plan cuando hay un pago (o un pago de prueba en desarrollo).
+router.post('/plan/upgrade', (req, res) => {
+    res.status(410).json({
+        error: 'Esta ruta ya no existe. Cambia de plan desde Suscripción.',
+        usar: 'POST /api/stripe/checkout',
+    });
 });
 
 // Plantillas de onboarding por vertical: al terminar el registro, precarga

@@ -8,6 +8,7 @@ const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
 const { isAutomationActive, yaSeNotifico, registrarNotificacion } = require('../services/automationsService');
 const { calcularCondicionesDomicilio } = require('../../instance-manager/services/domicilioTarifa');
+const { driverLoginRateLimit } = require('../middleware/security');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const TRACKING_BASE_URL = process.env.TRACKING_BASE_URL || 'http://localhost:5177/delivery/track';
@@ -184,7 +185,9 @@ router.get('/drivers', verificarAuth, async (req, res) => {
                     d.score, d.strikes, d.suspendido_hasta,
                     COUNT(CASE WHEN dom.estado = 'entregado' THEN 1 END) as pedidos_completados,
                     COALESCE(SUM(CASE WHEN dom.estado = 'entregado' THEN dom.km_recorridos ELSE 0 END), 0) as km_totales,
-                    COALESCE(SUM(CASE WHEN dom.estado = 'entregado' THEN dom.tarifa_envio ELSE 0 END), 0) as ganancias_totales
+                    COALESCE(SUM(CASE WHEN dom.estado = 'entregado' THEN dom.tarifa_envio ELSE 0 END), 0) as ganancias_totales,
+                    ROUND(AVG(dom.calificacion_cliente), 1) as calificacion_promedio,
+                    COUNT(dom.calificacion_cliente) as calificaciones_recibidas
              FROM domiciliarios d
              LEFT JOIN domicilios dom ON d.id = dom.domiciliario_id
              WHERE d.negocio_id = ? AND d.activo = 1
@@ -345,10 +348,12 @@ router.get('/active', verificarAuth, async (req, res) => {
         const [pendientes] = await db.execute(
             `SELECT dom.id, dom.estado, dom.tracking_token, dom.created_at, dom.ruta_coords,
                     p.id as pedido_id, p.numero_pedido, p.total, p.direccion_entrega, p.direccion_lat, p.direccion_lng,
-                    c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp
+                    c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp,
+                    r.nombre as restaurante_nombre, r.direccion as restaurante_direccion
              FROM domicilios dom
              JOIN pedidos p ON dom.pedido_id = p.id
              JOIN clientes c ON p.cliente_id = c.id
+             LEFT JOIN restaurantes r ON dom.restaurante_id = r.id
              WHERE dom.negocio_id = ? AND dom.estado = 'pendiente'
              ORDER BY dom.created_at ASC`,
             [req.negocio.id]
@@ -360,11 +365,13 @@ router.get('/active', verificarAuth, async (req, res) => {
                     p.id as pedido_id, p.numero_pedido, p.total, p.direccion_entrega, p.direccion_lat, p.direccion_lng,
                     c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp,
                     d.nombre as domiciliario_nombre, d.telefono as domiciliario_telefono,
-                    d.latitud, d.longitud
+                    d.latitud, d.longitud,
+                    r.nombre as restaurante_nombre, r.direccion as restaurante_direccion
              FROM domicilios dom
              JOIN pedidos p ON dom.pedido_id = p.id
              JOIN clientes c ON p.cliente_id = c.id
              LEFT JOIN domiciliarios d ON dom.domiciliario_id = d.id
+             LEFT JOIN restaurantes r ON dom.restaurante_id = r.id
              WHERE dom.negocio_id = ? AND dom.estado IN ('aceptado', 'en_ruta')
              ORDER BY dom.updated_at DESC`,
             [req.negocio.id]
@@ -481,7 +488,7 @@ router.post('/assign', verificarAuth, async (req, res) => {
     }
 });
 
-router.post('/driver/login', async (req, res) => {
+router.post('/driver/login', driverLoginRateLimit, async (req, res) => {
     try {
         const { telefono, pin } = req.body;
 
@@ -572,7 +579,9 @@ router.get('/driver/stats', verificarAuthDomiciliario, async (req, res) => {
                 COUNT(*) as total_pedidos,
                 COALESCE(SUM(km_recorridos), 0) as total_km,
                 COALESCE(SUM(tarifa_envio), 0) as total_ganancias,
-                COALESCE(SUM(tiempo_minutos), 0) as total_minutos
+                COALESCE(SUM(tiempo_minutos), 0) as total_minutos,
+                ROUND(AVG(calificacion_cliente), 1) as calificacion_promedio,
+                COUNT(calificacion_cliente) as calificaciones_recibidas
              FROM domicilios
              WHERE domiciliario_id = ? AND estado = 'entregado'`,
             [req.domiciliario.id]
@@ -602,15 +611,50 @@ router.get('/driver/stats', verificarAuthDomiciliario, async (req, res) => {
     }
 });
 
+// Historial de entregas del propio domiciliario: antes /driver/stats solo daba
+// totales agregados (ganancias de hoy, total histórico), sin poder ver el
+// detalle pedido por pedido. Paginado simple (más recientes primero) porque
+// un domiciliario activo puede acumular cientos de entregas.
+router.get('/driver/historial', verificarAuthDomiciliario, async (req, res) => {
+    try {
+        const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+        const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+        const [historial] = await db.execute(
+            `SELECT dom.id as domicilio_id, dom.estado, dom.created_at, dom.updated_at,
+                    dom.tarifa_envio, dom.km_recorridos, dom.tiempo_minutos, dom.calificacion_cliente,
+                    p.numero_pedido, r.nombre as restaurante_nombre
+             FROM domicilios dom
+             JOIN pedidos p ON dom.pedido_id = p.id
+             LEFT JOIN restaurantes r ON dom.restaurante_id = r.id
+             WHERE dom.domiciliario_id = ? AND dom.estado = 'entregado'
+             ORDER BY dom.updated_at DESC
+             LIMIT ? OFFSET ?`,
+            [req.domiciliario.id, limit, offset]
+        );
+
+        const [totalRow] = await db.execute(
+            `SELECT COUNT(*) as total FROM domicilios WHERE domiciliario_id = ? AND estado = 'entregado'`,
+            [req.domiciliario.id]
+        );
+
+        res.json({ success: true, data: historial, total: totalRow[0].total });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener el historial' });
+    }
+});
+
 router.get('/driver/orders', verificarAuthDomiciliario, async (req, res) => {
     try {
         const [pendientes] = await db.execute(
             `SELECT dom.id as domicilio_id, dom.estado, dom.created_at, dom.tarifa_envio, dom.km_recorridos, dom.tiempo_minutos, dom.ruta_coords,
                     p.id as pedido_id, p.numero_pedido, p.total, p.direccion_entrega, p.direccion_lat, p.direccion_lng,
-                    c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp
+                    c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp,
+                    r.nombre as restaurante_nombre, r.direccion as restaurante_direccion
              FROM domicilios dom
              JOIN pedidos p ON dom.pedido_id = p.id
              JOIN clientes c ON p.cliente_id = c.id
+             LEFT JOIN restaurantes r ON dom.restaurante_id = r.id
              WHERE dom.negocio_id = ? AND dom.estado = 'pendiente'
              ORDER BY dom.created_at ASC`,
             [req.domiciliario.negocio_id]
@@ -618,10 +662,12 @@ router.get('/driver/orders', verificarAuthDomiciliario, async (req, res) => {
 
         const [miEntrega] = await db.execute(
             `SELECT dom.*, dom.id as domicilio_id, p.numero_pedido, p.total, p.direccion_entrega, p.direccion_lat, p.direccion_lng,
-                    c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp
+                    c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp,
+                    r.nombre as restaurante_nombre, r.direccion as restaurante_direccion
              FROM domicilios dom
              JOIN pedidos p ON dom.pedido_id = p.id
              JOIN clientes c ON p.cliente_id = c.id
+             LEFT JOIN restaurantes r ON dom.restaurante_id = r.id
              WHERE dom.domiciliario_id = ? AND dom.estado IN ('aceptado', 'en_ruta')
              LIMIT 1`,
             [req.domiciliario.id]
@@ -882,8 +928,8 @@ router.get('/public/track/:token', async (req, res) => {
         const { token } = req.params;
 
         const [domicilios] = await db.execute(
-            `SELECT dom.estado, dom.created_at, dom.updated_at, dom.codigo_confirmacion, dom.ruta_coords,
-                    dom.km_recorridos, dom.tiempo_minutos,
+            `SELECT dom.id, dom.estado, dom.created_at, dom.updated_at, dom.codigo_confirmacion, dom.ruta_coords,
+                    dom.km_recorridos, dom.tiempo_minutos, dom.calificacion_cliente,
                     p.numero_pedido, p.total, p.direccion_entrega, p.direccion_lat, p.direccion_lng,
                     d.nombre as domiciliario_nombre, d.telefono as domiciliario_telefono,
                     d.latitud, d.longitud,
@@ -913,17 +959,81 @@ router.get('/public/track/:token', async (req, res) => {
     }
 });
 
+// El cliente califica su entrega desde la misma página de seguimiento, ya
+// entregado el pedido. La columna `calificacion_cliente` existía en la base de
+// datos desde hace tiempo (migrate_domicilios_v2) pero nada la escribía ni la
+// mostraba — era reputación real del domiciliario que se perdía. Público como
+// el resto del tracking (protegido por el token, no por sesión), solo permite
+// calificar una vez y solo cuando el pedido ya se entregó.
+router.put('/public/track/:token/calificar', async (req, res) => {
+    try {
+        const { token } = req.params;
+        const calificacion = Number(req.body?.calificacion);
+
+        if (!Number.isInteger(calificacion) || calificacion < 1 || calificacion > 5) {
+            return res.status(400).json({ error: 'La calificación debe ser un número entero de 1 a 5' });
+        }
+
+        const [domicilios] = await db.execute(
+            'SELECT id, negocio_id, estado, calificacion_cliente, domiciliario_id FROM domicilios WHERE tracking_token = ?',
+            [token]
+        );
+        if (domicilios.length === 0) {
+            return res.status(404).json({ error: 'Seguimiento no encontrado' });
+        }
+        const domicilio = domicilios[0];
+        if (domicilio.estado !== 'entregado') {
+            return res.status(400).json({ error: 'Solo puedes calificar un pedido ya entregado' });
+        }
+        if (domicilio.calificacion_cliente != null) {
+            return res.status(400).json({ error: 'Ya calificaste este pedido' });
+        }
+
+        await db.execute('UPDATE domicilios SET calificacion_cliente = ? WHERE id = ?', [calificacion, domicilio.id]);
+
+        // Una calificación baja (1-2) es una señal temprana de que algo salió mal en
+        // la entrega, aunque el domiciliario no haya reportado ningún incidente —
+        // se avisa al dueño igual que los demás eventos de domicilios.
+        if (calificacion <= 2 && domicilio.domiciliario_id) {
+            await registrarNotificacion(
+                domicilio.negocio_id,
+                'domicilio_calificacion_baja',
+                'Un cliente calificó mal su entrega',
+                `Calificación de ${calificacion}/5 en el pedido del domicilio #${domicilio.id}.`,
+                domicilio.id
+            );
+        }
+
+        res.json({ success: true, calificacion });
+    } catch (error) {
+        console.error('[Domicilios] Error calificando entrega:', error);
+        res.status(500).json({ error: 'Error al guardar la calificación' });
+    }
+});
+
 // El domiciliario reporta que algo salió mal (no encuentra la dirección, el
 // cliente no contesta, sospecha de un intento de estafa, etc). Abre un
 // incidente que el dueño del negocio resuelve desde el dashboard; mientras
 // esté abierto, este domiciliario no puede tomar nuevos domicilios.
+const TIPOS_INCIDENTE = {
+    direccion: 'No encuentra la dirección',
+    cliente_ausente: 'El cliente no contesta o no está',
+    robo_sospecha: 'Sospecha de robo o fraude',
+    accidente: 'Tuvo un accidente',
+    otro: 'Otro problema',
+};
+
 router.post('/driver/reportar-problema', verificarAuthDomiciliario, async (req, res) => {
     try {
-        const { domicilio_id, motivo } = req.body;
+        const { domicilio_id, tipo, motivo } = req.body;
 
         if (!domicilio_id) {
             return res.status(400).json({ error: 'domicilio_id requerido' });
         }
+        if (!tipo || !TIPOS_INCIDENTE[tipo]) {
+            return res.status(400).json({ error: 'Elige qué tipo de problema es', tipos: TIPOS_INCIDENTE });
+        }
+        const motivoLimpio = (motivo || '').toString().trim().slice(0, 255) || null;
 
         const [domicilio] = await db.execute(
             'SELECT id FROM domicilios WHERE id = ? AND domiciliario_id = ?',
@@ -935,14 +1045,14 @@ router.post('/driver/reportar-problema', verificarAuthDomiciliario, async (req, 
         }
 
         await db.execute(
-            `UPDATE domicilios SET estado_incidente = 'en_disputa', updated_at = NOW() WHERE id = ?`,
-            [domicilio_id]
+            `UPDATE domicilios SET estado_incidente = 'en_disputa', tipo_incidente = ?, motivo_incidente = ?, updated_at = NOW() WHERE id = ?`,
+            [tipo, motivoLimpio, domicilio_id]
         );
 
         await registrarNotificacion(
             req.domiciliario.negocio_id, 'domicilio_incidente',
             'Problema reportado en una entrega',
-            `${req.domiciliario.nombre} reportó un problema: ${motivo || 'sin detalle'}`,
+            `${req.domiciliario.nombre} reportó: ${TIPOS_INCIDENTE[tipo]}${motivoLimpio ? ` — ${motivoLimpio}` : ''}`,
             domicilio_id
         );
 
@@ -963,7 +1073,8 @@ router.post('/driver/reportar-problema', verificarAuthDomiciliario, async (req, 
 router.get('/incidentes', verificarAuth, async (req, res) => {
     try {
         const [incidentes] = await db.execute(
-            `SELECT dom.id, dom.estado, dom.estado_incidente, dom.limite_entrega_at, dom.created_at, dom.updated_at,
+            `SELECT dom.id, dom.estado, dom.estado_incidente, dom.tipo_incidente, dom.motivo_incidente,
+                    dom.limite_entrega_at, dom.created_at, dom.updated_at,
                     p.numero_pedido, p.direccion_entrega, p.total,
                     c.nombre as cliente_nombre, c.whatsapp as cliente_whatsapp,
                     d.id as domiciliario_id, d.nombre as domiciliario_nombre, d.telefono as domiciliario_telefono, d.score, d.strikes

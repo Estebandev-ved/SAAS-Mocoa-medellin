@@ -18,9 +18,27 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import Illustration from '../components/Illustration';
+import { useHitos } from '../context/HitosContext';
+import { usePedidosLive } from '../context/PedidosLiveContext';
+import TipNova from '../components/TipNova';
+
+// Mismas transiciones válidas que valida el backend (api/routes/orders.js) — la etiqueta es lo único
+// que decide esta pantalla; el servidor es quien de verdad permite o no el cambio.
+const SIGUIENTE_ESTADO = {
+    pendiente_pago: { estado: 'pago_enviado', label: 'Marcar pago enviado' },
+    pago_enviado: { estado: 'pago_confirmado', label: 'Confirmar pago' },
+    pago_confirmado: { estado: 'en_preparacion', label: 'Marcar en preparación' },
+    en_preparacion: { estado: 'enviado', label: 'Marcar enviado' },
+    enviado: { estado: 'entregado', label: 'Marcar entregado' },
+};
+const PUEDE_CANCELAR = ['pendiente_pago', 'pago_enviado', 'pago_confirmado', 'en_preparacion'];
+const ESTADOS_PAGADOS = ['pago_confirmado', 'en_preparacion', 'enviado', 'entregado'];
 
 const PedidosPage = () => {
     const navigate = useNavigate();
+    const { celebrar } = useHitos();
+    const { conectado } = usePedidosLive();
+    const [avanzando, setAvanzando] = useState(false);
     const [pedidos, setPedidos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [buscar, setBuscar] = useState('');
@@ -37,12 +55,29 @@ const PedidosPage = () => {
         try {
             setLoading(true);
             const response = await api.get('/pedidos');
-            setPedidos(response.data.pedidos || []);
+            const lista = response.data.pedidos || [];
+            setPedidos(lista);
+            if (lista.length > 0) celebrar('pedido');
+            if (lista.some((p) => ESTADOS_PAGADOS.includes(p.estado))) celebrar('venta_cobrada');
         } catch (error) {
             console.error('Error:', error);
             setPedidos([]);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const avanzarEstado = async (nuevoEstado) => {
+        if (!pedidoSeleccionado) return;
+        setAvanzando(true);
+        try {
+            await api.patch(`/pedidos/${pedidoSeleccionado.id}/estado`, { estado: nuevoEstado });
+            await fetchPedidos();
+            setPedidoSeleccionado((prev) => (prev ? { ...prev, estado: nuevoEstado } : prev));
+        } catch (error) {
+            alert(error.response?.data?.error || 'No se pudo actualizar el pedido');
+        } finally {
+            setAvanzando(false);
         }
     };
 
@@ -64,7 +99,8 @@ const PedidosPage = () => {
             'pago_enviado': { bg: 'bg-info/10', text: 'text-info-text', icon: CreditCard, label: 'PAGO ENVIADO' },
             'pago_confirmado': { bg: 'bg-success/10', text: 'text-success', icon: CheckCircle, label: 'PAGO CONFIRMADO' },
             'confirmado': { bg: 'bg-info/10', text: 'text-info-text', icon: CheckCircle, label: 'CONFIRMADO' },
-            'enviado': { bg: 'bg-purple-500/10', text: 'text-purple-500', icon: Package, label: 'ENVIADO' },
+            'en_preparacion': { bg: 'bg-warn/10', text: 'text-warn-text', icon: Package, label: 'EN PREPARACIÓN' },
+            'enviado': { bg: 'bg-info/10', text: 'text-info-text', icon: Package, label: 'ENVIADO' },
             'entregado': { bg: 'bg-success/10', text: 'text-success', icon: CheckCircle, label: 'ENTREGADO' },
             'cancelado': { bg: 'bg-danger/10', text: 'text-danger-text', icon: XCircle, label: 'CANCELADO' }
         };
@@ -106,7 +142,7 @@ const PedidosPage = () => {
         total: pedidos.length,
         pendientes: pedidos.filter(p => p.estado === 'pendiente_pago').length,
         pagosConfirmados: pedidos.filter(p => p.estado === 'pago_confirmado').length,
-        totalVentas: pedidos.filter(p => ['pago_confirmado', 'confirmado', 'enviado', 'entregado'].includes(p.estado)).reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0)
+        totalVentas: pedidos.filter(p => ['pago_confirmado', 'confirmado', 'en_preparacion', 'enviado', 'entregado'].includes(p.estado)).reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0)
     };
 
     return (
@@ -122,11 +158,24 @@ const PedidosPage = () => {
                             <ArrowLeft className="w-5 h-5 text-muted" />
                         </button>
                         <div>
-                            <h1 className="font-head text-3xl font-bold mb-2">Pedidos</h1>
+                            <h1 className="font-head text-3xl font-bold mb-2 flex items-center gap-3">
+                                Pedidos
+                                <span
+                                    className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] font-semibold tracking-[0.04em] uppercase ${
+                                        conectado ? 'bg-success/10 text-success' : 'bg-bg3 text-muted'
+                                    }`}
+                                    title={conectado ? 'Recibiendo pedidos nuevos en tiempo real' : 'Sin conexión en vivo, actualiza para ver lo último'}
+                                >
+                                    <span className={`w-1.5 h-1.5 rounded-full ${conectado ? 'bg-success animate-pulse' : 'bg-muted'}`} />
+                                    {conectado ? 'En vivo' : 'Sin conexión'}
+                                </span>
+                            </h1>
                             <p className="text-muted">Gestiona los pedidos y pagos de tu negocio</p>
                         </div>
                     </div>
                 </div>
+
+                <TipNova id="pedidos" className="mb-6">Cuando un cliente envía su comprobante, el pedido pasa a “pago enviado”. Ábrelo, revisa la imagen y confirma el pago.</TipNova>
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -163,7 +212,7 @@ const PedidosPage = () => {
                         </div>
                     </form>
                     <div className="flex gap-2 flex-wrap">
-                        {['todos', 'pendiente_pago', 'pago_enviado', 'pago_confirmado', 'entregado', 'cancelado'].map(estado => (
+                        {['todos', 'pendiente_pago', 'pago_enviado', 'pago_confirmado', 'en_preparacion', 'enviado', 'entregado', 'cancelado'].map(estado => (
                             <button
                                 key={estado}
                                 onClick={() => setFiltroEstado(estado)}
@@ -332,6 +381,34 @@ const PedidosPage = () => {
                                     <p>Fecha: {formatFecha(pedidoSeleccionado.created_at)}</p>
                                     {pedidoSeleccionado.direccion_entrega && <p>Entrega: {pedidoSeleccionado.direccion_entrega}</p>}
                                 </div>
+
+                                {/* Avanzar el pedido: mismas transiciones que valida el backend */}
+                                {(SIGUIENTE_ESTADO[pedidoSeleccionado.estado] || PUEDE_CANCELAR.includes(pedidoSeleccionado.estado)) && (
+                                    <div className="border-t border-border pt-4">
+                                        <p className="text-xs font-semibold tracking-[0.04em] uppercase text-muted mb-3">Avanzar pedido</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {SIGUIENTE_ESTADO[pedidoSeleccionado.estado] && (
+                                                <button
+                                                    onClick={() => avanzarEstado(SIGUIENTE_ESTADO[pedidoSeleccionado.estado].estado)}
+                                                    disabled={avanzando}
+                                                    className="h-11 px-5 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                                                >
+                                                    {avanzando && <Loader2 size={16} className="animate-spin" />}
+                                                    {SIGUIENTE_ESTADO[pedidoSeleccionado.estado].label}
+                                                </button>
+                                            )}
+                                            {PUEDE_CANCELAR.includes(pedidoSeleccionado.estado) && (
+                                                <button
+                                                    onClick={() => { if (confirm('¿Cancelar este pedido?')) avanzarEstado('cancelado'); }}
+                                                    disabled={avanzando}
+                                                    className="h-11 px-5 rounded-xl bg-white hover:bg-bg2 text-danger-text text-sm font-semibold border border-danger/40 cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                                >
+                                                    Cancelar pedido
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Imagen de pago */}
                                 {pedidoSeleccionado.tiene_imagen_pago && (

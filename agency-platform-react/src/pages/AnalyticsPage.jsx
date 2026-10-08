@@ -1,3 +1,4 @@
+import TipNova from '../components/TipNova';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -70,6 +71,8 @@ const AnalyticsPage = () => {
                         <p className="text-muted">Métricas detalladas de tu negocio</p>
                     </div>
                 </div>
+
+                <TipNova id="analytics" className="mb-6">Aquí comparas ventas, pedidos y conversión de tu bot. Revisa qué días y productos venden más para decidir qué promocionar.</TipNova>
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

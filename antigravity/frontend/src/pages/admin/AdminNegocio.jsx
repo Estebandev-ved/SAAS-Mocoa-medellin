@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
-import toast from 'react-hot-toast';
+import Toast from '../../components/Toast';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import './AdminNegocio.css';
@@ -14,6 +14,7 @@ export default function AdminNegocio() {
   const [showSuspenderModal, setShowSuspenderModal] = useState(false);
   const [suspenderRazon, setSuspenderRazon] = useState('');
   const [suspendiendo, setSuspendiendo] = useState(false);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     loadNegocio();
@@ -26,7 +27,7 @@ export default function AdminNegocio() {
       setNegocio(data);
     } catch (error) {
       console.error('Error loading negocio:', error);
-      toast.error('Error al cargar negocio');
+      setToast({ type: 'error', message: 'Error al cargar negocio' });
       navigate('/admin/negocios');
     } finally {
       setLoading(false);
@@ -35,7 +36,7 @@ export default function AdminNegocio() {
 
   const toggleSuspender = async () => {
     if (!negocio.suspendido && !suspenderRazon.trim()) {
-      toast.error('Ingresa una razón para suspender');
+      setToast({ type: 'error', message: 'Ingresa una razón para suspender' });
       return;
     }
 
@@ -45,12 +46,12 @@ export default function AdminNegocio() {
         suspended: !negocio.suspendido,
         suspendido_razon: suspenderRazon
       });
-      toast.success(negocio.suspendido ? 'Negocio reactivado' : 'Negocio suspendido');
+      setToast({ type: 'success', message: negocio.suspendido ? 'Negocio reactivado' : 'Negocio suspendido' });
       setShowSuspenderModal(false);
       setSuspenderRazon('');
       loadNegocio();
     } catch (error) {
-      toast.error('Error al actualizar negocio');
+      setToast({ type: 'error', message: 'Error al actualizar negocio' });
     } finally {
       setSuspendiendo(false);
     }
@@ -92,6 +93,7 @@ export default function AdminNegocio() {
 
   return (
     <div className="admin-negocio">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
       <button className="back-btn" onClick={() => navigate('/admin/negocios')}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M19 12H5M12 19l-7-7 7-7"/>

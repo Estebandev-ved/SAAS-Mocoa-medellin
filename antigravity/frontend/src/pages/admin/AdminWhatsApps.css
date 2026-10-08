@@ -10,18 +10,18 @@
   font-family: 'Syne', sans-serif;
   font-size: 28px;
   font-weight: 700;
-  color: #E8F0F7;
+  color: var(--color-text);
   margin: 0 0 8px 0;
 }
 
 .admin-whatsapps .admin-header p {
-  color: #8892A0;
+  color: var(--text-muted);
   margin: 0;
 }
 
 .wa-overview {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(0, 255, 209, 0.1);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 24px;
   margin-bottom: 32px;
@@ -45,25 +45,25 @@
 
 .wa-counter .wa-divider {
   font-size: 24px;
-  color: #8892A0;
+  color: var(--text-muted);
 }
 
 .wa-counter .wa-total {
   font-family: 'JetBrains Mono', monospace;
   font-size: 56px;
   font-weight: 700;
-  color: #E8F0F7;
+  color: var(--color-text);
 }
 
 .wa-counter .wa-label {
   font-size: 18px;
-  color: #8892A0;
+  color: var(--text-muted);
   margin-left: 12px;
 }
 
 .wa-progress-bar {
   height: 8px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border);
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 20px;
@@ -86,8 +86,8 @@
 }
 
 .whatsapp-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(0, 255, 209, 0.1);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 20px;
   transition: all 0.3s ease;
@@ -144,13 +144,13 @@
 
 .wa-name {
   font-weight: 600;
-  color: #E8F0F7;
+  color: var(--color-text);
 }
 
 .wa-number {
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
-  color: #8892A0;
+  color: var(--text-muted);
 }
 
 .wa-status {
@@ -190,7 +190,7 @@
   gap: 12px;
   margin-bottom: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--surface);
 }
 
 .wa-detail {
@@ -201,13 +201,13 @@
 
 .wa-detail-label {
   font-size: 13px;
-  color: #8892A0;
+  color: var(--text-muted);
 }
 
 .wa-detail-value {
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
-  color: #E8F0F7;
+  color: var(--color-text);
 }
 
 .wa-card-footer {
@@ -227,7 +227,7 @@
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  color: #8892A0;
+  color: var(--text-muted);
 }
 
 .empty-state svg {

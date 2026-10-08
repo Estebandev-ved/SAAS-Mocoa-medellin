@@ -197,38 +197,12 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// PUT /:id — actualiza estado (lo que usa el dashboard: ordersService.updateEstado)
-router.put('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { estado } = req.body;
-
-        if (!estado) {
-            return res.status(400).json({ error: 'El estado es requerido' });
-        }
-
-        const [result] = await db.execute(
-            'UPDATE pedidos SET estado = ?, updated_at = NOW() WHERE id = ? AND negocio_id = ?',
-            [estado, id, req.negocioId]
-        );
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Pedido no encontrado' });
-        }
-
-        if (estado === 'entregado') {
-            pedirResenaSiCorresponde(req.negocioId, id);
-        }
-
-        res.json({ mensaje: 'Pedido actualizado', success: true });
-    } catch (error) {
-        console.error('[Pedidos] Error:', error.message);
-        res.status(500).json({ error: 'Error al actualizar pedido' });
-    }
-});
-
-// PATCH /:id/estado — mismo efecto que el PUT de arriba, valida transición.
-// Se mantiene por compatibilidad con integraciones que ya la usen.
+// PATCH /:id/estado — única ruta para cambiar el estado de un pedido, valida
+// la transición contra TRANSICIONES_VALIDAS. Antes existía también un PUT
+// /:id sin validar (el comentario decía que el dashboard lo usaba vía
+// ordersService.updateEstado, pero esa función ya no existe en el frontend
+// desde la reescritura de Pedidos en tiempo real del 22 sept) — se retiró
+// para no dejar una puerta sin validar expuesta.
 router.patch('/:id/estado', async (req, res) => {
     try {
         const { id } = req.params;

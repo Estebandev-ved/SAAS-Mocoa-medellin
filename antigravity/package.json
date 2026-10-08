@@ -5,11 +5,14 @@
   "main": "api/index.js",
   "scripts": {
     "start": "node api/index.js",
+    "migrate": "node db/migrate_all.js",
     "bot": "node instance-manager/index.js",
     "dev:api": "nodemon --watch api --watch db --watch config api/index.js",
     "dev:bot": "nodemon --watch instance-manager --watch db --watch config instance-manager/index.js",
     "dev:all": "concurrently \"npm run dev:api\" \"npm run dev:bot\"",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test \"test/unit/*.test.js\"",
+    "test:smoke": "node --test \"test/smoke/*.smoke.test.js\"",
+    "test:all": "npm test && npm run test:smoke"
   },
   "keywords": [
     "whatsapp",

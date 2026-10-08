@@ -51,6 +51,28 @@ export const GAFAS = [
   { id: 'sol', label: 'De sol' },
 ];
 
+export const ARETES = [
+  { id: 'ninguno', label: 'Sin aretes' },
+  { id: 'botones', label: 'Botones' },
+  { id: 'aros', label: 'Aros' },
+];
+
+export const PECAS = [
+  { id: 'ninguna', label: 'Sin pecas' },
+  { id: 'con_pecas', label: 'Con pecas' },
+];
+
+export const GORRA_TIPOS = [
+  { id: 'ninguna', label: 'Sin gorra' },
+  { id: 'plana', label: 'Gorra plana' },
+];
+
+export const GORRA_COLORES = [
+  { id: 'rojo', label: 'Rojo NOMA', fill: '#E53935', detail: '#C62828' },
+  { id: 'negro', label: 'Negro', fill: '#262626', detail: '#404040' },
+  { id: 'blanco', label: 'Blanco', fill: '#FFFFFF', detail: '#C9C9C9' },
+];
+
 export const TATUAJES = [
   { id: 'ninguno', label: 'Ninguno' },
   { id: 'brazo', label: 'Brazo' },
@@ -78,6 +100,9 @@ export const DEFAULT_AVATAR = {
   pelo: { estilo: 'mono', color: 'negro' },
   barba: 'ninguna',
   gafas: 'ninguna',
+  aretes: 'botones',
+  pecas: 'ninguna',
+  gorra: { tipo: 'ninguna', color: 'rojo' },
   tatuajes: 'ninguno',
   ropa: { tipo: 'chaqueta', color: 'rojo' },
 };
@@ -99,6 +124,12 @@ export function sanitizeAvatar(input) {
     },
     barba: pick(a.barba, BARBAS, d.barba),
     gafas: pick(a.gafas, GAFAS, d.gafas),
+    aretes: pick(a.aretes, ARETES, d.aretes),
+    pecas: pick(a.pecas, PECAS, d.pecas),
+    gorra: {
+      tipo: pick(a.gorra?.tipo, GORRA_TIPOS, d.gorra.tipo),
+      color: pick(a.gorra?.color, GORRA_COLORES, d.gorra.color),
+    },
     tatuajes: pick(a.tatuajes, TATUAJES, d.tatuajes),
     ropa: {
       tipo: pick(a.ropa?.tipo, ROPA_TIPOS, d.ropa.tipo),
@@ -116,6 +147,9 @@ export function randomAvatar() {
     pelo: { estilo: rnd(PELO_ESTILOS), color: rnd(PELO_COLORES) },
     barba: Math.random() < 0.5 ? 'ninguna' : rnd(BARBAS),
     gafas: Math.random() < 0.5 ? 'ninguna' : rnd(GAFAS),
+    aretes: Math.random() < 0.5 ? 'ninguno' : rnd(ARETES.filter((o) => o.id !== 'ninguno')),
+    pecas: Math.random() < 0.7 ? 'ninguna' : 'con_pecas',
+    gorra: Math.random() < 0.75 ? { tipo: 'ninguna', color: 'rojo' } : { tipo: 'plana', color: rnd(GORRA_COLORES) },
     tatuajes: Math.random() < 0.6 ? 'ninguno' : rnd(TATUAJES),
     ropa: { tipo: rnd(ROPA_TIPOS), color: rnd(ROPA_COLORES) },
   });

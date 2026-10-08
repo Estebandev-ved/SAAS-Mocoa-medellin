@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrandingProvider } from './context/BrandingContext';
 import { AuthProvider } from './context/AuthContext';
+import { HitosProvider } from './context/HitosContext';
+import { PedidosLiveProvider } from './context/PedidosLiveContext';
 
 // Components
 import Navbar from './components/Navbar';
@@ -30,12 +32,15 @@ import AjustesPage from './pages/AjustesPage';
 import DomiciliosPage from './pages/DomiciliosPage';
 import WhatsAppConnectionPage from './pages/WhatsAppConnectionPage';
 import ProductosPage from './pages/ProductosPage';
+import RestaurantesPage from './pages/RestaurantesPage';
 import MonitoreoPage from './pages/MonitoreoPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import MultiChannelPage from './pages/MultiChannelPage';
 import VoiceBotPage from './pages/VoiceBotPage';
+import CajaPage from './pages/CajaPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import Illustration from './components/Illustration';
+import LegalPage from './pages/LegalPage';
 
 const LoadingScreen = () => (
   <motion.div 
@@ -102,6 +107,8 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <BrandingProvider>
+            <HitosProvider>
+            <PedidosLiveProvider>
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
@@ -112,15 +119,21 @@ function App() {
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/automatizaciones" element={<AutomatizacionesPage />} />
               <Route path="/suscripcion" element={<SuscripcionPage />} />
+              <Route path="/caja" element={<CajaPage />} />
               <Route path="/domicilios" element={<DomiciliosPage />} />
               <Route path="/productos" element={<ProductosPage />} />
+              <Route path="/restaurantes" element={<RestaurantesPage />} />
               <Route path="/monitoreo" element={<MonitoreoPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/multichannel" element={<MultiChannelPage />} />
               <Route path="/voice" element={<VoiceBotPage />} />
               <Route path="/whatsapp" element={<WhatsAppConnectionPage />} />
               <Route path="/ajustes" element={<AjustesPage />} />
+              <Route path="/terminos" element={<LegalPage />} />
+              <Route path="/privacidad" element={<LegalPage />} />
             </Routes>
+            </PedidosLiveProvider>
+            </HitosProvider>
           </BrandingProvider>
         </AuthProvider>
       </BrowserRouter>
