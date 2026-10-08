@@ -2,7 +2,26 @@
 
 ---
 
-## 📅 Plan para Hoy: 2026-10-02
+## 📅 Plan para Hoy: 2026-10-08
+
+**Contexto:** ya está todo en producción (rama `caja-emprendedor`). Lo único que falta del lado del socio es **activar la pasarela Efipay** (credenciales + webhook + primer pago de prueba — él lo hace el 9 oct, ver más abajo). Hoy el socio pidió: precios más justos, versión celular empezando por PWA (fase 1) e ir evolucionando, y dejarlo en este flujo. Trabajo en la rama **`pwa-y-precios`** (no toca la rama de producción; el socio la revisa y la mergea).
+
+### 💲 Precios justos — hecho (8 oct)
+
+- [x] **Precios bajados a un nivel que un negocio pequeño colombiano sí paga.** Antes: Emprendedor $25.000 · Starter $450.000 · Professional $850.000 · Enterprise $1.800.000 (un restaurante o tienda de barrio no paga $450.000/mes por un bot). Ahora: **Emprendedor $25.000 (se queda) · Starter $89.000 · Professional $189.000 · Enterprise $449.000**, `priceUSD` 22/47/110. Criterio: un plan debe costar una fracción pequeña de lo que el bot vende o ahorra (unos pocos pedidos al mes lo pagan) y quedar en el rango de las herramientas de WhatsApp para pymes en Colombia; el costo real por negocio es bajo (IA Gemini flash ≈ pocos miles de COP por 1.000 mensajes, WhatsApp por Baileys sin tarifa de Meta), así que hay margen. `config/planConfig.js` es la fuente única, pero había **copias hardcodeadas** que se actualizaron todas: `api/routes/admin.js` (`PRECIOS_PLAN` y planes de config), `agency-platform-react` (`Pricing.jsx` landing, `utils/planFeatures.js`, `ROISimulator.jsx` → usa el de Professional $189.000), `antigravity/frontend` (`RegisterPage.jsx`, `AdminConfig.jsx`, `AdminSuscripciones.jsx`), prompt del bot de ventas (`salesTraining.js`), `db/add_products.js` y README. 34 tests unitarios pasan. **A tener en cuenta (lo hace el socio en producción):** (1) clientes que ya pagaron el precio viejo conservan su `suscripciones.monto_mensual` histórico, pero su próxima renovación cobrará el precio nuevo vía Efipay; (2) si el negocio admin tiene en su catálogo `productos` los planes con el precio viejo (los usa el bot de ventas), actualizarlos: `UPDATE productos SET precio=89000 WHERE nombre='Plan Starter'` (idem `Plan Professional`→189000, `Plan Enterprise`→449000); (3) el dashboard admin calcula MRR con los precios nuevos (los históricos no se recalculan).
+- [ ] (Decisión del socio, no urgente) Evaluar **plan anual con descuento** (ej. 2 meses gratis) — `Pricing.jsx` ya tiene un toggle `isAnnual`; hoy no está conectado a cobro real.
+
+### 📱 Versión celular — PWA (fase 1 hecha, 8 oct)
+
+- [x] **PWA fase 1 del dashboard del dueño (`agency-platform-react`):** `public/manifest.webmanifest` (start_url `/dashboard`, atajos a Pedidos y Conversaciones), `public/sw.js` (cachea solo el cascarón; **nunca** `/api/` ni `/socket.io/`: un pedido viejo mostrado como nuevo es peor que un error de conexión), íconos 192/512/maskable/apple-touch (`public/icons/`, generados desde el ícono "M" de marca), metas en `index.html`, registro del SW solo en producción (`main.jsx`), `components/InstallPrompt.jsx` (banner "Instalar app" en el Dashboard solo en pantallas pequeñas; en iOS explica "Compartir → Agregar a inicio") y reglas en `infra/nginx.conf` para que `sw.js`/`manifest` no queden cacheados 1 año (esa regla también afectaba al `delivery-sw.js` del portal del domiciliario — corregido). El portal del domiciliario ya era PWA desde el 23 sept.
+- [ ] **Auditar y arreglar el uso en celular (375px) de las pantallas del dueño** — es lo que de verdad hace útil la PWA: Dashboard (menú lateral → cajón/menú inferior), Pedidos (lista + detalle + botones de avanzar estado), Conversaciones (lista/chat en una sola columna), Productos, Ajustes, Suscripción. Revisar: scroll horizontal, botones ≥44px, modales que no caben, `safe-area-inset`. Tailwind v4 en este proyecto. Verificar con `npx vite build` + lint (comparar contra la versión anterior: hay errores de lint viejos que no son de esto) y dejar anotado qué no se pudo ver en un navegador real.
+- [ ] **Verificar la PWA en producción real** (lo hace el socio con su celular): abrir el sitio en Chrome Android → "Instalar app"; Lighthouse → PWA; confirmar que tras un deploy nuevo la app instalada toma la versión nueva (esto depende de las reglas de nginx nuevas).
+- [ ] **PWA fase 2 — avisos de pedido nuevo en el celular (Web Push)**: es la función que más valor da a un dueño con la app instalada (hoy solo se entera con la pantalla abierta). Diseño sugerido: tabla `push_subscriptions` (negocio_id, endpoint, keys), claves VAPID en `.env`, `web-push` en el backend, enviar al crear pedido (`nuevo_pedido`) y al confirmar pago (`pedido_confirmado`, ya hay emisores de socket en `instance-manager/socketEmitter.js` + relay en `api/index.js`), botón "Activar avisos" en Ajustes → Notificaciones. iOS solo soporta push en PWA instalada (iOS 16.4+).
+- [ ] **PWA fase 3 — pulir**: pantalla de "sin conexión" con mensaje claro, insignia con cantidad de pedidos pendientes, menú inferior en móvil, pantalla de bienvenida. **Fase 4 (solo si hace falta)**: empaquetar con Capacitor/TWA para Play Store/App Store — no antes de ver si la PWA alcanza.
+
+---
+
+## 📅 Pendientes arrastrados del 2 oct (siguen abiertos)
 
 **Decisiones del socio que siguen en pie (26 sept, sin repreguntar):** pagos con Efipay (ya integrada el 2 oct, ver abajo), documento legal aprobado tal cual, bot de llamadas pospuesto a después de producción.
 
