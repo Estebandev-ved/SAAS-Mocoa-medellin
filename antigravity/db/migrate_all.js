@@ -95,6 +95,48 @@ function aplicarJs(archivo) {
     if (r.status !== 0) throw new Error(`${archivo} terminó con código ${r.status}`);
 }
 
+// Varias migraciones .js capturan sus propios errores y terminan con código 0,
+// así que "terminó bien" no prueba que el cambio exista. Cada migración deja algo
+// verificable; si falta, se reintenta y, si sigue faltando, el deploy falla a la vista.
+const VERIFICACIONES = [
+    { archivo: 'migrate_usuarios.js', tabla: 'usuarios' },
+    { archivo: 'migrate_admin_panel.js', tabla: 'negocios', columna: 'suspendido' },
+    { archivo: 'migrate_business_info.js', tabla: 'negocios', columna: 'productos_servicios' },
+    { archivo: 'migrate_clientes_extra.js', tabla: 'clientes', columna: 'onboarding_estado' },
+    { archivo: 'migrate_consent.js', tabla: 'clientes', columna: 'acepta_datos' },
+    { archivo: 'migrate_whitelist.js', tabla: 'negocios', columna: 'chat_whitelist' },
+    { archivo: 'migrate_horarios.js', tabla: 'horarios_avanzados' },
+    { archivo: 'migrate_multichannel.js', tabla: 'negocios', columna: 'telegram_bot_token' },
+    { archivo: 'migrate_voice_bot.sql', tabla: 'negocios', columna: 'voice_bot_enabled' },
+    { archivo: 'migrate_pago_imagen.js', tabla: 'pedidos', columna: 'imagen_pago' },
+    { archivo: 'migrate_avatar.js', tabla: 'negocios', columna: 'avatar_config' },
+    { archivo: 'migrate_campanas.js', tabla: 'plantillas_mensajes' },
+    { archivo: 'migrate_billing.js', tabla: 'billing_history' },
+    { archivo: 'migrate_domicilios_v2.js', tabla: 'domicilios', columna: 'limite_entrega_at' },
+    { archivo: 'migrate_geocoding.js', tabla: 'pedidos', columna: 'direccion_lat' },
+    { archivo: 'migrate_categoria_productos.js', tabla: 'productos', columna: 'categoria' },
+    { archivo: 'migrate_plan_pendiente.js', tabla: 'negocios', columna: 'plan_pendiente' },
+    { archivo: 'migrate_efipay.js', tabla: 'pagos_efipay' },
+    { archivo: 'migrate_marketplace.js', tabla: 'restaurantes' },
+    { archivo: 'migrate_ui_estado.js', tabla: 'negocios', columna: 'ui_estado' },
+];
+
+async function existe(con, { tabla, columna }) {
+    const [r] = await con.query(
+        `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+           ${columna ? 'AND COLUMN_NAME = ?' : ''} LIMIT 1`,
+        columna ? [tabla, columna] : [tabla]
+    );
+    return r.length > 0;
+}
+
+async function faltantes(con) {
+    const out = [];
+    for (const v of VERIFICACIONES) if (!(await existe(con, v))) out.push(v);
+    return out;
+}
+
 async function main() {
     const con = await conexion();
     try {
@@ -119,7 +161,24 @@ async function main() {
             await con.query('INSERT INTO _migraciones (archivo) VALUES (?)', [archivo]);
             console.log(`[OK  ] ${archivo}`);
         }
-        console.log('Migraciones al día.');
+
+        let faltan = await faltantes(con);
+        for (const v of faltan) {
+            console.log(`[RETRY] ${v.archivo}: falta ${v.tabla}${v.columna ? '.' + v.columna : ''}, se reintenta`);
+            await con.query('DELETE FROM _migraciones WHERE archivo = ?', [v.archivo]);
+            if (v.archivo.endsWith('.sql')) await aplicarSql(con, v.archivo);
+            else aplicarJs(v.archivo);
+            await con.query('INSERT IGNORE INTO _migraciones (archivo) VALUES (?)', [v.archivo]);
+        }
+        faltan = await faltantes(con);
+        if (faltan.length) {
+            for (const v of faltan) {
+                console.error(`[FALTA] ${v.tabla}${v.columna ? '.' + v.columna : ''} (la crea ${v.archivo}); revisa el error de ese archivo arriba`);
+                await con.query('DELETE FROM _migraciones WHERE archivo = ?', [v.archivo]);
+            }
+            throw new Error(`${faltan.length} cambio(s) del esquema no quedaron aplicados`);
+        }
+        console.log('Migraciones al día y esquema verificado.');
     } finally {
         await con.end();
     }
