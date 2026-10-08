@@ -485,4 +485,6 @@ server.listen(PORT, () => {
 const { iniciarScheduler } = require('./scheduler');
 iniciarScheduler();
 
+require('./arranque').tareasDeArranque().catch((e) => console.error('[Arranque]', e.message));
+
 module.exports = { app, server, io };
