@@ -5,6 +5,7 @@ const { verificarAuth } = require('../middleware/auth');
 const { getPlan, PLAN_ORDER } = require('../../config/planConfig');
 const billing = require('../services/billing');
 const efipay = require('../services/efipay');
+const { verificarAdmin } = require('../middleware/admin');
 
 // El webhook de Stripe vive en api/index.js: necesita el body crudo, así que se
 // registra antes de express.json().
@@ -67,8 +68,27 @@ router.post('/checkout', verificarAuth, async (req, res) => {
 
         // ===== Efipay (pasarela real del negocio): redirige al checkout; el plan lo activa el webhook =====
         if (billing.modoPagos() === 'efipay') {
-            const { url } = await efipay.crearPago(req.negocioId, plan, planData);
-            return res.json({ url });
+            try {
+                const { url } = await efipay.crearPago(req.negocioId, plan, planData);
+                return res.json({ url });
+            } catch (err) {
+                // El log es lo que permite diagnosticar en Railway: sin esto todo se veía como
+                // "Error creando sesión de pago" sin saber si faltaba la tabla o Efipay rechazó la petición.
+                if (err.code === 'ER_NO_SUCH_TABLE') {
+                    console.error('[Efipay] FALTA la tabla pagos_efipay: correr node db/migrate_efipay.js (o poner RUN_MIGRATIONS_ON_START=true y redesplegar).');
+                    return res.status(503).json({ error: 'Los pagos aún no están listos. Escríbenos y activamos tu plan.', codigo: 'EFIPAY_SIN_MIGRAR' });
+                }
+                const http = err.response?.status;
+                const detalle = err.response?.data ? JSON.stringify(err.response.data).slice(0, 600) : err.message;
+                console.error(`[Efipay] No se pudo crear el pago (HTTP ${http || 'sin respuesta'}): ${detalle}`);
+                const credenciales = http === 401 || http === 403;
+                return res.status(502).json({
+                    error: credenciales
+                        ? 'La pasarela de pagos rechazó nuestras credenciales. Escríbenos y activamos tu plan.'
+                        : 'No pudimos iniciar el pago con Efipay. Intenta de nuevo en unos minutos o escríbenos.',
+                    codigo: credenciales ? 'EFIPAY_CREDENCIALES' : 'EFIPAY_ERROR',
+                });
+            }
         }
 
         // ===== Stripe real =====
@@ -113,7 +133,7 @@ router.post('/checkout', verificarAuth, async (req, res) => {
 
         res.json({ sessionId: session.id, url: session.url });
     } catch (error) {
-        console.error('[Stripe] Error checkout:', error.message);
+        console.error('[Pagos] Error en checkout (pasarela: ' + billing.modoPagos() + '):', error.message);
         res.status(500).json({ error: 'Error creando sesión de pago' });
     }
 });
@@ -184,6 +204,16 @@ router.get('/status', verificarAuth, (req, res) => {
             : modo === 'emulado' ? 'Pagos de prueba (solo desarrollo)'
             : 'Pagos no disponibles',
     });
+});
+
+// GET /api/stripe/efipay/diagnostico — solo admin. Revisa credenciales, tabla y webhook sin mostrar secretos.
+router.get('/efipay/diagnostico', verificarAuth, verificarAdmin, async (req, res) => {
+    try {
+        res.json({ modo: billing.modoPagos(), ...(await efipay.diagnosticar()) });
+    } catch (error) {
+        console.error('[Efipay] Error en diagnóstico:', error.message);
+        res.status(500).json({ error: 'No se pudo hacer el diagnóstico' });
+    }
 });
 
 // POST /api/stripe/efipay/verificar — al volver del checkout de Efipay: consulta el estado de los

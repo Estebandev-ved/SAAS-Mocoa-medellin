@@ -9,8 +9,12 @@ const axios = require('axios');
 const db = require('../../db/config');
 const billing = require('./billing');
 
-const API_URL = () => process.env.EFIPAY_API_URL || 'https://sag.efipay.co/api/v1';
-const TOKEN = () => process.env.EFIPAY_ACCESS_TOKEN;
+// Errores típicos al pegar variables en Railway: comillas, espacios o saltos de línea al final,
+// y pegar el token con el prefijo "Bearer " ya puesto (el servicio lo agrega).
+const limpiar = (v) => String(v || '').trim().replace(/^["']+|["']+$/g, '').trim();
+const API_URL = () => limpiar(process.env.EFIPAY_API_URL || 'https://sag.efipay.co/api/v1').replace(/\/+$/, '');
+const TOKEN = () => limpiar(process.env.EFIPAY_ACCESS_TOKEN).replace(/^Bearer\s+/i, '');
+const OFFICE = () => Number(limpiar(process.env.EFIPAY_OFFICE_ID));
 const FRONTEND_URL = () => process.env.FRONTEND_URL || 'http://localhost:5173';
 const API_PUBLIC_URL = () => process.env.API_PUBLIC_URL || 'http://localhost:3002';
 
@@ -64,7 +68,7 @@ async function crearPago(negocioId, plan, planData) {
                 webhook: `${API_PUBLIC_URL()}/api/webhook/efipay`,
             },
         },
-        office: Number(process.env.EFIPAY_OFFICE_ID),
+        office: OFFICE(),
     };
 
     try {
@@ -150,4 +154,38 @@ async function verificarPendientes(negocioId) {
     return { revisados: pendientes.length, aprobados };
 }
 
-module.exports = { crearPago, manejarWebhook, verificarPendientes, firmaValida, clasificarEstado };
+// Dice con certeza si Efipay acepta nuestras credenciales, sin revelar ningún secreto: consulta
+// el estado de un pago inexistente — 401/403 = token rechazado; cualquier otra respuesta = el
+// token fue aceptado (el pago simplemente no existe).
+async function diagnosticar() {
+    const out = {
+        api_url: API_URL(),
+        token_longitud: TOKEN().length,
+        office_id: OFFICE() || null,
+        webhook_token_configurado: !!limpiar(process.env.EFIPAY_WEBHOOK_TOKEN),
+        tabla_pagos_efipay: null,
+        http_auth: null,
+        credenciales_ok: null,
+        interpretacion: '',
+    };
+    try {
+        const [t] = await db.execute("SHOW TABLES LIKE 'pagos_efipay'");
+        out.tabla_pagos_efipay = t.length > 0;
+    } catch (e) { out.tabla_pagos_efipay = `error: ${e.code || e.message}`; }
+
+    if (!out.token_longitud) { out.interpretacion = 'Falta EFIPAY_ACCESS_TOKEN.'; return out; }
+    if (!out.office_id) { out.interpretacion = 'EFIPAY_OFFICE_ID falta o no es un número.'; return out; }
+    try {
+        const r = await axios.get(`${API_URL()}/payment/status/0`, { headers: headers(), timeout: 15000, validateStatus: () => true });
+        out.http_auth = r.status;
+        out.credenciales_ok = r.status !== 401 && r.status !== 403;
+        out.interpretacion = out.credenciales_ok
+            ? 'Efipay aceptó el token.'
+            : 'Efipay RECHAZÓ el token (401/403): revisa que sea el de esta cuenta y ambiente (producción vs pruebas), que esté vigente y que se haya pegado completo, sin comillas ni espacios.';
+    } catch (e) {
+        out.interpretacion = `No se pudo contactar a Efipay (${e.code || e.message}). Revisa EFIPAY_API_URL.`;
+    }
+    return out;
+}
+
+module.exports = { diagnosticar, crearPago, manejarWebhook, verificarPendientes, firmaValida, clasificarEstado };
