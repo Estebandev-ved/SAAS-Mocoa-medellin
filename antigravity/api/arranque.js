@@ -40,6 +40,10 @@ async function diagnosticarEfipay() {
     } catch (e) {
         console.error('[Arranque] No se pudo revisar la tabla pagos_efipay:', e.code || e.message);
     }
+    try {
+        const d = await require('./services/efipay').diagnosticar();
+        console.log(`[Arranque] Efipay: ${d.interpretacion} (HTTP ${d.http_auth}, token de ${d.token_longitud} caracteres, oficina ${d.office_id})`);
+    } catch (e) { console.error('[Arranque] No se pudo diagnosticar Efipay:', e.message); }
     if (!process.env.EFIPAY_WEBHOOK_TOKEN) console.error('[Arranque] Falta EFIPAY_WEBHOOK_TOKEN: el webhook de Efipay se rechazará y los pagos solo se activarán al volver al sitio.');
 }
 

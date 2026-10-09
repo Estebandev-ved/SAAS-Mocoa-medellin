@@ -5,6 +5,7 @@ const { verificarAuth } = require('../middleware/auth');
 const { getPlan, PLAN_ORDER } = require('../../config/planConfig');
 const billing = require('../services/billing');
 const efipay = require('../services/efipay');
+const { verificarAdmin } = require('../middleware/admin');
 
 // El webhook de Stripe vive en api/index.js: necesita el body crudo, así que se
 // registra antes de express.json().
@@ -203,6 +204,16 @@ router.get('/status', verificarAuth, (req, res) => {
             : modo === 'emulado' ? 'Pagos de prueba (solo desarrollo)'
             : 'Pagos no disponibles',
     });
+});
+
+// GET /api/stripe/efipay/diagnostico — solo admin. Revisa credenciales, tabla y webhook sin mostrar secretos.
+router.get('/efipay/diagnostico', verificarAuth, verificarAdmin, async (req, res) => {
+    try {
+        res.json({ modo: billing.modoPagos(), ...(await efipay.diagnosticar()) });
+    } catch (error) {
+        console.error('[Efipay] Error en diagnóstico:', error.message);
+        res.status(500).json({ error: 'No se pudo hacer el diagnóstico' });
+    }
 });
 
 // POST /api/stripe/efipay/verificar — al volver del checkout de Efipay: consulta el estado de los
