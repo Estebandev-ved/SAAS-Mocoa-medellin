@@ -129,19 +129,18 @@ flowchart LR
     API --- Q
 
     D["Panel web :5173<br/>agency-platform-react"] <-->|HTTP + Socket.io| API
-    A["Admin · Portal domiciliario<br/>Tracking público :5177<br/>antigravity/frontend"] <-->|HTTP + Socket.io| API
+    A["Admin · Portal domiciliario<br/>Tracking público<br/>agency-platform-react"] <-->|HTTP + Socket.io| API
 ```
 
 **Cómo fluye un pedido:** el cliente escribe → el Instance Manager entrega el mensaje al cerebro (Gemini) con el prompt armado desde el catálogo del negocio → el bot detecta la compra, confirma la dirección con el cliente y ejecuta la acción (crear pedido y domicilio) → la API guarda, geocodifica, calcula ruta y tarifa, y emite el evento por Socket.io → el dashboard lo muestra en tiempo real.
 
 > El antiguo `brain/` en Python (FastAPI + OpenAI) **fue retirado**: hoy hay un solo cerebro, en Node, dentro de `instance-manager/`.
 
-### Dos frontends, dos propósitos
+### Un solo frontend
 
 | Carpeta | Puerto | Para qué sirve |
 |---|---|---|
-| `agency-platform-react/` | **5173** | **Landing pública + dashboard del negocio** (el que se usa en el día a día). |
-| `antigravity/frontend/` | **5177** | **Panel admin** (`/admin/*`), **portal del domiciliario** (`/delivery/*`) y **tracking público** (`/delivery/track/:token`). Sus rutas `/dashboard/*` son heredadas y las reemplazó `agency-platform-react`. |
+| `agency-platform-react/` | **5173** | **Landing pública, dashboard del negocio, panel admin (`/admin/*`), portal del domiciliario (`/delivery/*`), tracking público (`/delivery/track/:token`) y formulario de interesados (`/info`).** Las pantallas de admin y domiciliario viven en `src/legacy/` (carga diferida). La carpeta `antigravity/frontend/` ya no existe. |
 
 ---
 
@@ -172,7 +171,6 @@ Bot NOMA/
 │   ├── queue/                    # Workers Bull (campañas masivas, requiere Redis)
 │   ├── db/                       # schema.sql, seed.sql y migraciones (migrate_*.js)
 │   ├── config/planConfig.js      # Fuente única de verdad de planes, precios y features
-│   ├── frontend/                 # Admin + portal domiciliario + tracking (React + Vite)
 │   ├── infra/                    # docker-compose, PM2, nginx
 │   └── start.bat                 # Arranque de todos los servicios en Windows
 │
@@ -203,7 +201,6 @@ cd "Bot NOMA"
 
 npm install --prefix antigravity
 npm install --prefix agency-platform-react
-npm install --prefix antigravity/frontend      # solo si vas a usar admin / portal domiciliario
 ```
 
 ### 2. Configurar el entorno
@@ -218,7 +215,6 @@ Completa `.env` (ver [Variables de entorno](#variables-de-entorno)). Para el das
 ```env
 VITE_API_URL=http://localhost:3002
 VITE_SOCKET_URL=http://localhost:3002
-VITE_ANTIGRAVITY_URL=http://localhost:5177
 VITE_TRAVELTIME_APP_ID=tu_app_id      # tiles del mapa de domicilios
 ```
 
@@ -263,8 +259,7 @@ npm run dev            # Landing + dashboard en :5173
 
 | Servicio | URL |
 |---|---|
-| Landing + dashboard | http://localhost:5173 |
-| Admin / portal domiciliario / tracking | http://localhost:5177 |
+| Landing, dashboard, admin, portal domiciliario y tracking | http://localhost:5173 |
 | API REST | http://localhost:3002 |
 | Health check | http://localhost:3002/health |
 | Instance Manager | http://localhost:3001 |

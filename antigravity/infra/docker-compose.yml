@@ -1,7 +1,7 @@
 version: '3.8'
 
-# Los dos frontends (agency-platform-react y antigravity/frontend) NO se
-# containerizan acá — se compilan con `npm run build` y su `dist/` lo sirve
+# El frontend (agency-platform-react, que incluye /admin y /delivery) NO se
+# containeriza acá — se compila con `npm run build` y su `dist/` lo sirve
 # nginx directo en el host (ver infra/nginx.conf). Este compose solo levanta
 # lo que sí necesita correr como proceso: base de datos, caché/cola y los
 # tres servicios de Node (api, instance-manager, queue).
@@ -114,7 +114,7 @@ services:
       TRAVELTIME_APP_ID: ${TRAVELTIME_APP_ID}
       TRAVELTIME_API_KEY: ${TRAVELTIME_API_KEY}
       # Enlace de seguimiento que el bot manda al cliente por WhatsApp —
-      # debe apuntar al dominio real de antigravity/frontend (ver nginx.conf).
+      # debe apuntar al dominio que sirve /delivery/track (ver nginx.conf).
       TRACKING_BASE_URL: ${TRACKING_BASE_URL:-https://panel.antigravity.co/delivery/track}
     depends_on:
       mysql:

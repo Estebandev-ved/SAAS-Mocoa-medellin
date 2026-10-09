@@ -5,15 +5,19 @@ const mysql = require('mysql2/promise');
 async function crearAdmin() {
   const args = process.argv.slice(2);
   let email = 'admin@antigravity.co';
-  let password = 'Admin2024#';
+  let password = null;
   
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--email' && args[i + 1]) email = args[i + 1];
     if (args[i] === '--password' && args[i + 1]) password = args[i + 1];
   }
 
+  if (!password || password.length < 10) {
+    console.error('❌ Falta --password (mínimo 10 caracteres). Ejemplo:');
+    console.error('   node create-admin.js --email tu@correo.com --password "UnaClaveLarga#2026"');
+    process.exit(1);
+  }
   console.log(`📧 Email: ${email}`);
-  console.log(`🔑 Password: ${password}`);
   console.log('');
 
   try {
@@ -48,8 +52,7 @@ async function crearAdmin() {
     console.log('');
     console.log('🔗 Credenciales de acceso:');
     console.log(`   Email: ${email}`);
-    console.log(`   Password: ${password}`);
-    console.log(`   URL: http://localhost:3000/login`);
+    console.log(`   URL: /login`);
     
   } catch (error) {
     console.error('❌ Error:', error.message);
