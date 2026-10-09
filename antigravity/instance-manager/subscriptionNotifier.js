@@ -43,7 +43,8 @@ class SubscriptionNotifier {
 
             // Emit socket notification
             if (this.io) {
-                this.io.to(`negocio_${n.id}`).emit('subscription_alert', {
+                this.io.emit('subscription_alert', {
+                    negocio_id: n.id,
                     tipo: 'trial_expiring',
                     dias_restantes: diasRestantes,
                     mensaje: `Tu período de prueba vence en ${diasRestantes} día${diasRestantes > 1 ? 's' : ''}. ¡Activa tu plan!`,
@@ -72,7 +73,8 @@ class SubscriptionNotifier {
             console.log(`[SubscriptionNotifier] Sub vence en ${diasRestantes}d: ${n.nombre}`);
 
             if (this.io) {
-                this.io.to(`negocio_${n.id}`).emit('subscription_alert', {
+                this.io.emit('subscription_alert', {
+                    negocio_id: n.id,
                     tipo: 'subscription_expiring',
                     dias_restantes: diasRestantes,
                     plan: n.plan,
@@ -99,7 +101,8 @@ class SubscriptionNotifier {
             console.log(`[SubscriptionNotifier] Pago fallido: ${p.nombre} - ${p.descripcion}`);
 
             if (this.io) {
-                this.io.to(`negocio_${p.negocio_id}`).emit('subscription_alert', {
+                this.io.emit('subscription_alert', {
+                    negocio_id: p.negocio_id,
                     tipo: 'payment_failed',
                     mensaje: 'Tu último pago falló. Actualiza tu método de pago para mantener tu servicio activo.',
                     fecha: p.created_at,
@@ -130,7 +133,8 @@ class SubscriptionNotifier {
                 console.log(`[SubscriptionNotifier] Uso alto (${limit.percentage}%): ${n.nombre}`);
 
                 if (this.io) {
-                    this.io.to(`negocio_${n.id}`).emit('subscription_alert', {
+                    this.io.emit('subscription_alert', {
+                    negocio_id: n.id,
                         tipo: 'usage_warning',
                         porcentaje: limit.percentage,
                         mensajes_usados: n.mensajes_usados,

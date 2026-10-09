@@ -439,6 +439,13 @@ io.on('connection', (socket) => {
         // prepararlo ya) — ver instance-manager/socketEmitter.js. El evento
         // 'nuevo_pedido' de arriba ya existía (y `OrdersPage.jsx` ya lo escucha);
         // nada lo emitía todavía porque `crearPedido()` nunca llamaba al emisor.
+        // Avisos de suscripción (trial/plan por vencer, pago fallido) que genera el bot: el cliente de
+        // sockets no tiene rooms, así que la API los reenvía solo al negocio dueño del aviso.
+        socket.on('subscription_alert', (data) => {
+            if (!data || !data.negocio_id) return;
+            io.to(`negocio_${data.negocio_id}`).emit('subscription_alert', data);
+        });
+
         socket.on('pedido_confirmado', (data) => {
             const room = `negocio_${data.negocio_id}`;
             io.to(room).emit('pedido_confirmado', data);
