@@ -154,9 +154,11 @@ async function verificarPendientes(negocioId) {
     return { revisados: pendientes.length, aprobados };
 }
 
-// Dice con certeza si Efipay acepta nuestras credenciales, sin revelar ningún secreto: consulta
-// el estado de un pago inexistente — 401/403 = token rechazado; cualquier otra respuesta = el
-// token fue aceptado (el pago simplemente no existe).
+// Dice si Efipay acepta nuestras credenciales, sin revelar ningún secreto. Prueba la MISMA ruta
+// del pago (POST generate-payment) con un cuerpo vacío: Efipay autentica primero, así que un
+// token malo da 401/403 y uno válido da un error de validación (400/422) — nunca se crea un pago.
+// (Una versión anterior consultaba /payment/status/0, que responde 404 sin mirar el token y daba
+// un falso "token aceptado".)
 async function diagnosticar() {
     const out = {
         api_url: API_URL(),
@@ -176,12 +178,17 @@ async function diagnosticar() {
     if (!out.token_longitud) { out.interpretacion = 'Falta EFIPAY_ACCESS_TOKEN.'; return out; }
     if (!out.office_id) { out.interpretacion = 'EFIPAY_OFFICE_ID falta o no es un número.'; return out; }
     try {
-        const r = await axios.get(`${API_URL()}/payment/status/0`, { headers: headers(), timeout: 15000, validateStatus: () => true });
+        const r = await axios.post(`${API_URL()}/payment/generate-payment`, {}, { headers: headers(), timeout: 15000, validateStatus: () => true });
         out.http_auth = r.status;
-        out.credenciales_ok = r.status !== 401 && r.status !== 403;
-        out.interpretacion = out.credenciales_ok
-            ? 'Efipay aceptó el token.'
-            : 'Efipay RECHAZÓ el token (401/403): revisa que sea el de esta cuenta y ambiente (producción vs pruebas), que esté vigente y que se haya pegado completo, sin comillas ni espacios.';
+        if (r.status === 401 || r.status === 403) {
+            out.credenciales_ok = false;
+            out.interpretacion = 'Efipay RECHAZÓ el token (401/403 "Unauthenticated"): no es un token de acceso válido para esta API. Revisa que sea el token de acceso (Bearer) creado en el panel de Efipay, que esté activo, completo y sin comillas ni espacios, y que corresponda a la oficina configurada.';
+        } else if (r.status === 400 || r.status === 422 || (r.status >= 200 && r.status < 300)) {
+            out.credenciales_ok = true;
+            out.interpretacion = 'Efipay aceptó el token (rechazó el cuerpo vacío de la prueba, como se espera).';
+        } else {
+            out.interpretacion = `Respuesta no concluyente de Efipay (HTTP ${r.status}).`;
+        }
     } catch (e) {
         out.interpretacion = `No se pudo contactar a Efipay (${e.code || e.message}). Revisa EFIPAY_API_URL.`;
     }
