@@ -12,6 +12,8 @@ import UsoCard from '../components/suscripcion/UsoCard';
 import PlanCard from '../components/suscripcion/PlanCard';
 import HistorialCard from '../components/suscripcion/HistorialCard';
 import CambioPlanModal from '../components/suscripcion/CambioPlanModal';
+import CheckoutModal from '../components/suscripcion/CheckoutModal';
+import PagoResultado from '../components/suscripcion/PagoResultado';
 import CancelarModal from '../components/suscripcion/CancelarModal';
 import { mensajeDeError } from '../components/suscripcion/format';
 
@@ -44,6 +46,8 @@ export default function SuscripcionPage() {
   const [ocupado, setOcupado] = useState(false);
 
   const [cambio, setCambio] = useState(null); // { planId, info, cargando, error }
+  const [pago, setPago] = useState(null); // resultado al volver de la pasarela: { fase, planNombre, hasta }
+  const [revisando, setRevisando] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const planesRef = useRef(null);
 
@@ -89,34 +93,56 @@ export default function SuscripcionPage() {
 
   // Regreso desde la pasarela (Efipay/Stripe). El plan lo activa el webhook, que puede tardar unos
   // segundos (o no llegar en desarrollo local): con Efipay se le pregunta además el estado
-  // directo, y se vuelve a consultar hasta ver la suscripción activa.
+  // directo, y se vuelve a consultar hasta ver la suscripción activa. El resultado se cuenta con
+  // personajes (PagoResultado) en vez de un aviso que desaparece solo.
+  // Se procesa una sola vez por carga de página. NO depende de la limpieza del efecto: al borrar
+  // los parámetros de la URL (setParams) el efecto se vuelve a ejecutar y su limpieza cancelaba
+  // la verificación en curso, así que el resultado nunca llegaba a mostrarse.
+  const retornoProcesado = useRef(false);
   useEffect(() => {
     const exito = params.get('success') === 'true';
     const cancelado = params.get('cancelled') === 'true';
-    if (!exito && !cancelado) return undefined;
+    if ((!exito && !cancelado) || retornoProcesado.current) return;
+    retornoProcesado.current = true;
     setParams({}, { replace: true });
 
     if (cancelado) {
-      setToast({ type: 'error', message: 'No se completó el pago. No se te cobró nada.' });
-      return undefined;
+      setPago({ fase: 'cancelado' });
+      return;
     }
 
-    let vivo = true;
+    setPago({ fase: 'verificando' });
     (async () => {
-      for (let i = 0; i < 6 && vivo; i += 1) {
+      for (let i = 0; i < 6; i += 1) {
         if (i % 2 === 0) await api.post('/stripe/efipay/verificar').catch(() => {});
         const s = await cargar();
         if (s?.estado === 'activa') {
           updateUser({ plan: s.plan });
-          setToast({ type: 'success', message: `¡Pago recibido! Tu plan ${s.plan_nombre} ya está activo.` });
+          setPago({ fase: 'exito', planNombre: s.plan_nombre, hasta: s.acceso_hasta || s.proximo_pago });
           return;
         }
         await new Promise((r) => setTimeout(r, 2000));
       }
-      if (vivo) setToast({ type: 'success', message: 'Recibimos tu pago. Tu plan se activará en unos instantes.' });
+      setPago((actual) => (actual?.fase === 'verificando' ? { fase: 'pendiente' } : actual));
     })();
-    return () => { vivo = false; };
   }, [params, setParams, cargar, updateUser]);
+
+  // "Revisar ahora" desde la pantalla de pago pendiente: una consulta directa a Efipay.
+  async function revisarPago() {
+    setRevisando(true);
+    try {
+      await api.post('/stripe/efipay/verificar').catch(() => {});
+      const s = await cargar();
+      if (s?.estado === 'activa') {
+        updateUser({ plan: s.plan });
+        setPago({ fase: 'exito', planNombre: s.plan_nombre, hasta: s.acceso_hasta || s.proximo_pago });
+      } else {
+        setToast({ type: 'error', message: 'Todavía no llega la confirmación. Sigue en camino; puedes revisar de nuevo en un momento.' });
+      }
+    } finally {
+      setRevisando(false);
+    }
+  }
 
   async function abrirCambio(planId) {
     setCambio({ planId, info: null, cargando: true, error: null });
@@ -286,15 +312,35 @@ export default function SuscripcionPage() {
         )}
       </div>
 
-      {cambio && (
-        <CambioPlanModal
-          info={cambio.info}
-          cargando={cambio.cargando}
-          error={cambio.error}
-          modo={sub?.modo_pagos}
-          enviando={ocupado}
-          onConfirm={confirmarCambio}
-          onClose={() => setCambio(null)}
+      {cambio && (() => {
+        // Bajar de plan no es una compra: conserva el modal de siempre. Pagar (activar o mejorar)
+        // usa el checkout con Sofía. Mientras carga la info se deduce por el orden de los planes.
+        const esBaja = cambio.info
+          ? cambio.info.tipo === 'downgrade'
+          : !['trial', 'vencida', 'inactiva'].includes(sub?.estado) && ORDEN.indexOf(cambio.planId) < ORDEN.indexOf(sub?.plan);
+        const Modal = esBaja ? CambioPlanModal : CheckoutModal;
+        return (
+          <Modal
+            info={cambio.info}
+            cargando={cambio.cargando}
+            error={cambio.error}
+            modo={sub?.modo_pagos}
+            enviando={ocupado}
+            onConfirm={confirmarCambio}
+            onClose={() => setCambio(null)}
+          />
+        );
+      })()}
+
+      {pago && (
+        <PagoResultado
+          fase={pago.fase}
+          planNombre={pago.planNombre}
+          hasta={pago.hasta}
+          revisando={revisando}
+          onRevisar={revisarPago}
+          onElegirPlan={() => { setPago(null); irAPlanes(); }}
+          onClose={() => setPago(null)}
         />
       )}
 

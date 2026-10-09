@@ -24,7 +24,8 @@ function Resumen({ info, modo }) {
   }
 
   const nota =
-    modo === 'stripe' ? 'Te llevaremos a Stripe para completar el pago con tarjeta.'
+    modo === 'efipay' ? 'Te llevaremos a Efipay para completar el pago de forma segura.'
+      : modo === 'stripe' ? 'Te llevaremos a Stripe para completar el pago con tarjeta.'
       : modo === 'emulado' ? 'Es un pago de prueba (entorno de desarrollo): no se cobra dinero real.'
       : null;
 

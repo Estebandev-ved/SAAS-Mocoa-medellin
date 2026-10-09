@@ -35,10 +35,12 @@ export default function EstadoCard({ sub, onElegirPlan, onReactivar, onCancelar,
     accion = <button onClick={onElegirPlan} className={BTN_PRIMARIO}>Elegir plan <ArrowRight size={16} /></button>;
   } else if (estado === 'activa') {
     titulo = sub.proximo_pago
-      ? `Se renueva el ${formatDate(sub.proximo_pago)}`
+      ? (sub.modo_pagos === 'efipay' ? `Tu plan está pagado hasta el ${formatDate(sub.proximo_pago)}` : `Se renueva el ${formatDate(sub.proximo_pago)}`)
       : 'Cuenta activa sin cobro recurrente';
     detalle = sub.proximo_pago
-      ? `${formatPrice(sub.plan_precio)} al mes · ${pluralDias(sub.dias_restantes)} para la renovación.`
+      ? (sub.modo_pagos === 'efipay'
+        ? `${formatPrice(sub.plan_precio)} al mes · ${pluralDias(sub.dias_restantes)} para que venza. Renuévalo cuando quieras: no hay cobros automáticos.`
+        : `${formatPrice(sub.plan_precio)} al mes · ${pluralDias(sub.dias_restantes)} para la renovación.`)
       : 'Tu plan no tiene fecha de renovación.';
   } else if (estado === 'cancelada') {
     titulo = `Conservas el acceso hasta el ${fechaFin}`;
