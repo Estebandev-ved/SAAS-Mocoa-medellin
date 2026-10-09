@@ -2,21 +2,43 @@
 
 ---
 
-## 📅 Plan para Hoy: 2026-10-08
+## 📅 Plan para Hoy: 2026-10-09 — dejar todo nítido
+
+**Contexto:** el 8 oct todo se publicó en `main` (Vercel despliega `main`, proyecto con Root Directory `agency-platform-react`; `caja-emprendedor` y `main` quedaron iguales). Panel admin (`/admin`), portal del domiciliario (`/delivery/*`), formulario público (`/info`) y migraciones/rol admin automáticos al arrancar la API ya están publicados. Falta verificar y limpiar:
+
+### 🧑 Lo hace el socio (yo no tengo acceso a Vercel/Railway)
+- [ ] **Borrar el proyecto viejo de Vercel** (el que apuntaba a `antigravity/frontend`, carpeta ya eliminada). Antes anotar su dominio por si algún enlace lo usa. Dejar solo el proyecto con dominio `saas-mocoa-medellin-s3mk.vercel.app`, Root Directory `agency-platform-react`, Production Branch `main`.
+- [ ] **Revisar los logs de Railway** del último despliegue: deben decir `Migraciones OK` y `... ahora es admin`. Si dicen otra cosa, pasar el texto.
+- [ ] **Cuando todo funcione, poner `RUN_MIGRATIONS_ON_START=false`** (o borrar la variable) en Railway; `ADMIN_EMAIL` puede quedarse.
+- [ ] **Probar con datos reales** (solo se probó con API simulada): entrar a `/admin` y recorrer Resumen, Negocios, Suscripciones, Logs; enviar el formulario `/info?f=instagram` y ver que aparezca en Admin → Prospectos; entrar al portal `/delivery/login` con un domiciliario real (teléfono + PIN) y abrir un enlace `/delivery/track/:token`.
+- [ ] **Precios en el catálogo del bot de ventas** (si el negocio admin tiene los planes en `productos`): `UPDATE productos SET precio=89000 WHERE nombre='Plan Starter'` (idem Professional→189000, Enterprise→449000).
+- [ ] **Efipay** (sigue igual): credenciales, webhook y primer pago de prueba.
+- [ ] **Claves VAPID** para activar los avisos push (hoy apagados).
+
+### 🛠️ Lo hace la IA (próximo)
+- [ ] **Limpiar `antigravity/infra/docker-compose.yml` y `nginx.conf`**: aún apuntan a `antigravity/frontend` (borrada). Decidir si el despliegue Docker sirve `agency-platform-react` o se quita el servicio `frontend`.
+- [ ] **Quitar la contraseña por defecto de `antigravity/create-admin.js`** (`Admin2024#` está escrita en el repo): exigir `--password`.
+- [ ] **Pulir el panel admin trasladado** (`agency-platform-react/src/legacy/`): solo se revisaron dos pantallas; revisar las demás en 375px y en escritorio, y llevarlas al estilo del resto del sitio (hoy usan tokens acotados de `design.md`). Evaluar ocultar la cuenta del propio admin de las cifras de Negocios/Suscripciones.
+- [ ] **Ramas viejas**: borrar `admin-prospectos-vbsj7w`, `pwa-y-precios`, `redisenio-noma`, `railway/fix-deploy-*` y cerrar el PR #1/#3 (ya mezclado) — confirmar con el socio antes.
+- [ ] **Auditar y arreglar el uso en celular (375px)** de las pantallas del dueño (pendiente del 8 oct, ver abajo).
+
+---
+
+## 📅 Plan del 2026-10-08 (referencia)
 
 **Contexto:** ya está todo en producción (rama `caja-emprendedor`). Lo único que falta del lado del socio es **activar la pasarela Efipay** (credenciales + webhook + primer pago de prueba — él lo hace el 9 oct, ver más abajo). Hoy el socio pidió: precios más justos, versión celular empezando por PWA (fase 1) e ir evolucionando, y dejarlo en este flujo. Trabajo en la rama **`pwa-y-precios`** (no toca la rama de producción; el socio la revisa y la mergea).
 
 ### 🧭 Panel admin + portal del domiciliario en el sitio de producción (8 oct, rama `caja-emprendedor`)
 
 - [x] Se trasladaron a `agency-platform-react/src/legacy/` el **panel admin** (`/admin/*`: resumen, inteligencia, negocios, whatsapps, suscripciones, prospectos, logs, config), el **portal del domiciliario** (`/delivery/login`, `/delivery/portal`, `/delivery/terminos`) y el **tracking del cliente** (`/delivery/track/:token`). Usan la sesión del sitio (`antigravity_token`), la API sale de `VITE_SOCKET_URL` (sin `/api`) y los tokens de diseño viejos quedan acotados a esas rutas (`LegacyScope`). Acceso admin: rol `admin`/`superadmin` (enlace "Panel Admin" en el menú del Dashboard). Se agregó `recharts`. Cargan diferido.
-- [ ] `antigravity/frontend` ya no es necesaria para estas pantallas: borrarla en esta rama al mezclar con `main` (en `main` ya se borró).
+- [x] `antigravity/frontend` eliminada del repo (9 oct): ya no se usa.
 - [ ] Probado solo con API simulada y capturas; falta probar con datos reales (admin y un domiciliario con PIN).
 
 ### 📣 Formulario de interesados + Prospectos (8 oct)
 
 - [x] **Formulario público `/info`** (enlace para Instagram/videos; `?f=tiktok` etc. marca la fuente) con la estética de `design.md` (rojo de acción, Plus Jakarta Sans). Envía a `POST /api/public/interesados` (sin login, 5 envíos/hora por IP, campo trampa anti-bots, mismo WhatsApp no se duplica) y entra a `prospectos` con estado `nuevo` y seguimiento para hoy.
 - [x] **Pantalla `Admin → Prospectos`**: lista con filtros por estado/búsqueda/seguimientos, botón que copia el enlace del formulario, botón WhatsApp con mensaje de plantilla (queda marcado "video enviado"), editar/eliminar. La tabla `prospectos` se crea sola al primer uso (y también está en `npm run migrate`). **Ojo:** producción sirve `agency-platform-react`, no `antigravity/frontend`: el formulario público vive en `agency-platform-react/src/pages/InfoPage.jsx` (ruta `/info`); la pantalla admin de Prospectos solo existe en `antigravity/frontend`.
-- [x] **Hallazgo:** `.gitignore` tenía `auth/` (pensado para credenciales de Baileys) y estaba ignorando `antigravity/frontend/src/components/auth/` (ProtectedRoute, AdminRoute, PlanGuard): un clon limpio no compilaba. Se agregó excepción en `.gitignore`; **hay que hacer `git add` de esa carpeta desde el equipo donde existe** (no está en el repo).
+- [x] **Hallazgo (obsoleto: la carpeta `antigravity/frontend` ya se eliminó):** `.gitignore` tenía `auth/` (pensado para credenciales de Baileys) y estaba ignorando `antigravity/frontend/src/components/auth/` (ProtectedRoute, AdminRoute, PlanGuard): un clon limpio no compilaba. Se agregó excepción en `.gitignore`; **hay que hacer `git add` de esa carpeta desde el equipo donde existe** (no está en el repo).
 - [ ] No se pudo probar el flujo completo contra MySQL real en este entorno (sin base): se probó validación (tests unitarios) y compilación del frontend con stubs de la carpeta `auth`.
 
 ### 💲 Precios justos — hecho (8 oct)
