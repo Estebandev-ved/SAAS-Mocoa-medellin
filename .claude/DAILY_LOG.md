@@ -16,10 +16,11 @@
 - [ ] **Claves VAPID** para activar los avisos push (hoy apagados).
 
 ### 🛠️ Lo hace la IA (próximo)
-- [ ] **Limpiar `antigravity/infra/docker-compose.yml` y `nginx.conf`**: aún apuntan a `antigravity/frontend` (borrada). Decidir si el despliegue Docker sirve `agency-platform-react` o se quita el servicio `frontend`.
-- [ ] **Quitar la contraseña por defecto de `antigravity/create-admin.js`** (`Admin2024#` está escrita en el repo): exigir `--password`.
-- [ ] **Pulir el panel admin trasladado** (`agency-platform-react/src/legacy/`): solo se revisaron dos pantallas; revisar las demás en 375px y en escritorio, y llevarlas al estilo del resto del sitio (hoy usan tokens acotados de `design.md`). Evaluar ocultar la cuenta del propio admin de las cifras de Negocios/Suscripciones.
-- [ ] **Ramas viejas**: borrar `admin-prospectos-vbsj7w`, `pwa-y-precios`, `redisenio-noma`, `railway/fix-deploy-*` y cerrar el PR #1/#3 (ya mezclado) — confirmar con el socio antes.
+- [x] **`nginx.conf`, `docker-compose.yml` y README sin `antigravity/frontend`** (9 oct): `panel.antigravity.co` ahora sirve el `dist` de `agency-platform-react` (mismo build, rutas `/admin` y `/delivery`). Sin probar en un servidor real.
+- [x] **`create-admin.js` exige `--password`** (mínimo 10 caracteres; ya no hay contraseña por defecto ni se imprime). Ojo: la contraseña vieja `Admin2024#` estuvo en el repo; si alguna cuenta admin la usa, cambiarla.
+- [x] **Panel admin en celular**: el menú lateral tapaba todo; ahora es un cajón con botón de menú y sin scroll horizontal (verificado a 375px en Resumen y Prospectos). **Resumen** ahora muestra *Negocios registrados* y *Personas interesadas (formulario)*; las estadísticas ya excluyen las cuentas admin (la cuenta propia del admin no cuenta como negocio). `AdminGuard` consulta el rol al servidor y explica por qué no se entra.
+- [ ] Pulir el resto del panel admin: solo se revisaron Resumen y Prospectos en celular; faltan Negocios, Suscripciones, Logs, Inteligencia, WhatsApps y Configuración, y llevarlos al estilo del resto del sitio.
+- [ ] **Ramas viejas** (no se borró nada, decisión del socio): `admin-prospectos-vbsj7w` y `caja-emprendedor` ya están dentro de `main`; `pwa-y-precios`, `redisenio-noma` y `railway/fix-deploy-d4f764` tienen commits que no están en `main` (revisar antes de borrar). Cerrar los PR #1 y #3 si ya no hacen falta.
 - [ ] **Auditar y arreglar el uso en celular (375px)** de las pantallas del dueño (pendiente del 8 oct, ver abajo).
 
 ---

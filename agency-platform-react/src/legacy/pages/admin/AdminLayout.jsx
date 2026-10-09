@@ -31,7 +31,8 @@ const Icons = ({ name }) => {
 export default function AdminLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [sidebarExpanded] = useState(true);
+  const [menuAbierto, setMenuAbierto] = useState(false); // solo celular: el menú es un cajón
 
   const handleLogout = async () => {
     await logout();
@@ -40,7 +41,14 @@ export default function AdminLayout() {
 
   return (
     <div className="admin-layout">
-      <aside className={`admin-sidebar ${sidebarExpanded ? 'expanded' : 'collapsed'}`}>
+      <header className="admin-topbar">
+        <button className="admin-menu-btn" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <span className="admin-topbar-title">ANTIGRAVITY · ADMIN</span>
+      </header>
+      {menuAbierto && <div className="admin-overlay" onClick={() => setMenuAbierto(false)} />}
+      <aside className={`admin-sidebar ${sidebarExpanded ? 'expanded' : 'collapsed'} ${menuAbierto ? 'open' : ''}`}>
         <div className="admin-sidebar-header">
           <div className="admin-logo">
             <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
@@ -58,6 +66,7 @@ export default function AdminLayout() {
               key={item.path}
               to={item.path}
               end={item.path === '/admin/resumen'}
+              onClick={() => setMenuAbierto(false)}
               className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}
             >
               <span className="admin-nav-icon">
