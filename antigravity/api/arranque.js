@@ -29,10 +29,25 @@ async function promoverAdmin(email) {
     }
 }
 
+// Con Efipay configurada, avisa en el log si falta la tabla o el token del webhook: sin eso el
+// checkout falla (tabla) o los pagos aprobados nunca activan el plan por webhook (token).
+async function diagnosticarEfipay() {
+    if (!(process.env.EFIPAY_ACCESS_TOKEN && process.env.EFIPAY_OFFICE_ID)) return;
+    try {
+        const [t] = await db.execute("SHOW TABLES LIKE 'pagos_efipay'");
+        if (t.length === 0) console.error('[Arranque] Efipay está configurada pero FALTA la tabla pagos_efipay: el checkout dará error. Pon RUN_MIGRATIONS_ON_START=true y redespliega (o corre node db/migrate_efipay.js).');
+        else console.log('[Arranque] Efipay: tabla pagos_efipay OK');
+    } catch (e) {
+        console.error('[Arranque] No se pudo revisar la tabla pagos_efipay:', e.code || e.message);
+    }
+    if (!process.env.EFIPAY_WEBHOOK_TOKEN) console.error('[Arranque] Falta EFIPAY_WEBHOOK_TOKEN: el webhook de Efipay se rechazará y los pagos solo se activarán al volver al sitio.');
+}
+
 async function tareasDeArranque() {
     if (String(process.env.RUN_MIGRATIONS_ON_START).toLowerCase() === 'true') await correrMigraciones();
     const email = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
     if (email) await promoverAdmin(email);
+    await diagnosticarEfipay();
 }
 
 module.exports = { tareasDeArranque };
