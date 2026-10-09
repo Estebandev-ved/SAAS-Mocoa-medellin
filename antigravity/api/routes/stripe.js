@@ -133,7 +133,7 @@ router.post('/checkout', verificarAuth, async (req, res) => {
 
         res.json({ sessionId: session.id, url: session.url });
     } catch (error) {
-        console.error('[Stripe] Error checkout:', error.message);
+        console.error('[Pagos] Error en checkout (pasarela: ' + billing.modoPagos() + '):', error.message);
         res.status(500).json({ error: 'Error creando sesión de pago' });
     }
 });
