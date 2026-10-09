@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
 const { verificarAdmin } = require('../middleware/admin');
+const { asegurarTablaProspectos } = require('../../db/prospectosTabla');
 
 const INSTANCE_MANAGER_URL = process.env.INSTANCE_MANAGER_URL || 'http://localhost:3001';
 
@@ -237,6 +238,24 @@ router.get('/estadisticas', async (req, res) => {
             `SELECT COUNT(*) as total FROM negocios WHERE whatsapp_conectado = 1 AND rol = 'negocio'`
         );
 
+        // Personas que dejaron sus datos (formulario /info y las que agrega el admin). Si la tabla
+        // aún no existe se crea vacía; un fallo aquí no debe tumbar el resto del Resumen.
+        let prospectos = { total: 0, nuevos: 0, esta_semana: 0, seguimientos: 0 };
+        try {
+            await asegurarTablaProspectos(db);
+            const [[p]] = await db.execute(
+                `SELECT COUNT(*) AS total,
+                        COALESCE(SUM(estado = 'nuevo'), 0) AS nuevos,
+                        COALESCE(SUM(created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0) AS esta_semana,
+                        COALESCE(SUM(proximo_seguimiento IS NOT NULL AND proximo_seguimiento <= CURDATE()
+                                     AND estado NOT IN ('cliente','descartado')), 0) AS seguimientos
+                 FROM prospectos`
+            );
+            prospectos = { total: Number(p.total), nuevos: Number(p.nuevos), esta_semana: Number(p.esta_semana), seguimientos: Number(p.seguimientos) };
+        } catch (e) {
+            console.error('[Admin] Prospectos en estadisticas:', e.code || e.message);
+        }
+
         const mrr = negociosPorPlan.reduce((acc, row) => acc + (PRECIOS_PLAN[row.plan] || 0) * row.total, 0);
 
         res.json({
@@ -252,6 +271,7 @@ router.get('/estadisticas', async (req, res) => {
                 return acc;
             }, {}),
             whatsapp_conectados: whatsappConectados[0]?.total || 0,
+            prospectos,
             tokens_hoy: 0
         });
     } catch (error) {

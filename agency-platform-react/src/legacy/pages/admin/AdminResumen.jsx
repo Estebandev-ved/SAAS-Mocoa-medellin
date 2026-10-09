@@ -76,6 +76,24 @@ export default function AdminResumen() {
       </div>
 
       <div className="kpi-grid">
+        <div className="kpi-card large" onClick={() => navigate('/admin/negocios')} style={{ cursor: 'pointer' }}>
+          <div className="kpi-content">
+            <span className="kpi-value">{formatNumber(stats?.total_negocios || 0)}</span>
+            <span className="kpi-label">Negocios registrados</span>
+            <span className="kpi-change">{formatNumber(stats?.negocios_activos || 0)} con suscripción activa</span>
+          </div>
+        </div>
+
+        <div className="kpi-card large" onClick={() => navigate('/admin/prospectos')} style={{ cursor: 'pointer' }}>
+          <div className="kpi-content">
+            <span className="kpi-value">{formatNumber(stats?.prospectos?.total || 0)}</span>
+            <span className="kpi-label">Personas interesadas (formulario)</span>
+            <span className="kpi-change positive">
+              {stats?.prospectos?.nuevos || 0} sin contactar · +{stats?.prospectos?.esta_semana || 0} esta semana
+            </span>
+          </div>
+        </div>
+
         <div className="kpi-card large">
           <div className="kpi-icon">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
