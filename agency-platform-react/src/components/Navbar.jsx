@@ -4,6 +4,7 @@ import { Menu, X, User } from 'lucide-react';
 import { useBranding } from '../context/BrandingContext';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
+import Logo from './Logo';
 
 // Navegación (design.md): barra superior de 64px en black con texto claro.
 const btnPrimary = 'inline-flex items-center justify-center h-11 px-5 rounded-xl bg-accent text-white font-semibold text-sm no-underline cursor-pointer border-none transition-colors hover:bg-accent2';
@@ -30,14 +31,7 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 no-underline">
-          <svg width="32" height="32" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-            <circle cx="24" cy="24" r="24" fill="var(--color-primary)" />
-            <path d="M24 12L32 20L24 28L16 20L24 12Z" fill="var(--inverse)" />
-            <path d="M24 20L32 28L24 36L16 28L24 20Z" fill="var(--inverse)" opacity="0.6" />
-          </svg>
-          <span className="font-head text-base font-extrabold tracking-[0.08em] text-inverse-text uppercase">
-            {branding.name}
-          </span>
+          <Logo size={32} tone="light" name={branding.name.toLowerCase()} />
         </Link>
 
         {/* Desktop Links */}

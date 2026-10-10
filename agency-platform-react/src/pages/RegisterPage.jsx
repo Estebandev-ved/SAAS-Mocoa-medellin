@@ -6,6 +6,7 @@ import { User, Lock, Mail, Phone, ArrowRight, ArrowLeft, Loader2, Check, Store, 
 import AvatarEditor from '../components/avatar/AvatarEditor';
 import { DEFAULT_AVATAR } from '../components/avatar/avatarConfig';
 import FeedbackMessage from '../components/FeedbackMessage';
+import Logo from '../components/Logo';
 import { businessService } from '../services/api';
 
 const inputCls =
@@ -100,12 +101,7 @@ const RegisterPage = () => {
     return (
         <div className="min-h-screen bg-bg2 flex flex-col items-center px-6 py-10">
             <Link to="/" className="flex items-center gap-3 no-underline mb-8">
-                <svg width="36" height="36" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-                    <circle cx="24" cy="24" r="24" fill="#E53935" />
-                    <path d="M24 12L32 20L24 28L16 20L24 12Z" fill="#FFFFFF" />
-                    <path d="M24 20L32 28L24 36L16 28L24 20Z" fill="#FFFFFF" opacity="0.6" />
-                </svg>
-                <span className="font-head text-lg font-extrabold tracking-[0.08em] text-text">ANTIGRAVITY</span>
+                <Logo size={40} tone="dark" />
             </Link>
 
             {/* Progreso */}

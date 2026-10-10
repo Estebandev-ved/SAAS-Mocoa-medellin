@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Check, Loader2, MessageCircle, MapPin, Wallet } from 'lucide-react';
 import { interesadosService } from '../services/api';
+import Logo from '../components/Logo';
 
 const inputCls =
     'w-full min-h-11 bg-white border border-[#C9C9C9] rounded-xl px-4 py-2.5 text-base text-text placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors';
@@ -43,7 +44,7 @@ const InfoPage = () => {
     return (
         <div className="min-h-screen bg-bg text-text">
             <header className="max-w-5xl mx-auto px-4 py-5">
-                <Link to="/" className="font-head font-extrabold tracking-[0.15em] text-lg">ANTIGRAVITY</Link>
+                <Link to="/" className="no-underline" aria-label="Antigravity"><Logo size={36} tone="dark" /></Link>
             </header>
 
             <main className="max-w-5xl mx-auto px-4 pb-16 grid gap-8 md:grid-cols-[1.1fr_1fr] md:items-start md:pt-6">

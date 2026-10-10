@@ -37,6 +37,7 @@ import { useHitos } from '../context/HitosContext'
 import OwnerAvatar from '../components/avatar/OwnerAvatar'
 import ActivationChecklist from '../components/ActivationChecklist'
 import InstallPrompt from '../components/InstallPrompt'
+import Logo from '../components/Logo'
 import EstadoNegocio from '../components/EstadoNegocio'
 
 const NavItem = ({ icon: Icon, label, active, onClick, locked, lockTooltip }) => (
@@ -271,14 +272,9 @@ export default function Dashboard() {
     <div className="min-h-screen bg-bg flex">
       <aside className="w-72 bg-inverse text-inverse-text border-r border-white/10 hidden lg:flex flex-col">
         <div className="p-6 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <svg width="36" height="36" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-              <circle cx="24" cy="24" r="24" fill="#E53935" />
-              <path d="M24 12L32 20L24 28L16 20L24 12Z" fill="#0A0A0A" />
-              <path d="M24 20L32 28L24 36L16 28L24 20Z" fill="#0A0A0A" opacity="0.6" />
-            </svg>
-            <h1 className="font-head text-lg font-extrabold text-inverse-text tracking-[0.08em]">ANTIGRAVITY</h1>
-          </div>
+          <h1 className="m-0">
+            <Logo size={40} tone="light" />
+          </h1>
         </div>
 
         <div className="p-4 mx-4 mt-4 rounded-xl bg-white/10 flex items-center gap-3">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { LogoMark } from '../../../components/Logo';
 import './AdminLayout.css';
 
 const navItems = [
@@ -51,11 +52,8 @@ export default function AdminLayout() {
       <aside className={`admin-sidebar ${sidebarExpanded ? 'expanded' : 'collapsed'} ${menuAbierto ? 'open' : ''}`}>
         <div className="admin-sidebar-header">
           <div className="admin-logo">
-            <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
-              <circle cx="24" cy="24" r="24" fill="#F59E0B" />
-              <path d="M24 12L32 20L24 28L16 20L24 12Z" fill="#0A0F14" />
-            </svg>
-            {sidebarExpanded && <span>ANTIGRAVITY</span>}
+            <LogoMark size={32} />
+            {sidebarExpanded && <span>antigravity</span>}
           </div>
           <span className="admin-badge">ADMIN</span>
         </div>
