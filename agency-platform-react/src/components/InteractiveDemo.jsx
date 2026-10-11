@@ -1,78 +1,60 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, CheckCircle2, Search, Clock, Bot, User, DollarSign } from 'lucide-react';
+import { Send, Search, Bot } from 'lucide-react';
 import { useBranding } from '../context/BrandingContext';
-import socket, { subscribeToBusiness } from '../services/socket';
-import { ordersService, api } from '../services/api';
+
+// Demo 100% local: el chat y los pedidos se simulan en el navegador.
+// No llama al backend ni a sockets, así que no expone datos de nadie ni puede fallar con 401.
+const CATALOGO = [
+  { nombre: 'Pan de bono', precio: 2500, palabras: ['pan de bono', 'bono'] },
+  { nombre: 'Croissant', precio: 4500, palabras: ['croissant', 'cruasan'] },
+  { nombre: 'Torta de chocolate', precio: 18000, palabras: ['torta', 'chocolate'] },
+  { nombre: 'Café americano', precio: 3500, palabras: ['cafe', 'café'] },
+];
+
+const PEDIDOS_INICIALES = [
+  { id: 1, cliente_nombre: 'María G.', detail: 'Torta de chocolate', total: 18000, estado: 'entregado' },
+  { id: 2, cliente_nombre: 'Carlos R.', detail: 'Pan de bono +1', total: 11000, estado: 'pago_confirmado' },
+];
+
+const fmt = (n) => `$${n.toLocaleString('es-CO')}`;
+
+const responder = (texto) => {
+  const t = texto.toLowerCase();
+  const items = CATALOGO.filter((p) => p.palabras.some((w) => t.includes(w)));
+  if (items.length > 0 && /(quiero|pido|pedir|dame|necesito|me das|quisiera)/.test(t)) {
+    const total = items.reduce((a, p) => a + p.precio, 0);
+    return {
+      respuesta: `¡Listo! Anoté: ${items.map((p) => p.nombre).join(', ')}. Total ${fmt(total)}. Para confirmar, envíame el comprobante de pago por Nequi o transferencia. 🧾`,
+      pedido: { detail: items.map((p) => p.nombre).join(', '), total },
+    };
+  }
+  if (/(precio|cuesta|valor|menu|menú|carta|catalogo|catálogo)/.test(t)) {
+    return { respuesta: `Esto tenemos hoy:\n${CATALOGO.map((p) => `• ${p.nombre} — ${fmt(p.precio)}`).join('\n')}\n¿Qué te provoca?` };
+  }
+  if (/(horario|abierto|abren|cierran|hora)/.test(t)) {
+    return { respuesta: 'Atendemos todos los días de 7:00 a. m. a 8:00 p. m. Fuera de horario te dejo el pedido listo para la mañana. 🕖' };
+  }
+  if (/(hola|buenas|buenos|hey|saludos)/.test(t)) {
+    return { respuesta: '¡Hola! 👋 Puedo mostrarte el menú, los precios o tomarte un pedido. Prueba con "precios" o "quiero un croissant".' };
+  }
+  return { respuesta: 'Puedo ayudarte con el menú, precios, horario o tomar tu pedido. Prueba con "precios" o "quiero una torta de chocolate". 🙂' };
+};
 
 const InteractiveDemo = () => {
   const { branding } = useBranding();
   const [messages, setMessages] = useState([
-    { id: 1, type: 'bot', text: `¡Hola! 👋 Soy el asistente de ${branding.name}. Pruébame escribiendo "hola", "precios" o haciendo un pedido ficticio.` }
+    { id: 1, type: 'bot', text: `¡Hola! 👋 Soy el asistente de ${branding.name}. Esta es una demo con datos de ejemplo: escribe "hola", "precios" o haz un pedido ficticio.` }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [orders, setOrders] = useState([]);
-  const [stats, setStats] = useState({ revenue: 0, orders: 0, pending: 0 });
-  const [isConnected, setIsConnected] = useState(false);
-  
+  const [orders, setOrders] = useState(PEDIDOS_INICIALES);
+  const [stats, setStats] = useState({ revenue: 29000, orders: 2, pending: 0 });
+
   const scrollRef = useRef(null);
+  const timers = useRef([]);
 
-  useEffect(() => {
-    // Connect and subscribe to business #1 (dev)
-    subscribeToBusiness(1);
-    setIsConnected(true);
-
-    // Initial fetch
-    const fetchInitialData = async () => {
-      try {
-        const ordersData = await ordersService.getAll();
-        setOrders(ordersData.data.slice(0, 5));
-        
-        // Calculate stats from orders for the demo
-        const total = ordersData.data.reduce((acc, o) => acc + parseFloat(o.total), 0);
-        const pending = ordersData.data.filter(o => o.status === 'pendiente_pago' || o.status === 'pago_enviado').length;
-        setStats({
-          revenue: total,
-          orders: ordersData.data.length,
-          pending: pending
-        });
-      } catch (error) {
-        console.error('Error fetching initial data:', error);
-      }
-    };
-
-    fetchInitialData();
-
-    // Listen for real-time orders
-    socket.on('nuevo_pedido', (pedido) => {
-      setOrders(prev => [pedido, ...prev.slice(0, 4)]);
-      setStats(prev => ({
-        ...prev,
-        revenue: prev.revenue + parseFloat(pedido.total),
-        orders: prev.orders + 1,
-        pending: prev.pending + 1
-      }));
-      
-      setMessages(prev => [...prev, { 
-        id: Date.now(), 
-        type: 'detect', 
-        text: `🚀 ¡NUEVO PEDIDO EN VIVO! — ${pedido.cliente_nombre} — $${parseFloat(pedido.total).toLocaleString('es-CO')}` 
-      }]);
-    });
-
-    socket.on('estado_cambiado', ({ pedidoId, nuevoEstado, pedidoActualizado }) => {
-      setOrders(prev => prev.map(o => o.id === pedidoId ? { ...o, estado: nuevoEstado } : o));
-      if (nuevoEstado === 'pago_confirmado') {
-        setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1) }));
-      }
-    });
-
-    return () => {
-      socket.off('nuevo_pedido');
-      socket.off('estado_cambiado');
-    };
-  }, []);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -80,49 +62,26 @@ const InteractiveDemo = () => {
     }
   }, [messages, isTyping]);
 
-  const handleSend = async () => {
-    if (!inputValue.trim()) return;
-    
-    const userMsg = { id: Date.now(), type: 'user', text: inputValue };
-    setMessages(prev => [...prev, userMsg]);
+  const handleSend = () => {
+    const texto = inputValue.trim();
+    if (!texto || isTyping) return;
+
+    setMessages((prev) => [...prev, { id: Date.now(), type: 'user', text: texto }]);
     setInputValue('');
     setIsTyping(true);
-    
-    try {
-      // Call backend Chat API
-      const response = await api.post('/chat/mensaje', {
-        mensaje: inputValue,
-        contexto: messages.slice(-5).map(m => ({ 
-          rol: m.type === 'user' ? 'cliente' : 'bot', 
-          contenido: m.text 
-        }))
-      });
 
-      const { data } = response.data;
-      
+    timers.current.push(setTimeout(() => {
+      const { respuesta, pedido } = responder(texto);
       setIsTyping(false);
-      setMessages(prev => [...prev, { 
-        id: Date.now() + 1, 
-        type: 'bot', 
-        text: data.respuesta 
-      }]);
+      setMessages((prev) => [...prev, { id: Date.now() + 1, type: 'bot', text: respuesta }]);
 
-      if (data.intencion === 'pedido' && data.datos_pedido) {
-        setMessages(prev => [...prev, { 
-          id: Date.now() + 2, 
-          type: 'detect', 
-          text: `🔍 IA detectó intención de pedido — Procesa automático...` 
-        }]);
+      if (pedido) {
+        setMessages((prev) => [...prev, { id: Date.now() + 2, type: 'detect', text: '🔍 IA detectó un pedido — lo registra automático en el panel' }]);
+        const nuevo = { id: Date.now() + 3, cliente_nombre: 'Tú (demo)', detail: pedido.detail, total: pedido.total, estado: 'pendiente_pago' };
+        setOrders((prev) => [nuevo, ...prev.slice(0, 4)]);
+        setStats((prev) => ({ revenue: prev.revenue + pedido.total, orders: prev.orders + 1, pending: prev.pending + 1 }));
       }
-    } catch (error) {
-      console.error('Chat error:', error);
-      setIsTyping(false);
-      setMessages(prev => [...prev, { 
-        id: Date.now() + 1, 
-        type: 'bot', 
-        text: 'Lo siento, perdí conexión con mi cerebro artificial. 🧠❌ Por favor verifica que el backend esté corriendo.' 
-      }]);
-    }
+    }, 800));
   };
 
   return (

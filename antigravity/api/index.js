@@ -312,6 +312,12 @@ const { getAuditLog } = require('./middleware/security');
 const db = require('../db/config');
 
 app.get('/api/metrics', async (req, res) => {
+    // Cerrado: solo con METRICS_TOKEN (cabecera x-metrics-token). Sin la variable, deshabilitado.
+    const esperado = process.env.METRICS_TOKEN;
+    const recibido = req.get('x-metrics-token') || '';
+    const ok = esperado && recibido.length === esperado.length &&
+        require('crypto').timingSafeEqual(Buffer.from(recibido), Buffer.from(esperado));
+    if (!ok) return res.status(401).json({ error: 'No autorizado' });
     try {
         const [msgHoy] = await db.execute(
             'SELECT COUNT(*) as total FROM mensajes WHERE DATE(created_at) = CURDATE()'

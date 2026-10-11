@@ -30,6 +30,18 @@
 
 ---
 
+## ✅ 11 oct — Plan de salida a producción (parte de código)
+
+- [x] **Reconexión automática de bots**: una caída transitoria ya no borra `whatsapp_conectado`; solo logout/conflicto/stop pedido. Al reiniciar Railway, `InstanceManager.initialize()` los vuelve a encender.
+- [x] **`/api/metrics` cerrado**: exige cabecera `x-metrics-token` = `METRICS_TOKEN` (sin variable, deshabilitado). **Socio**: definir `METRICS_TOKEN` en Railway si quiere usarlo.
+- [x] **Demo de la landing** (`InteractiveDemo.jsx`) con datos de ejemplo 100% locales (sin backend/sockets, sin 401).
+- [x] **Meta description + Open Graph** en `agency-platform-react/index.html` (imagen: `noma-512.png`; ideal crear una 1200x630 después).
+- [x] **Capa de proveedor de WhatsApp** (`instance-manager/providers/`): `BotInstance` ya no depende de Baileys. `BaileysProvider` (QR, lo de siempre movido tal cual) y `CloudApiProvider` (API oficial de Meta: envío por Graph API, webhook `GET/POST /webhook/whatsapp` con verificación y firma `X-Hub-Signature-256`, descarga de comprobantes). Un negocio usa Cloud API si está en `WHATSAPP_CLOUD_CONFIG` (JSON en el entorno; luego irá en BD con Embedded Signup). Tests: `test/unit/cloudApiProvider.test.js`. **No probado contra Meta real.** Faltan: variables `META_APP_SECRET`/`META_VERIFY_TOKEN`, cuenta Meta Business verificada + Tech Provider, columna en BD y pantalla Embedded Signup, plantillas para mensajes fuera de la ventana de 24 h (recordatorios/campañas).
+- [x] **Bug latente corregido**: el handler llamaba `sock.downloadMediaMessage(msg.message)`, método que el socket de Baileys no tiene → la verificación de comprobantes por imagen probablemente fallaba. Ahora ambos proveedores lo exponen y el handler pasa el mensaje completo. **Probar con un comprobante real.**
+- [ ] Del socio (no es código): WhatsApp de ventas con el bot, SIM de la demo, prueba de humo, UptimeRobot, backups MySQL, dominio, términos/Ley 1581, Nequi/Bancolombia, precio de Starter. Ver el doc "Antigravity — Plan de salida a producción".
+
+---
+
 ## 📅 Pendientes arrastrados del 2 oct (siguen abiertos)
 
 **Decisiones del socio que siguen en pie (26 sept, sin repreguntar):** pagos con Efipay (ya integrada el 2 oct, ver abajo), documento legal aprobado tal cual, bot de llamadas pospuesto a después de producción.
