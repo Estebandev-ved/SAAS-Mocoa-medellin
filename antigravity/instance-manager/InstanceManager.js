@@ -70,6 +70,15 @@ class InstanceManager {
       }
 
       const negocio = negocios[0];
+      // Proveedor de WhatsApp: 'baileys' (QR) por defecto. Para pasar un negocio a la API oficial de Meta
+      // (mientras no exista columna en BD / Embedded Signup) se define WHATSAPP_CLOUD_CONFIG en el entorno:
+      // {"12":{"phoneNumberId":"...","accessToken":"...","displayPhone":"57300..."}}
+      let cloud = null;
+      try { cloud = JSON.parse(process.env.WHATSAPP_CLOUD_CONFIG || '{}')[negocioId] || null; } catch {}
+      if (cloud) {
+        negocio.whatsapp_provider = 'cloud_api';
+        negocio.cloud_credenciales = cloud;
+      }
       const instance = new BotInstance(negocioId, negocio);
 
       await instance.start();
@@ -139,7 +148,7 @@ class InstanceManager {
     }).catch(() => {});
   }
 
-  markDisconnected(negocioId) {
+  markDisconnected(negocioId, persistir = true) {
     const inst = this.instances.get(negocioId);
     if (inst) {
       inst.connected = false;
@@ -149,6 +158,7 @@ class InstanceManager {
         this.instances.delete(negocioId);
       }
     }
+    if (!persistir) return;
     db.execute(
       `UPDATE negocios SET whatsapp_conectado = false WHERE id = ?`,
       [negocioId]

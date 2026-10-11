@@ -319,7 +319,7 @@ Tus datos no serán usados para marketing. ¿En qué puedo ayudarte?`;
 
             if (pedidos.length > 0) {
                 try {
-                    const buffer = await sock.downloadMediaMessage(msg.message);
+                    const buffer = await sock.downloadMediaMessage(msg);
                     if (!buffer) {
                         await sock.sendMessage(msg.key.remoteJid, { text: '⚠️ No pude descargar la imagen. ¿Podrías enviarla de nuevo?' });
                         return;

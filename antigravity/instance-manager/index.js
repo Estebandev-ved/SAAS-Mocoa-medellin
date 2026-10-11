@@ -10,6 +10,26 @@ const SubscriptionNotifier = require('./subscriptionNotifier');
 
 const app = express();
 app.use(cors());
+
+// Webhook de la Cloud API de Meta (cuerpo crudo para validar la firma; va antes de express.json)
+const cloudApi = require('./providers/CloudApiProvider');
+app.get('/webhook/whatsapp', (req, res) => {
+  const token = process.env.META_VERIFY_TOKEN;
+  if (token && req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === token) {
+    return res.status(200).send(req.query['hub.challenge']);
+  }
+  res.sendStatus(403);
+});
+app.post('/webhook/whatsapp', express.raw({ type: '*/*', limit: '2mb' }), (req, res) => {
+  if (!cloudApi.firmaValida(req.body, req.get('x-hub-signature-256'), process.env.META_APP_SECRET)) {
+    return res.sendStatus(401);
+  }
+  res.sendStatus(200); // Meta exige responder rápido; se procesa después
+  let body;
+  try { body = JSON.parse(req.body.toString('utf8')); } catch { return; }
+  cloudApi.despachar(body).catch((e) => console.error('[CloudApi] webhook:', e.message));
+});
+
 app.use(express.json());
 
 const API_URL = process.env.API_URL || 'http://localhost:3002';
