@@ -42,6 +42,7 @@ import CajaPage from './pages/CajaPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import Illustration from './components/Illustration';
 import LegalPage from './pages/LegalPage';
+import CookieBanner from './components/CookieBanner';
 
 // Panel de administración y portal del domiciliario (carga diferida: no pesan en la web principal)
 const L = (loader) => lazy(loader);
@@ -174,7 +175,9 @@ function App() {
               <Route path="/ajustes" element={<AjustesPage />} />
               <Route path="/terminos" element={<LegalPage />} />
               <Route path="/privacidad" element={<LegalPage />} />
+              <Route path="/cookies" element={<LegalPage />} />
             </Routes>
+            <CookieBanner />
             </PedidosLiveProvider>
             </HitosProvider>
           </BrandingProvider>

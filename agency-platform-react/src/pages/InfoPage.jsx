@@ -60,6 +60,7 @@ const InfoPage = () => {
     const [params] = useSearchParams();
     const fuente = params.get('f') || 'instagram';
     const [form, setForm] = useState({ nombre: '', negocio: '', whatsapp: '', ciudad: '', tipo_negocio: '', mensaje: '', sitio_web: '' });
+    const [acepta, setAcepta] = useState(false);
     const [enviando, setEnviando] = useState(false);
     const [error, setError] = useState('');
     const [listo, setListo] = useState(false);
@@ -79,10 +80,14 @@ const InfoPage = () => {
     const enviar = async (e) => {
         e.preventDefault();
         setError('');
+        if (!acepta) {
+            setError('Para continuar, autoriza el tratamiento de tus datos personales.');
+            return;
+        }
         setEnviando(true);
         try {
             const mensaje = [interes && `[Interés: ${interes.corto}]`, form.mensaje].filter(Boolean).join(' ').slice(0, 1000);
-            await interesadosService.enviar({ ...form, mensaje, fuente });
+            await interesadosService.enviar({ ...form, mensaje, fuente, acepta_datos: true });
             setListo(true);
         } catch (err) {
             setError(err.response?.data?.error || 'No pudimos enviar tus datos. Intenta de nuevo.');
@@ -251,6 +256,18 @@ const InfoPage = () => {
                                 style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
                             />
 
+                            <label className="flex items-start gap-3 text-sm text-text cursor-pointer min-h-11">
+                                <input
+                                    type="checkbox" checked={acepta} onChange={(e) => setAcepta(e.target.checked)}
+                                    className="mt-1 w-5 h-5 accent-[#C62828] shrink-0"
+                                />
+                                <span>
+                                    Autorizo el tratamiento de mis datos personales para que me contacten sobre Antigravity, según la{' '}
+                                    <Link to="/privacidad#datos" target="_blank" rel="noopener noreferrer" className="text-accent underline">política de tratamiento de datos</Link>{' '}
+                                    (Ley 1581 de 2012).
+                                </span>
+                            </label>
+
                             {error && <div role="alert" className="p-3 rounded-xl border border-danger/50 bg-[#FDECEA] text-sm font-medium text-danger-text">{error}</div>}
 
                             <button
@@ -259,7 +276,7 @@ const InfoPage = () => {
                             >
                                 {enviando ? <Loader2 className="animate-spin" size={20} /> : <>Quiero que me contacten <ArrowRight size={20} /></>}
                             </button>
-                            <p className="text-center text-xs text-muted">Usamos tus datos solo para contactarte sobre Antigravity.</p>
+                            <p className="text-center text-xs text-muted">Puedes pedir que borremos tus datos cuando quieras.</p>
                         </form>
                     )}
                 </section>

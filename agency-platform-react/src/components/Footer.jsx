@@ -48,6 +48,7 @@ const Footer = () => {
               <li><a href="#contact" className="text-muted hover:text-accent text-sm no-underline transition-colors">Contacto</a></li>
               <li><Link to="/terminos" className="text-muted hover:text-accent text-sm no-underline transition-colors">Términos y condiciones</Link></li>
               <li><Link to="/privacidad#datos" className="text-muted hover:text-accent text-sm no-underline transition-colors">Tratamiento de datos</Link></li>
+              <li><Link to="/cookies" className="text-muted hover:text-accent text-sm no-underline transition-colors">Política de cookies</Link></li>
             </ul>
           </div>
         </div>

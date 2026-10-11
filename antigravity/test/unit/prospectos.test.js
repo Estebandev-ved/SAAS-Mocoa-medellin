@@ -49,12 +49,16 @@ test('validarProspecto: edición parcial solo valida lo enviado', () => {
 
 test('validarInteresado: formulario público', () => {
     const { validarInteresado } = require('../../api/services/prospectos');
-    const ok = validarInteresado({ nombre: ' Ana ', negocio: 'Café', whatsapp: '300 123 4567', fuente: 'tiktok', estado: 'cliente' });
+    const ok = validarInteresado({ acepta_datos: true, nombre: ' Ana ', negocio: 'Café', whatsapp: '300 123 4567', fuente: 'tiktok', estado: 'cliente' });
     assert.equal(ok.datos.whatsapp, '573001234567');
     assert.equal(ok.datos.estado, 'nuevo'); // el visitante nunca fija el estado
     assert.equal(ok.datos.fuente, 'tiktok');
-    assert.equal(validarInteresado({ nombre: 'A', negocio: 'B', whatsapp: '12' }).error.includes('WhatsApp'), true);
+    assert.equal(validarInteresado({ acepta_datos: true, nombre: 'A', negocio: 'B', whatsapp: '12' }).error.includes('WhatsApp'), true);
     assert.ok(validarInteresado({ negocio: 'B', whatsapp: '3001234567' }).error);
     assert.equal(validarInteresado({ nombre: 'A', negocio: 'B', whatsapp: '3001234567', sitio_web: 'x' }).bot, true);
-    assert.equal(validarInteresado({ nombre: 'A', negocio: 'B', whatsapp: '3001234567', fuente: 'hack' }).datos.fuente, 'instagram');
+    assert.equal(validarInteresado({ acepta_datos: true, nombre: 'A', negocio: 'B', whatsapp: '3001234567', fuente: 'hack' }).datos.fuente, 'instagram');
+    // Sin autorización de datos (Ley 1581) no se guarda nada
+    assert.match(validarInteresado({ nombre: 'A', negocio: 'B', whatsapp: '3001234567' }).error, /autorizar/);
+    assert.match(validarInteresado({ acepta_datos: 'true', nombre: 'A', negocio: 'B', whatsapp: '3001234567' }).error, /autorizar/);
+    assert.match(ok.datos.notas, /Autorizó tratamiento de datos/);
 });

@@ -107,6 +107,8 @@ function validarInteresado(body) {
     if (!whatsapp) return { error: 'Revisa tu WhatsApp (ej. 300 123 4567)' };
     const email = limpio(b.email, 150);
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'El correo no es válido' };
+    // Ley 1581 de 2012: autorización previa, expresa e informada para tratar los datos.
+    if (b.acepta_datos !== true) return { error: 'Debes autorizar el tratamiento de tus datos personales para continuar' };
     const fuente = FUENTES_PUBLICAS.includes(b.fuente) ? b.fuente : 'instagram';
     const mensaje = limpio(b.mensaje, 1000);
     return {
@@ -119,7 +121,8 @@ function validarInteresado(body) {
             tipo_negocio: limpio(b.tipo_negocio, 80) || null,
             fuente,
             estado: 'nuevo',
-            notas: mensaje ? `Formulario web: ${mensaje}` : 'Llenó el formulario web',
+            notas: (mensaje ? `Formulario web: ${mensaje}` : 'Llenó el formulario web') +
+                ` [Autorizó tratamiento de datos (Ley 1581): ${new Date().toISOString()}]`,
         },
     };
 }
