@@ -148,10 +148,15 @@ async function revisarReengagement() {
             const dias = config.dias || 15;
 
             const [clientes] = await db.execute(
-                `SELECT id, whatsapp, nombre FROM clientes
-                 WHERE negocio_id = ? AND ultimo_pedido IS NOT NULL
-                 AND DATEDIFF(NOW(), ultimo_pedido) >= ?`,
-                [negocio_id, dias]
+                // `clientes.ultimo_pedido` nunca se actualizaba al crear pedidos
+                // (solo lo llenaba el seed), así que se calcula desde `pedidos`.
+                // Solo se contacta a quien aceptó marketing (Ley 1581).
+                `SELECT c.id, c.whatsapp, c.nombre FROM clientes c
+                 JOIN (SELECT cliente_id, MAX(created_at) AS ultimo
+                       FROM pedidos WHERE negocio_id = ? GROUP BY cliente_id) u ON u.cliente_id = c.id
+                 WHERE c.negocio_id = ? AND c.acepta_marketing = 1
+                 AND DATEDIFF(NOW(), u.ultimo) >= ?`,
+                [negocio_id, negocio_id, dias]
             );
 
             for (const cliente of clientes) {

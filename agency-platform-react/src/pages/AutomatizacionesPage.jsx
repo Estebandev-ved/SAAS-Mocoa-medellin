@@ -22,6 +22,8 @@ import {
   X,
   Lightbulb,
   TestTube,
+  Bell,
+  Star,
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -96,6 +98,151 @@ function AISuggestionButton({ onClick, label }) {
     >
       <Sparkles className="w-3 h-3" /> {label}
     </button>
+  );
+}
+
+// Automatizaciones que de verdad ejecuta el scheduler/handlers del backend.
+// campaña_masiva y ocr_pagos no van aquí: las campañas tienen su propio
+// módulo y la lectura de comprobantes del bot no depende de un switch.
+const AUTO_UI = {
+  recordatorio_pago: {
+    icon: Bell,
+    campos: [
+      { k: 'minutos', label: 'Avisar después de (minutos)', type: 'number', min: 5, max: 1440 },
+      { k: 'mensaje', label: 'Mensaje al cliente', type: 'text' },
+    ],
+  },
+  resena: { icon: Star, campos: [] },
+  stock_bajo: {
+    icon: Package,
+    campos: [{ k: 'umbral', label: 'Avisar cuando queden (unidades o menos)', type: 'number', min: 1, max: 100 }],
+  },
+  reengagement: {
+    icon: UserMinus,
+    campos: [
+      { k: 'dias', label: 'Días sin comprar', type: 'number', min: 7, max: 90 },
+      { k: 'mensaje', label: 'Mensaje', type: 'text' },
+      { k: 'oferta', label: 'Oferta (opcional)', type: 'text' },
+    ],
+    nota: 'Solo se escribe a clientes que aceptaron recibir marketing.',
+  },
+  reporte_semanal: {
+    icon: Clock,
+    campos: [
+      {
+        k: 'dia',
+        label: 'Día del reporte',
+        type: 'select',
+        options: ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'],
+      },
+    ],
+    nota: 'Llega por WhatsApp al número del negocio.',
+  },
+};
+
+function AutomatizacionReal({ auto, onChange, onError }) {
+  const ui = AUTO_UI[auto.tipo];
+  const Icon = ui.icon;
+  const defaults = Object.fromEntries(
+    Object.entries(auto.config_schema || {}).map(([k, d]) => [k, d.default])
+  );
+  const [cfg, setCfg] = useState({ ...defaults, ...auto.config });
+  const [busy, setBusy] = useState(false);
+  const [guardado, setGuardado] = useState(false);
+
+  async function toggle() {
+    setBusy(true);
+    try {
+      const res = await api.patch(`/automatizaciones/${auto.tipo}/toggle`, {});
+      onChange(auto.tipo, { activa: res.data.activa });
+    } catch (e) {
+      onError(e.response?.data?.error || 'No se pudo cambiar el estado');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function guardar() {
+    setBusy(true);
+    try {
+      await api.put(`/automatizaciones/${auto.tipo}/config`, cfg);
+      setGuardado(true);
+      setTimeout(() => setGuardado(false), 2000);
+    } catch (e) {
+      onError(e.response?.data?.error || 'No se pudo guardar');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const bloqueada = !auto.disponible;
+  return (
+    <div
+      className={`p-4 rounded-xl border transition-colors ${
+        auto.activa ? 'border-accent/30 bg-[#FDECEA]' : 'border-border bg-white'
+      } ${bloqueada ? 'opacity-60' : ''}`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${auto.activa ? 'bg-white' : 'bg-bg2'}`}>
+            <Icon className={`w-5 h-5 ${auto.activa ? 'text-accent' : 'text-muted'}`} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-text font-semibold text-sm">{auto.nombre}</span>
+              {bloqueada && (
+                <span className="text-[11px] font-semibold text-muted inline-flex items-center gap-1">
+                  <Lock className="w-3 h-3" /> Plan {auto.plan_requerido}
+                </span>
+              )}
+            </div>
+            <p className="text-muted text-xs leading-4">{auto.descripcion}</p>
+          </div>
+        </div>
+        <Toggle enabled={auto.activa} onToggle={toggle} disabled={bloqueada || busy} />
+      </div>
+
+      {auto.activa && ui.campos.length > 0 && (
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
+          {ui.campos.map((c) => (
+            <div key={c.k}>
+              <label className={LABEL}>{c.label}</label>
+              {c.type === 'select' ? (
+                <select
+                  value={cfg[c.k] ?? ''}
+                  onChange={(e) => setCfg((p) => ({ ...p, [c.k]: e.target.value }))}
+                  className={CONTROL}
+                >
+                  {c.options.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type={c.type === 'number' ? 'number' : 'text'}
+                  min={c.min}
+                  max={c.max}
+                  value={cfg[c.k] ?? ''}
+                  onChange={(e) => setCfg((p) => ({ ...p, [c.k]: e.target.value }))}
+                  className={CONTROL}
+                />
+              )}
+            </div>
+          ))}
+          {ui.nota && <p className="text-xs text-muted">{ui.nota}</p>}
+          <button
+            onClick={guardar}
+            disabled={busy}
+            className="h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors inline-flex items-center gap-2 disabled:bg-[#F0F0F0] disabled:text-muted disabled:cursor-not-allowed"
+          >
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            {guardado ? 'Guardado ✓' : 'Guardar ajustes'}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -202,10 +349,19 @@ export default function AutomatizacionesPage() {
   const [showTest, setShowTest] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [plan, setPlan] = useState('starter');
+  const [autos, setAutos] = useState([]);
 
   useEffect(() => {
     loadConfig();
+    api
+      .get('/automatizaciones')
+      .then((r) => setAutos((r.data.automatizaciones || []).filter((a) => AUTO_UI[a.tipo])))
+      .catch(() => {});
   }, []);
+
+  function actualizarAuto(tipo, cambios) {
+    setAutos((prev) => prev.map((a) => (a.tipo === tipo ? { ...a, ...cambios } : a)));
+  }
 
   async function loadConfig() {
     try {
@@ -555,9 +711,38 @@ export default function AutomatizacionesPage() {
             </div>
           )}
         </motion.div>
+
+        {/* Sección 3: Automatizaciones que se ejecutan solas */}
+        {autos.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white border border-border rounded-2xl p-6"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Zap className="w-5 h-5 text-accent" />
+              <h2 className="font-head text-xl font-bold text-text">Automatizaciones</h2>
+            </div>
+            <p className="text-muted text-sm mb-6">
+              Tareas que tu bot hace solo por WhatsApp. Todas arrancan apagadas: nada le llega a un cliente hasta que
+              tú la actives.
+            </p>
+            <div className="space-y-3">
+              {autos.map((a) => (
+                <AutomatizacionReal
+                  key={a.tipo}
+                  auto={a}
+                  onChange={actualizarAuto}
+                  onError={(text) => setMessage({ type: 'error', text })}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
 
-      <AnimatePresence>{showTest && <TestBotModal onClose={() => setShowTest(false)} />}</AnimatePresence>
+      <AnimatePresence>{showTest &&<TestBotModal onClose={() => setShowTest(false)} />}</AnimatePresence>
     </div>
   );
 }

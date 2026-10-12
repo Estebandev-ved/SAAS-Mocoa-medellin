@@ -30,6 +30,17 @@
 
 ---
 
+## ✅ 11 oct — Auditoría de Automatizaciones
+
+- [x] La página solo tenía personalidad + agentes; **las 5 automatizaciones reales** (recordatorio de pago, reseña, stock bajo, reenganche, reporte semanal) existían en el backend sin pantalla. Nueva sección en `AutomatizacionesPage` (activar, configurar, bloqueo por plan; todas arrancan apagadas). El Dashboard mostraba 4 automatizaciones inexistentes y los agentes siempre "Inactivo" (leía campos que el backend no manda): corregido.
+- [x] **Reenganche**: `clientes.ultimo_pedido` nunca se actualizaba → no encontraba a nadie; ahora calcula desde `pedidos` y **solo escribe a quien aceptó marketing**.
+- [x] **Horario**: usaba la hora del servidor (UTC) → ahora `America/Bogota` (`BOT_TIMEZONE`).
+- [x] **Agentes**: antes solo se guardaban; ahora `gemini.js` los mete al prompt (áreas que atiende / no atiende). Quitado el turno "sistema" roto del handler (decía "undefined").
+- [x] `PUT /automatizaciones/:tipo/config` valida y recorta contra el esquema; `emprendedor` añadido al orden de planes; `resena` añadida al catálogo.
+- [ ] Probar con WhatsApp real: activar recordatorio_pago con un pedido pendiente y ver que llegue el mensaje; `reporte_semanal` ignora la hora configurada (solo usa el día).
+
+---
+
 ## ✅ 11 oct — Plan de salida a producción (parte de código)
 
 - [x] **Reconexión automática de bots**: una caída transitoria ya no borra `whatsapp_conectado`; solo logout/conflicto/stop pedido. Al reiniciar Railway, `InstanceManager.initialize()` los vuelve a encender.

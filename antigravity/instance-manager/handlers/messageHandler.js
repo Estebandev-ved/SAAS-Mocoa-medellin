@@ -412,13 +412,10 @@ Tus datos no serán usados para marketing. ¿En qué puedo ayudarte?`;
             contenido: m.contenido
         }));
 
-        // Agregar contexto del negocio y automatizaciones al contexto del IA
-        if (autoConfig.agentes?.activo) {
-            contexto.unshift({
-                rol: 'sistema',
-                contenido: `Negocio: ${autoConfig.nombre || 'Negocio'}. Agentes activos: ${autoConfig.agentes.lista?.map(a => a.nombre).join(', ') || 'Ninguno'}. Tono: ${autoConfig.tono || 'amigable'}`
-            });
-        }
+        // Nombre, tono y agentes activos ya los lee gemini.js desde la BD al
+        // armar el prompt del sistema (antes se inyectaba aquí un turno
+        // "sistema" que Gemini trataba como respuesta del bot y mostraba
+        // "undefined" porque la lista de agentes son strings, no objetos).
 
         // Procesar con IA
         console.log(`[Handler] Llamando orchestrator para negocio ${negocioId}...`);

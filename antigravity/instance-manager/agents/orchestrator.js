@@ -248,8 +248,13 @@ async function verificarHorario(negoId) {
             return { dentro_horario: true };
         }
         
-        const ahora = new Date();
-        const horaActual = ahora.getHours() * 60 + ahora.getMinutes();
+        // El servidor (Railway) corre en UTC: sin zona explícita el horario del
+        // negocio se evaluaba 5 h corrido respecto a Colombia.
+        const zona = process.env.BOT_TIMEZONE || 'America/Bogota';
+        const partes = new Intl.DateTimeFormat('en-GB', { timeZone: zona, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+            .formatToParts(new Date());
+        const horaActual = Number(partes.find(p => p.type === 'hour').value) * 60
+            + Number(partes.find(p => p.type === 'minute').value);
         
         // Parse time strings - handle both HH:MM and HH:MM:SS formats
         const inicioStr = String(negocio.horario_activo_inicio).slice(0, 5);

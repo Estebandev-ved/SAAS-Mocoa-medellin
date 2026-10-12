@@ -27,6 +27,12 @@ const AUTOMATION_TYPES = {
       oferta: { type: 'string', default: '' }
     }
   },
+  resena: {
+    name: 'Pedir reseña',
+    description: 'Pide una reseña por WhatsApp cuando un pedido se marca como entregado',
+    plan_requerido: 'starter',
+    config_schema: {}
+  },
   stock_bajo: {
     name: 'Alerta Stock Bajo',
     description: 'Notifica cuando el inventario está bajo',
@@ -74,13 +80,14 @@ router.get('/automatizaciones', async (req, res) => {
 
     const automatizaciones = Object.entries(AUTOMATION_TYPES).map(([tipo, info]) => {
       const configExistente = configs.find(c => c.tipo === tipo);
-      const planOrden = { starter: 1, professional: 2, enterprise: 3 };
+      const planOrden = { emprendedor: 0, starter: 1, professional: 2, enterprise: 3 };
       const tienePlan = planOrden[req.negocio.plan] >= planOrden[info.plan_requerido];
 
       return {
         tipo,
         nombre: info.name,
         descripcion: info.description,
+        config_schema: info.config_schema,
         plan_requerido: info.plan_requerido,
         disponible: tienePlan,
         activa: configExistente?.activa || false,
@@ -105,7 +112,7 @@ router.patch('/automatizaciones/:tipo/toggle', async (req, res) => {
     }
 
     const info = AUTOMATION_TYPES[tipo];
-    const planOrden = { starter: 1, professional: 2, enterprise: 3 };
+    const planOrden = { emprendedor: 0, starter: 1, professional: 2, enterprise: 3 };
 
     if (planOrden[req.negocio.plan] < planOrden[info.plan_requerido]) {
       return res.status(403).json({
@@ -150,10 +157,31 @@ router.patch('/automatizaciones/:tipo/toggle', async (req, res) => {
 router.put('/automatizaciones/:tipo/config', async (req, res) => {
   try {
     const { tipo } = req.params;
-    const config = req.body;
-
     if (!AUTOMATION_TYPES[tipo]) {
       return res.status(404).json({ error: 'Tipo de automatización no válido' });
+    }
+
+    // Solo se guardan las claves del esquema, con tipo y rango válidos: el
+    // scheduler lee este JSON directo para armar mensajes a clientes.
+    const schema = AUTOMATION_TYPES[tipo].config_schema;
+    const config = {};
+    for (const [clave, def] of Object.entries(schema)) {
+      let v = req.body?.[clave];
+      if (v === undefined) continue;
+      if (def.type === 'number') {
+        v = Number(v);
+        if (!Number.isFinite(v)) return res.status(400).json({ error: `${clave} debe ser un número` });
+        if (def.min !== undefined) v = Math.max(def.min, v);
+        if (def.max !== undefined) v = Math.min(def.max, v);
+      } else if (def.type === 'string') {
+        v = String(v).slice(0, 500);
+        if (def.enum && !def.enum.includes(v)) return res.status(400).json({ error: `${clave} inválido` });
+      } else if (def.type === 'boolean') {
+        v = !!v;
+      } else if (def.type === 'array') {
+        v = Array.isArray(v) ? v.filter(x => def.items?.enum?.includes(x)) : def.default;
+      }
+      config[clave] = v;
     }
 
     const [existing] = await db.execute(

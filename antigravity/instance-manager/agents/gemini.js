@@ -47,6 +47,20 @@ async function obtenerConfigNegocio(negocioId) {
         );
         const moduloDomicilios = await obtenerModuloDomicilios(negocioId);
 
+        // Agentes que el dueño dejó encendidos en Automatizaciones (null = sin
+        // configurar → el bot atiende todo, como antes).
+        let agentesActivos = null;
+        try {
+            const [filas] = await db.execute(
+                `SELECT config FROM automatizaciones_config WHERE negocio_id = ? AND tipo = 'agentes'`,
+                [negocioId]
+            );
+            if (filas.length > 0 && filas[0].config) {
+                const cfg = typeof filas[0].config === 'string' ? JSON.parse(filas[0].config) : filas[0].config;
+                if (Array.isArray(cfg.agentes)) agentesActivos = cfg.agentes;
+            }
+        } catch (e) { /* sin config de agentes: no se restringe nada */ }
+
         // Empresa de domicilios con varios restaurantes (db/migrate_marketplace.js):
         // el modo "elige tu restaurante" se activa solo con tener filas acá, sin
         // bandera aparte que se pueda desincronizar de la realidad.
@@ -60,9 +74,10 @@ async function obtenerConfigNegocio(negocioId) {
             productos,
             moduloDomicilios,
             restaurantes,
+            agentesActivos,
         };
     } catch (error) {
-        return { negocio: {}, productos: {}, moduloDomicilios: { activo: false }, restaurantes: [] };
+        return { negocio: {}, productos: {}, moduloDomicilios: { activo: false }, restaurantes: [], agentesActivos: null };
     }
 }
 
@@ -173,6 +188,24 @@ function construirSystemPrompt(config, contexto) {
     }
     if (config.negocio.bot_tono) {
         prompt += `\nTono de conversación: ${config.negocio.bot_tono}`;
+    }
+    if (Array.isArray(config.agentesActivos)) {
+        const AREAS = {
+            ventas: 'ventas (productos, precios y pedidos)',
+            pagos: 'pagos (verificación de pagos y cobros)',
+            pedidos: 'seguimiento y estado de pedidos',
+            faq: 'preguntas frecuentes del negocio',
+            reclamos: 'quejas y reclamos',
+            retencion: 'recuperar clientes que quieren irse',
+        };
+        const activas = config.agentesActivos.filter(a => AREAS[a]).map(a => AREAS[a]);
+        const apagadas = Object.keys(AREAS).filter(a => !config.agentesActivos.includes(a)).map(a => AREAS[a]);
+        if (activas.length > 0) {
+            prompt += `\n\nÁREAS QUE ATIENDES: ${activas.join('; ')}.`;
+            if (apagadas.length > 0) {
+                prompt += `\nÁREAS QUE NO ATIENDES: ${apagadas.join('; ')}. Si el cliente pide algo de esas áreas, dile con amabilidad que un asesor del negocio lo contactará y no inventes información.`;
+            }
+        }
     }
     if (config.negocio.numero_nequi) {
         prompt += `\n\nMedios de pago: Nequi: ${config.negocio.numero_nequi}`;

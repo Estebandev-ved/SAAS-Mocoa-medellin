@@ -111,6 +111,7 @@ export default function Dashboard() {
   })
   const [alertas, setAlertas] = useState([])
   const [botConfig, setBotConfig] = useState(null)
+  const [autoEstado, setAutoEstado] = useState({})
   const [loading, setLoading] = useState(true)
   const [apiPlan, setApiPlan] = useState(null)
   const [planInfo, setPlanInfo] = useState(null)
@@ -197,6 +198,10 @@ export default function Dashboard() {
       }
     }
     fetchBotConfig()
+
+    api.get('/automations')
+      .then((res) => setAutoEstado(res.data?.automations || {}))
+      .catch(() => {})
 
     const fetchPlan = async () => {
       try {
@@ -501,8 +506,7 @@ export default function Dashboard() {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {['ventas', 'pagos', 'pedidos', 'faq', 'reclamos', 'retencion'].map((agentId) => {
-                const agentes = botConfig?.agentes || {}
-                const isActive = agentes[agentId] || false
+                const isActive = (botConfig?.agentes_activos || []).includes(agentId)
                 const agentLabels = {
                   ventas: 'Ventas',
                   pagos: 'Pagos',
@@ -556,15 +560,15 @@ export default function Dashboard() {
                 Configurar →
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
               {[
-                { id: 'catalogo_respuestas', label: 'Catálogo de respuestas', icon: FileText },
-                { id: 'extraccion_pedidos', label: 'Extracción de pedidos', icon: ShoppingCart },
-                { id: 'notificaciones_seguimiento', label: 'Notif. seguimiento', icon: Bell },
-                { id: 'agente_ia_gpt', label: 'Agente IA GPT', icon: Bot },
+                { id: 'recordatorio_pago', label: 'Recordatorio de pago', icon: Bell },
+                { id: 'resena', label: 'Pedir reseña', icon: Star },
+                { id: 'stock_bajo', label: 'Alerta de stock', icon: Package },
+                { id: 'reengagement', label: 'Reenganche', icon: Users },
+                { id: 'reporte_semanal', label: 'Reporte semanal', icon: TrendingUp },
               ].map((auto) => {
-                const automations = botConfig?.automations || {}
-                const isActive = automations[auto.id] || false
+                const isActive = !!autoEstado[auto.id]?.activa
                 const Icon = auto.icon
                 return (
                   <div
