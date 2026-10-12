@@ -37,6 +37,7 @@
 - [x] **Horario**: usaba la hora del servidor (UTC) → ahora `America/Bogota` (`BOT_TIMEZONE`).
 - [x] **Agentes**: antes solo se guardaban; ahora `gemini.js` los mete al prompt (áreas que atiende / no atiende). Quitado el turno "sistema" roto del handler (decía "undefined").
 - [x] `PUT /automatizaciones/:tipo/config` valida y recorta contra el esquema; `emprendedor` añadido al orden de planes; `resena` añadida al catálogo.
+- [x] **Campañas masivas sin Redis**: `api/services/campaignSender.js` (la tabla `campañas` es la cola; el scheduler del API las envía cada 30 s con pausas de 2-5 s, reclamo atómico, solo a `acepta_marketing=1`, cancelables). UI en Automatizaciones (plan professional+): crear, programar, ver avance, cancelar. Ya no hace falta `bull`/Redis/`queue/` para campañas; `/api/campanas` (sin ñ) es una ruta vieja con columnas inexistentes, sin uso.
 - [ ] Probar con WhatsApp real: activar recordatorio_pago con un pedido pendiente y ver que llegue el mensaje; `reporte_semanal` ignora la hora configurada (solo usa el día).
 
 ---

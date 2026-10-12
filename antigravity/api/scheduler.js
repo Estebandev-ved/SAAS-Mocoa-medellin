@@ -1,4 +1,5 @@
 const db = require('../db/config');
+const { procesarCampanasPendientes, cerrarCampanasHuerfanas } = require('./services/campaignSender');
 const { isAutomationActive, yaSeNotifico, registrarNotificacion, enviarWhatsApp } = require('./services/automationsService');
 
 // Scheduler liviano en proceso (mismo patrón que el setInterval de stats de
@@ -251,6 +252,12 @@ async function tick() {
 
 function iniciarScheduler() {
     console.log(`[Scheduler] Iniciado, revisando automatizaciones cada ${INTERVALO_MS / 1000}s`);
+    // Campañas masivas: revisión más frecuente que el resto (cada 30 s) para
+    // que "enviar ahora" y las programadas salgan casi a tiempo.
+    cerrarCampanasHuerfanas().then(() => {
+        procesarCampanasPendientes();
+        setInterval(procesarCampanasPendientes, 30 * 1000);
+    });
     tick().catch(err => console.error('[Scheduler] Error en tick inicial:', err.code || err.message));
     setInterval(() => {
         tick().catch(err => console.error('[Scheduler] Error en tick:', err.code || err.message));

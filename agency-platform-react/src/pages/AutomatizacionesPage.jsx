@@ -24,6 +24,7 @@ import {
   TestTube,
   Bell,
   Star,
+  Send,
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -241,6 +242,183 @@ function AutomatizacionReal({ auto, onChange, onError }) {
             {guardado ? 'Guardado ✓' : 'Guardar ajustes'}
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+const ESTADO_CAMP = {
+  borrador: 'Borrador',
+  programada: 'Programada',
+  enviando: 'Enviando…',
+  completada: 'Completada',
+  cancelada: 'Cancelada',
+};
+
+function Campanas({ disponible, onError }) {
+  const [lista, setLista] = useState([]);
+  const [form, setForm] = useState({ nombre: '', mensaje: '', segmento: 'todos', dias: 30, fecha: '' });
+  const [alcance, setAlcance] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  async function cargar() {
+    try {
+      const r = await api.get('/campañas');
+      setLista(r.data.campañas || []);
+    } catch (e) {
+      /* sin permiso o sin datos */
+    }
+  }
+
+  useEffect(() => {
+    if (disponible) cargar();
+  }, [disponible]);
+
+  // Hay campañas en curso: refresca el avance cada 10 s.
+  useEffect(() => {
+    if (!lista.some((c) => ['programada', 'enviando'].includes(c.estado))) return undefined;
+    const t = setInterval(cargar, 10000);
+    return () => clearInterval(t);
+  }, [lista]);
+
+  useEffect(() => {
+    if (!disponible) return;
+    api
+      .get('/campañas-destinatarios', { params: { segmento: form.segmento, dias: form.dias } })
+      .then((r) => setAlcance(r.data.total))
+      .catch(() => setAlcance(null));
+  }, [disponible, form.segmento, form.dias]);
+
+  async function crear() {
+    if (!form.nombre.trim() || !form.mensaje.trim()) return onError('Escribe el nombre y el mensaje');
+    setBusy(true);
+    try {
+      await api.post('/campañas', {
+        nombre: form.nombre,
+        mensaje: form.mensaje,
+        segmento: form.segmento,
+        segmento_config: ['inactivos', 'nuevos'].includes(form.segmento) ? { dias: Number(form.dias) } : {},
+        fecha_envio: form.fecha ? new Date(form.fecha).toISOString().slice(0, 19).replace('T', ' ') : null,
+      });
+      setForm({ nombre: '', mensaje: '', segmento: 'todos', dias: 30, fecha: '' });
+      cargar();
+    } catch (e) {
+      onError(e.response?.data?.error || 'No se pudo crear la campaña');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cancelar(id) {
+    try {
+      await api.post(`/campañas/${id}/cancelar`);
+      cargar();
+    } catch (e) {
+      onError(e.response?.data?.error || 'No se pudo cancelar');
+    }
+  }
+
+  return (
+    <div className={`p-4 rounded-xl border border-border bg-white ${disponible ? '' : 'opacity-60'}`}>
+      <div className="flex items-center gap-2 mb-1">
+        <Send className="w-5 h-5 text-accent" />
+        <span className="text-text font-semibold text-sm">Campañas masivas</span>
+        {!disponible && (
+          <span className="text-[11px] font-semibold text-muted inline-flex items-center gap-1">
+            <Lock className="w-3 h-3" /> Plan professional
+          </span>
+        )}
+      </div>
+      <p className="text-muted text-xs mb-4">
+        Envía un mensaje a un grupo de clientes. Solo reciben el mensaje quienes aceptaron marketing.
+      </p>
+
+      {disponible && (
+        <>
+          <div className="space-y-3">
+            <input
+              value={form.nombre}
+              onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
+              placeholder="Nombre de la campaña"
+              className={CONTROL}
+            />
+            <textarea
+              value={form.mensaje}
+              onChange={(e) => setForm((p) => ({ ...p, mensaje: e.target.value }))}
+              placeholder="Mensaje que recibirán los clientes"
+              rows={3}
+              maxLength={1000}
+              className={`${CONTROL} h-auto py-3 resize-none`}
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <select
+                value={form.segmento}
+                onChange={(e) => setForm((p) => ({ ...p, segmento: e.target.value }))}
+                className={CONTROL}
+              >
+                <option value="todos">Todos los clientes</option>
+                <option value="inactivos">Clientes inactivos</option>
+                <option value="nuevos">Clientes nuevos</option>
+              </select>
+              {['inactivos', 'nuevos'].includes(form.segmento) && (
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={form.dias}
+                  onChange={(e) => setForm((p) => ({ ...p, dias: e.target.value }))}
+                  className={CONTROL}
+                  aria-label="Días"
+                />
+              )}
+              <input
+                type="datetime-local"
+                value={form.fecha}
+                onChange={(e) => setForm((p) => ({ ...p, fecha: e.target.value }))}
+                className={CONTROL}
+                aria-label="Programar para (vacío = enviar ya)"
+              />
+            </div>
+            {alcance !== null && (
+              <p className="text-xs text-muted">
+                Llegará a <strong>{alcance}</strong> cliente(s).{' '}
+                {form.fecha ? 'Se enviará en la fecha elegida.' : 'Se envía en cuanto la crees.'}
+              </p>
+            )}
+            <button
+              onClick={crear}
+              disabled={busy}
+              className="h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors inline-flex items-center gap-2 disabled:bg-[#F0F0F0] disabled:text-muted disabled:cursor-not-allowed"
+            >
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              {form.fecha ? 'Programar campaña' : 'Enviar campaña'}
+            </button>
+          </div>
+
+          {lista.length > 0 && (
+            <div className="mt-5 border-t border-border pt-4 space-y-2">
+              {lista.slice(0, 5).map((c) => (
+                <div key={c.id} className="flex items-center justify-between gap-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="text-text font-semibold truncate">{c.nombre}</p>
+                    <p className="text-xs text-muted">
+                      {ESTADO_CAMP[c.estado] || c.estado} · {c.total_enviados}/{c.total_destinatarios} enviados
+                      {c.total_fallidos > 0 ? ` · ${c.total_fallidos} fallidos` : ''}
+                    </p>
+                  </div>
+                  {['programada', 'enviando'].includes(c.estado) && (
+                    <button
+                      onClick={() => cancelar(c.id)}
+                      className="h-8 px-3 rounded-lg border border-border bg-white text-xs font-semibold text-text cursor-pointer hover:bg-bg2"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -737,6 +915,10 @@ export default function AutomatizacionesPage() {
                   onError={(text) => setMessage({ type: 'error', text })}
                 />
               ))}
+              <Campanas
+                disponible={['professional', 'enterprise'].includes(plan)}
+                onError={(text) => setMessage({ type: 'error', text })}
+              />
             </div>
           </motion.div>
         )}
