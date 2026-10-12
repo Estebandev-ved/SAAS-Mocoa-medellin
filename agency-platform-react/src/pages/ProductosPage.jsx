@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useHitos } from '../context/HitosContext';
 import TipNova from '../components/TipNova';
+import AyudaRapida from '../components/AyudaRapida';
 import {
   ArrowLeft,
   Plus,
@@ -230,6 +231,15 @@ export default function ProductosPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6">
+        <AyudaRapida
+          className="mb-4"
+          guia="productos"
+          pasos={[
+            'Pulsa agregar y escribe nombre, precio real y una descripción corta (ej: “Hamburguesa doble con papas”).',
+            'Opcional: pega el enlace de una foto; el bot la enviará cuando el cliente pregunte por el producto.',
+            'Mantén el stock al día. Si un producto se acaba, desactívalo en vez de borrarlo.',
+          ]}
+        />
         <TipNova id="productos" className="mb-6">Todo lo que agregues aquí es lo que tu bot ofrece y cotiza por WhatsApp. Usa nombres claros, el precio real y una descripción corta.</TipNova>
 
         {hayRestaurantes && (
@@ -432,8 +442,16 @@ export default function ProductosPage() {
           <EmptyState
             character="sofia"
             title="No tienes productos aún"
-            description="Agrega productos o servicios para que el bot los conozca."
+            description="Sin productos el bot no tiene qué vender. Agrega el primero con su nombre, precio y una descripción corta; también puedes subir una foto de tu carta y se llenan solos."
             className="py-16"
+            action={
+              <button
+                onClick={() => { setEditando(null); setForm({ nombre: '', descripcion: '', precio: '', stock: '', categoria: '', imagen_url: '', restaurante_id: '' }); setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="h-11 px-5 rounded-xl bg-accent text-white text-sm font-semibold border-none cursor-pointer"
+              >
+                Agregar mi primer producto
+              </button>
+            }
           />
         ) : (
           <div className="space-y-6">

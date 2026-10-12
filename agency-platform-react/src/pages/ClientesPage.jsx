@@ -1,3 +1,4 @@
+import AyudaRapida from '../components/AyudaRapida';
 import TipNova from '../components/TipNova';
 import EmptyState from '../components/EmptyState';
 import React, { useState, useEffect } from 'react';
@@ -107,6 +108,15 @@ const ClientesPage = () => {
                     </button>
                 </div>
 
+                <AyudaRapida
+                    className="mb-4"
+                    guia="clientes"
+                    pasos={[
+                        'Los clientes se crean solos cuando le escriben a tu bot por WhatsApp.',
+                        'El bot les pide nombre, correo y si aceptan recibir marketing; eso queda guardado aquí.',
+                        'Solo los que aceptaron marketing reciben campañas y mensajes de reenganche.',
+                    ]}
+                />
                 <TipNova id="clientes" className="mb-6">Cada persona que le escribe a tu bot queda registrada aquí con su historial. Tus clientes se crean solos.</TipNova>
 
                 {/* Búsqueda */}
@@ -173,9 +183,14 @@ const ClientesPage = () => {
                 ) : clientes.length === 0 ? (
                     <EmptyState
                         character="lucia"
-                        title="No hay clientes"
-                        description="Los clientes aparecerán cuando interactúen con tu bot"
+                        title="Aún no tienes clientes"
+                        description="Cada persona que le escriba a tu bot por WhatsApp aparece aquí sola, con su historial. Conecta tu WhatsApp y comparte tu número para que lleguen."
                         className="bg-white border border-border rounded-3xl"
+                        action={
+                            <button onClick={() => window.location.assign('/whatsapp')} className="h-10 px-4 rounded-xl bg-accent text-white text-sm font-semibold border-none cursor-pointer">
+                                Conectar mi WhatsApp
+                            </button>
+                        }
                     />
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

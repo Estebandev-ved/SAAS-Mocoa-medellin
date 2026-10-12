@@ -21,6 +21,7 @@ import Illustration from '../components/Illustration';
 import { useHitos } from '../context/HitosContext';
 import { usePedidosLive } from '../context/PedidosLiveContext';
 import TipNova from '../components/TipNova';
+import AyudaRapida from '../components/AyudaRapida';
 
 // Mismas transiciones válidas que valida el backend (api/routes/orders.js) — la etiqueta es lo único
 // que decide esta pantalla; el servidor es quien de verdad permite o no el cambio.
@@ -175,6 +176,15 @@ const PedidosPage = () => {
                     </div>
                 </div>
 
+                <AyudaRapida
+                    className="mb-4"
+                    guia="pedidos"
+                    pasos={[
+                        'El cliente pide por WhatsApp y el bot crea el pedido (“pendiente de pago”).',
+                        'Cuando envía el comprobante, el bot lo revisa y confirma el pago solo; si no está seguro, queda “pago enviado” para que tú lo revises.',
+                        'Avanza el pedido: en preparación → enviado → entregado. Al entregarlo se activan las reseñas y encuestas, si las tienes encendidas.',
+                    ]}
+                />
                 <TipNova id="pedidos" className="mb-6">Cuando un cliente envía su comprobante, el pedido pasa a “pago enviado”. Ábrelo, revisa la imagen y confirma el pago.</TipNova>
 
                 {/* Stats Cards */}
@@ -237,7 +247,11 @@ const PedidosPage = () => {
                     <div className="text-center py-12 bg-white border border-border rounded-3xl flex flex-col items-center">
                         <Illustration name="vacio-pedidos" size={160} alt="Lucía sostiene una caja vacía: aún no hay pedidos" style={{ marginBottom: 24 }} />
                         <h3 className="text-xl font-bold mb-2">No hay pedidos</h3>
-                        <p className="text-muted">Los pedidos aparecerán aquí cuando los clientes compren</p>
+                        <p className="text-muted max-w-md">Los pedidos aparecen aquí cuando un cliente le compra a tu bot por WhatsApp. Para ver cómo funciona, haz una compra de prueba escribiéndole al bot desde otro número.</p>
+                        <div className="mt-5 flex gap-2 flex-wrap justify-center">
+                            <button onClick={() => navigate('/whatsapp')} className="h-10 px-4 rounded-xl bg-accent text-white text-sm font-semibold border-none cursor-pointer">Revisar mi WhatsApp</button>
+                            <button onClick={() => navigate('/productos')} className="h-10 px-4 rounded-xl bg-white border border-[#C9C9C9] text-text text-sm font-semibold cursor-pointer">Revisar mis productos</button>
+                        </div>
                     </div>
                 ) : (
                     <div className="bg-white rounded-2xl border border-border overflow-hidden">

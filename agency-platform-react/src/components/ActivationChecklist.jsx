@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, ArrowRight, Package, CreditCard, Smartphone } from 'lucide-react';
+import { Check, ArrowRight, Package, CreditCard, Smartphone, Tag, Zap, MessageSquare } from 'lucide-react';
 import api from '../services/api';
 import { Character } from './Illustration';
 
@@ -13,10 +13,13 @@ export default function ActivationChecklist({ user, onActivando }) {
   useEffect(() => {
     let vivo = true;
     (async () => {
-      const [prod, perfil, wa] = await Promise.allSettled([
+      const [prod, perfil, wa, cup, aut, conv] = await Promise.allSettled([
         api.get('/productos'),
         api.get('/business/perfil'),
         api.get('/whatsapp/status'),
+        api.get('/cupones'),
+        api.get('/automations'),
+        api.get('/conversaciones', { params: { limit: 1 } }),
       ]);
       if (!vivo) return;
       const productos = prod.status === 'fulfilled' ? (prod.value.data.productos || prod.value.data.data || []) : [];
@@ -26,6 +29,12 @@ export default function ActivationChecklist({ user, onActivando }) {
         catalogo: productos.length > 0,
         pagos: metodos.length > 0,
         whatsapp: wa.status === 'fulfilled' && !!wa.value.data.conectado,
+        // Segunda etapa (opcional): sacarle más provecho al bot
+        probado: conv.status === 'fulfilled' && (conv.value.data.conversaciones || []).length > 0,
+        automatizacion:
+          aut.status === 'fulfilled' &&
+          Object.entries(aut.value.data.automations || {}).some(([tipo, a]) => tipo !== 'agentes' && a.activa),
+        cupon: cup.status === 'fulfilled' && (cup.value.data.cupones || []).length > 0,
       });
     })();
     return () => {
@@ -70,12 +79,43 @@ export default function ActivationChecklist({ user, onActivando }) {
     },
   ];
 
-  const completados = pasos.filter((p) => p.hecho).length;
-  if (completados === pasos.length) return null; // todo listo: el panel queda limpio
+  const baseCompleta = pasos.every((p) => p.hecho);
+  const extras = [
+    {
+      id: 'probado',
+      icon: MessageSquare,
+      titulo: 'Prueba tu bot como si fueras un cliente',
+      desc: 'Escríbele desde otro número, pide un producto y envía un pago de prueba. Verás cómo atiende.',
+      hecho: estado.probado,
+      cta: 'Ver conversaciones',
+      to: '/conversaciones',
+    },
+    {
+      id: 'automatizacion',
+      icon: Zap,
+      titulo: 'Activa tu primera automatización',
+      desc: 'Por ejemplo, el recordatorio de pago: el bot avisa solo a quien no pagó.',
+      hecho: estado.automatizacion,
+      cta: 'Ir a Automatizaciones',
+      to: '/automatizaciones',
+    },
+    {
+      id: 'cupon',
+      icon: Tag,
+      titulo: 'Crea tu primer cupón',
+      desc: 'Un código de descuento para atraer o recuperar clientes. Lo creas con un ejemplo en un clic.',
+      hecho: estado.cupon,
+      cta: 'Crear cupón',
+      to: '/cupones',
+    },
+  ];
+  const lista = baseCompleta ? extras : pasos;
+  const completados = lista.filter((p) => p.hecho).length;
+  if (completados === lista.length) return null; // todo listo: el panel queda limpio
 
-  const siguiente = pasos.find((p) => !p.hecho);
-  const pct = Math.round((completados / pasos.length) * 100);
-  const trialSinIniciar = !estado.whatsapp && !user?.trial_hasta;
+  const siguiente = lista.find((p) => !p.hecho);
+  const pct = Math.round((completados / lista.length) * 100);
+  const trialSinIniciar = !baseCompleta && !estado.whatsapp && !user?.trial_hasta;
 
   return (
     <section
@@ -88,13 +128,15 @@ export default function ActivationChecklist({ user, onActivando }) {
 
       <div className="flex-1 min-w-0 w-full">
         <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
-          <h2 className="font-head text-xl font-bold text-text">Activa tu bot</h2>
-          <span className="text-sm font-semibold text-accent">{completados} de {pasos.length} listos</span>
+          <h2 className="font-head text-xl font-bold text-text">{baseCompleta ? 'Saca más provecho a tu bot' : 'Activa tu bot'}</h2>
+          <span className="text-sm font-semibold text-accent">{completados} de {lista.length} listos</span>
         </div>
         <p className="text-sm text-muted mb-4">
-          {trialSinIniciar
-            ? 'Tu prueba gratis de 7 días empieza cuando conectes tu WhatsApp. Antes, deja todo listo:'
-            : 'Completa estos pasos para que tu bot empiece a vender.'}
+          {baseCompleta
+            ? '¡Tu bot ya está listo! Estos pasos opcionales te ayudan a vender más:'
+            : trialSinIniciar
+              ? 'Tu prueba gratis de 7 días empieza cuando conectes tu WhatsApp. Antes, deja todo listo:'
+              : 'Completa estos pasos para que tu bot empiece a vender.'}
         </p>
 
         <div
@@ -108,7 +150,7 @@ export default function ActivationChecklist({ user, onActivando }) {
         </div>
 
         <ul className="list-none p-0 m-0 space-y-2">
-          {pasos.map((p) => {
+          {lista.map((p) => {
             const Icon = p.icon;
             const esSiguiente = siguiente && siguiente.id === p.id;
             return (

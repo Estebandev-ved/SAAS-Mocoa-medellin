@@ -331,6 +331,14 @@ export default function WhatsAppConnectionPage() {
           </div>
         </div>
 
+        {status.conectado && (
+          <div role="status" className="mb-4 rounded-2xl border border-success/40 bg-white p-4 text-sm text-text">
+            <p className="font-semibold mb-1">✅ Tu bot ya está atendiendo. ¿Cuál es el siguiente paso?</p>
+            <p className="text-muted leading-5">
+              Pruébalo: escríbele a este número desde <strong>otro teléfono</strong> como si fueras un cliente. Pide un producto, da una dirección y envía una captura de pago de prueba. Así ves todo el recorrido antes de que lleguen clientes reales.
+            </p>
+          </div>
+        )}
         {status.conectado ? (
           <div className="space-y-4">
             <div className="bg-success/10 border border-success/30 rounded-2xl p-4">

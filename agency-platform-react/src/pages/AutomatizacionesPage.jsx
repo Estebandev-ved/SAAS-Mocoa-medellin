@@ -27,6 +27,8 @@ import {
   Send,
 } from 'lucide-react';
 import api from '../services/api';
+import AyudaRapida from '../components/AyudaRapida';
+import { mensajeError } from '../utils/errores';
 
 const LABEL = 'block text-sm font-semibold text-text mb-2';
 const CONTROL =
@@ -110,7 +112,7 @@ const AUTO_UI = {
     icon: Bell,
     campos: [
       { k: 'minutos', label: 'Avisar después de (minutos)', type: 'number', min: 5, max: 1440 },
-      { k: 'mensaje', label: 'Mensaje al cliente', type: 'text' },
+      { k: 'mensaje', label: 'Mensaje al cliente', type: 'text', ejemplo: 'Hola 👋 Vimos que tu pedido quedó pendiente de pago. Si necesitas ayuda para pagar, escríbenos y te ayudamos.' },
     ],
   },
   resena: { icon: Star, campos: [] },
@@ -123,7 +125,7 @@ const AUTO_UI = {
     icon: ShoppingCart,
     campos: [
       { k: 'horas', label: 'Escribir si sigue sin pagar después de (horas)', type: 'number', min: 2, max: 168 },
-      { k: 'mensaje', label: 'Mensaje', type: 'text' },
+      { k: 'mensaje', label: 'Mensaje', type: 'text', ejemplo: 'Vimos que tu pedido quedó pendiente. ¿Quieres que te ayudemos a completarlo? Aún lo tenemos reservado para ti.' },
       { k: 'cupon', label: 'Código de cupón a ofrecer (opcional, créalo en Cupones)', type: 'text' },
     ],
   },
@@ -135,8 +137,8 @@ const AUTO_UI = {
     icon: UserMinus,
     campos: [
       { k: 'dias', label: 'Días sin comprar', type: 'number', min: 7, max: 90 },
-      { k: 'mensaje', label: 'Mensaje', type: 'text' },
-      { k: 'oferta', label: 'Oferta (opcional)', type: 'text' },
+      { k: 'mensaje', label: 'Mensaje', type: 'text', ejemplo: '¡Hola! Hace tiempo no sabemos de ti y te extrañamos 💛. Vuelve a pedir esta semana.' },
+      { k: 'oferta', label: 'Oferta (opcional)', type: 'text', ejemplo: 'Usa el código VUELVE10 y obtén 10% de descuento.' },
     ],
     nota: 'Solo se escribe a clientes que aceptaron recibir marketing.',
   },
@@ -154,7 +156,18 @@ const AUTO_UI = {
   },
 };
 
-function AutomatizacionReal({ auto, onChange, onError }) {
+// Qué pasa justo después de encenderla: así el dueño sabe qué esperar sin leer nada más.
+const AVISO_ACTIVADA = {
+  recordatorio_pago: 'Activada. Cuando un cliente deje un pedido sin pagar, el bot le recordará pasados los minutos que configures.',
+  resena: 'Activada. Cuando marques un pedido como entregado, el bot le pedirá una reseña al cliente.',
+  encuesta: 'Activada. Al entregar un pedido el bot pedirá una nota de 1 a 5. Si es baja, te avisamos por WhatsApp para que lo contactes.',
+  stock_bajo: 'Activada. Te avisaremos por WhatsApp cuando un producto baje del número que elijas. Asegúrate de tener tu stock al día en Productos.',
+  reengagement: 'Activada. El bot escribirá a clientes que no compran hace días (solo a quienes aceptaron marketing). Revisa el mensaje antes de que salga.',
+  reporte_semanal: 'Activada. Recibirás un resumen de ventas y pedidos por WhatsApp el día que elijas.',
+  recuperacion_pedido: 'Activada. Si un pedido sigue sin pagarse pasadas las horas configuradas, el bot escribirá al cliente. Puedes ofrecer un cupón (créalo en Cupones).',
+};
+
+function AutomatizacionReal({ auto, onChange, onError, onAviso }) {
   const ui = AUTO_UI[auto.tipo];
   const Icon = ui.icon;
   const defaults = Object.fromEntries(
@@ -169,8 +182,9 @@ function AutomatizacionReal({ auto, onChange, onError }) {
     try {
       const res = await api.patch(`/automatizaciones/${auto.tipo}/toggle`, {});
       onChange(auto.tipo, { activa: res.data.activa });
+      if (res.data.activa && AVISO_ACTIVADA[auto.tipo]) onAviso(AVISO_ACTIVADA[auto.tipo]);
     } catch (e) {
-      onError(e.response?.data?.error || 'No se pudo cambiar el estado');
+      onError(mensajeError(e, 'cambiar el estado'));
     } finally {
       setBusy(false);
     }
@@ -183,7 +197,7 @@ function AutomatizacionReal({ auto, onChange, onError }) {
       setGuardado(true);
       setTimeout(() => setGuardado(false), 2000);
     } catch (e) {
-      onError(e.response?.data?.error || 'No se pudo guardar');
+      onError(mensajeError(e, 'guardar los ajustes'));
     } finally {
       setBusy(false);
     }
@@ -234,14 +248,25 @@ function AutomatizacionReal({ auto, onChange, onError }) {
                   ))}
                 </select>
               ) : (
-                <input
-                  type={c.type === 'number' ? 'number' : 'text'}
-                  min={c.min}
-                  max={c.max}
-                  value={cfg[c.k] ?? ''}
-                  onChange={(e) => setCfg((p) => ({ ...p, [c.k]: e.target.value }))}
-                  className={CONTROL}
-                />
+                <>
+                  <input
+                    type={c.type === 'number' ? 'number' : 'text'}
+                    min={c.min}
+                    max={c.max}
+                    value={cfg[c.k] ?? ''}
+                    onChange={(e) => setCfg((p) => ({ ...p, [c.k]: e.target.value }))}
+                    className={CONTROL}
+                  />
+                  {c.ejemplo && (
+                    <button
+                      type="button"
+                      onClick={() => setCfg((p) => ({ ...p, [c.k]: c.ejemplo }))}
+                      className="mt-1.5 text-xs font-semibold text-accent bg-transparent border-none p-0 cursor-pointer hover:underline"
+                    >
+                      Usar ejemplo
+                    </button>
+                  )}
+                </>
               )}
             </div>
           ))}
@@ -320,192 +345,6 @@ function HistorialYSatisfaccion() {
           </ul>
         )}
       </div>
-    </div>
-  );
-}
-
-const ESTADO_CAMP = {
-  borrador: 'Borrador',
-  programada: 'Programada',
-  enviando: 'Enviando…',
-  completada: 'Completada',
-  cancelada: 'Cancelada',
-};
-
-function Campanas({ disponible, onError }) {
-  const [lista, setLista] = useState([]);
-  const [form, setForm] = useState({ nombre: '', mensaje: '', segmento: 'todos', dias: 30, fecha: '' });
-  const [alcance, setAlcance] = useState(null);
-  const [maximo, setMaximo] = useState(200);
-  const [busy, setBusy] = useState(false);
-
-  async function cargar() {
-    try {
-      const r = await api.get('/campañas');
-      setLista(r.data.campañas || []);
-    } catch (e) {
-      /* sin permiso o sin datos */
-    }
-  }
-
-  useEffect(() => {
-    if (disponible) cargar();
-  }, [disponible]);
-
-  // Hay campañas en curso: refresca el avance cada 10 s.
-  useEffect(() => {
-    if (!lista.some((c) => ['programada', 'enviando'].includes(c.estado))) return undefined;
-    const t = setInterval(cargar, 10000);
-    return () => clearInterval(t);
-  }, [lista]);
-
-  useEffect(() => {
-    if (!disponible) return;
-    api
-      .get('/campañas-destinatarios', { params: { segmento: form.segmento, dias: form.dias } })
-      .then((r) => {
-        setAlcance(r.data.total);
-        if (r.data.maximo) setMaximo(r.data.maximo);
-      })
-      .catch(() => setAlcance(null));
-  }, [disponible, form.segmento, form.dias]);
-
-  async function crear() {
-    if (!form.nombre.trim() || !form.mensaje.trim()) return onError('Escribe el nombre y el mensaje');
-    setBusy(true);
-    try {
-      await api.post('/campañas', {
-        nombre: form.nombre,
-        mensaje: form.mensaje,
-        segmento: form.segmento,
-        segmento_config: ['inactivos', 'nuevos'].includes(form.segmento) ? { dias: Number(form.dias) } : {},
-        fecha_envio: form.fecha ? new Date(form.fecha).toISOString().slice(0, 19).replace('T', ' ') : null,
-      });
-      setForm({ nombre: '', mensaje: '', segmento: 'todos', dias: 30, fecha: '' });
-      cargar();
-    } catch (e) {
-      onError(e.response?.data?.error || 'No se pudo crear la campaña');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function cancelar(id) {
-    try {
-      await api.post(`/campañas/${id}/cancelar`);
-      cargar();
-    } catch (e) {
-      onError(e.response?.data?.error || 'No se pudo cancelar');
-    }
-  }
-
-  return (
-    <div className={`p-4 rounded-xl border border-border bg-white ${disponible ? '' : 'opacity-60'}`}>
-      <div className="flex items-center gap-2 mb-1">
-        <Send className="w-5 h-5 text-accent" />
-        <span className="text-text font-semibold text-sm">Campañas masivas</span>
-        {!disponible && (
-          <span className="text-[11px] font-semibold text-muted inline-flex items-center gap-1">
-            <Lock className="w-3 h-3" /> Plan professional
-          </span>
-        )}
-      </div>
-      <p className="text-muted text-xs mb-4">
-        Envía un mensaje a un grupo de clientes. Solo reciben el mensaje quienes aceptaron marketing.
-      </p>
-
-      {disponible && (
-        <>
-          <div className="space-y-3">
-            <input
-              value={form.nombre}
-              onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
-              placeholder="Nombre de la campaña"
-              className={CONTROL}
-            />
-            <textarea
-              value={form.mensaje}
-              onChange={(e) => setForm((p) => ({ ...p, mensaje: e.target.value }))}
-              placeholder="Mensaje que recibirán los clientes"
-              rows={3}
-              maxLength={1000}
-              className={`${CONTROL} h-auto py-3 resize-none`}
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <select
-                value={form.segmento}
-                onChange={(e) => setForm((p) => ({ ...p, segmento: e.target.value }))}
-                className={CONTROL}
-              >
-                <option value="todos">Todos los clientes</option>
-                <option value="inactivos">Clientes inactivos</option>
-                <option value="nuevos">Clientes nuevos</option>
-              </select>
-              {['inactivos', 'nuevos'].includes(form.segmento) && (
-                <input
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={form.dias}
-                  onChange={(e) => setForm((p) => ({ ...p, dias: e.target.value }))}
-                  className={CONTROL}
-                  aria-label="Días"
-                />
-              )}
-              <input
-                type="datetime-local"
-                value={form.fecha}
-                onChange={(e) => setForm((p) => ({ ...p, fecha: e.target.value }))}
-                className={CONTROL}
-                aria-label="Programar para (vacío = enviar ya)"
-              />
-            </div>
-            {alcance !== null && (
-              <p className="text-xs text-muted">
-                Llegará a <strong>{alcance}</strong> cliente(s).{' '}
-                {form.fecha ? 'Se enviará en la fecha elegida.' : 'Se envía en cuanto la crees.'}
-              </p>
-            )}
-            {alcance !== null && alcance > maximo && (
-              <p className="text-xs text-danger">
-                El máximo por campaña es {maximo} clientes (protege tu número de WhatsApp). Reduce los días o el segmento.
-              </p>
-            )}
-            <button
-              onClick={crear}
-              disabled={busy || (alcance !== null && (alcance > maximo || alcance === 0))}
-              className="h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors inline-flex items-center gap-2 disabled:bg-[#F0F0F0] disabled:text-muted disabled:cursor-not-allowed"
-            >
-              {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              {form.fecha ? 'Programar campaña' : 'Enviar campaña'}
-            </button>
-          </div>
-
-          {lista.length > 0 && (
-            <div className="mt-5 border-t border-border pt-4 space-y-2">
-              {lista.slice(0, 5).map((c) => (
-                <div key={c.id} className="flex items-center justify-between gap-3 text-sm">
-                  <div className="min-w-0">
-                    <p className="text-text font-semibold truncate">{c.nombre}</p>
-                    <p className="text-xs text-muted">
-                      {ESTADO_CAMP[c.estado] || c.estado} · {c.total_enviados}/{c.total_destinatarios} enviados
-                      {c.total_fallidos > 0 ? ` · ${c.total_fallidos} fallidos` : ''}
-                    </p>
-                  </div>
-                  {['programada', 'enviando'].includes(c.estado) && (
-                    <button
-                      onClick={() => cancelar(c.id)}
-                      className="h-8 px-3 rounded-lg border border-border bg-white text-xs font-semibold text-text cursor-pointer hover:bg-bg2"
-                    >
-                      Cancelar
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
     </div>
   );
 }
@@ -670,7 +509,7 @@ export default function AutomatizacionesPage() {
       });
       setMessage({ type: 'success', text: 'Configuración del bot guardada' });
     } catch (e) {
-      setMessage({ type: 'error', text: e.response?.data?.error || 'Error guardando' });
+      setMessage({ type: 'error', text: mensajeError(e, 'guardar la configuración') });
     } finally {
       setSaving(null);
     }
@@ -686,7 +525,7 @@ export default function AutomatizacionesPage() {
       await api.put('/bot/config/agentes', { agentes: agentesArray });
       setMessage({ type: 'success', text: 'Agentes actualizados' });
     } catch (e) {
-      setMessage({ type: 'error', text: e.response?.data?.error || 'Error guardando agentes' });
+      setMessage({ type: 'error', text: mensajeError(e, 'guardar los agentes') });
     } finally {
       setSaving(null);
     }
@@ -726,6 +565,15 @@ export default function AutomatizacionesPage() {
             <TestTube size={16} className="text-accent" /> Probar bot
           </button>
         </div>
+
+        <AyudaRapida
+          guia="automatizaciones"
+          pasos={[
+            'Arriba personalizas cómo habla tu bot (nombre, tono, bienvenida y horario) y pulsas Guardar.',
+            'En “Agentes IA” enciendes las áreas que el bot debe atender; lo demás lo deriva a ti.',
+            'Abajo enciendes tareas automáticas (recordatorios, reseñas, encuestas…). Todas empiezan apagadas; pulsa “Usar ejemplo” para llenar el mensaje.',
+          ]}
+        />
 
         <TipNova id="automatizaciones">
           Aquí decides cómo habla tu bot y qué agentes lo ayudan. Usa "Probar Bot" para chatear con él antes de que
@@ -999,12 +847,26 @@ export default function AutomatizacionesPage() {
                   auto={a}
                   onChange={actualizarAuto}
                   onError={(text) => setMessage({ type: 'error', text })}
+                  onAviso={(text) => setMessage({ type: 'success', text })}
                 />
               ))}
-              <Campanas
-                disponible={['professional', 'enterprise'].includes(plan)}
-                onError={(text) => setMessage({ type: 'error', text })}
-              />
+              <div className="p-4 rounded-xl border border-border bg-white flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-bg2 flex items-center justify-center shrink-0">
+                    <Send className="w-5 h-5 text-accent" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-text font-semibold text-sm">Campañas de marketing</p>
+                    <p className="text-muted text-xs">Mensajes masivos a tus clientes: ahora tienen su propia página.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate('/campanas')}
+                  className="h-10 px-4 rounded-xl bg-white border border-[#C9C9C9] text-sm font-semibold text-text cursor-pointer hover:bg-bg2"
+                >
+                  Ir a Campañas →
+                </button>
+              </div>
               <HistorialYSatisfaccion />
             </div>
           </motion.div>

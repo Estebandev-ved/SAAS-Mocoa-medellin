@@ -1,3 +1,4 @@
+import { mensajeError } from '../utils/errores';
 import TipNova from '../components/TipNova';
 import EmptyState from '../components/EmptyState';
 import { Character } from '../components/Illustration';
@@ -78,7 +79,7 @@ const ConversacionesPage = () => {
             await api.post(`/conversaciones/${selectedConv.id}/${humano ? 'tomar' : 'retomar-bot'}`);
             cambiarAtencionLocal(humano ? 1 : 0);
         } catch (error) {
-            setErrorEnvio(error.response?.data?.error || 'No se pudo cambiar el modo de atención');
+            setErrorEnvio(mensajeError(error, 'cambiar el modo de atención'));
         }
     };
 
@@ -95,7 +96,7 @@ const ConversacionesPage = () => {
             fetchMensajes(selectedConv.id);
         } catch (error) {
             console.error('Error:', error);
-            setErrorEnvio(error.response?.data?.error || 'No se pudo enviar el mensaje');
+            setErrorEnvio(mensajeError(error, 'enviar el mensaje'));
         } finally {
             setEnviando(false);
         }

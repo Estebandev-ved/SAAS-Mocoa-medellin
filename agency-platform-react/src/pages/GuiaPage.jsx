@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -24,6 +24,7 @@ import {
   Crown,
   Lightbulb,
   Tag,
+  Send,
 } from 'lucide-react';
 
 // Contenido de la guía. Cada módulo explica: qué es, cómo se usa paso a paso
@@ -154,9 +155,23 @@ const MODULOS = [
       'Encuesta de satisfacción: al entregar el pedido pide una nota de 1 a 5. Si es 1 a 3, el bot se pausa en ese chat y te avisa. El promedio aparece abajo.',
       'Recuperar pedidos sin pagar (Professional+): si un pedido sigue sin pagarse pasadas N horas, escribe al cliente y puede ofrecerle un cupón.',
       'Historial: al final de la sección ves lo último que hicieron las automatizaciones (qué mensaje salió y cuándo), para que sepas qué está pasando.',
-      'Campañas masivas (plan Professional+): escribe el mensaje, elige el segmento, mira a cuántos llegará (máximo 200) y envíala ya o prográmala.',
+      'Campañas masivas: tienen su propia sección en el menú (“Campañas”).',
     ],
     consejo: 'Todo arranca apagado: nada le llega a un cliente hasta que tú lo enciendas. Prueba con tu propio número primero.',
+  },
+  {
+    id: 'campanas',
+    icon: Send,
+    titulo: 'Campañas (marketing)',
+    resumen: 'Mensajes masivos a tus clientes.',
+    que: 'Envías un mensaje de WhatsApp a un grupo de clientes (todos, inactivos o nuevos) ahora mismo o programado. Solo lo reciben quienes aceptaron marketing. Disponible desde el plan Professional.',
+    como: [
+      'Pulsa “Usar ejemplo” para partir de un mensaje listo y cámbialo a tu gusto.',
+      'Elige a quién enviarlo. Verás cuántos clientes lo recibirán (máximo 200 por campaña).',
+      'Déjalo sin fecha para enviarlo ya, o elige una fecha y hora.',
+      'Sigue el avance en la lista de abajo y cancélalo si te equivocas.',
+    ],
+    consejo: 'Incluye un cupón en el mensaje (créalo en Cupones) y mide cuántos lo usan.',
   },
   {
     id: 'cupones',
@@ -265,9 +280,9 @@ const FAQ = [
   ['¿Qué datos guardan de mis clientes?', 'Nombre, correo, teléfono e historial, con su consentimiento. Mira Términos y Privacidad en el pie de página.'],
 ];
 
-function Acordeon({ abierto, onToggle, children, cabecera }) {
+function Acordeon({ abierto, onToggle, children, cabecera, anchor }) {
   return (
-    <div className="bg-white border border-border rounded-2xl overflow-hidden">
+    <div id={anchor} className="scroll-mt-6 bg-white border border-border rounded-2xl overflow-hidden">
       <button
         onClick={onToggle}
         aria-expanded={abierto}
@@ -283,7 +298,14 @@ function Acordeon({ abierto, onToggle, children, cabecera }) {
 
 export default function GuiaPage() {
   const navigate = useNavigate();
-  const [abierto, setAbierto] = useState('automatizaciones');
+  const { hash } = useLocation();
+  // /guia#cupones abre esa sección directamente (lo usa el botón "¿Cómo funciona?" de cada pantalla)
+  const [abierto, setAbierto] = useState(hash ? hash.slice(1) : 'automatizaciones');
+  useEffect(() => {
+    if (!hash) return;
+    setAbierto(hash.slice(1));
+    setTimeout(() => document.getElementById(`guia-${hash.slice(1)}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }, [hash]);
   const [q, setQ] = useState('');
 
   const filtrados = useMemo(() => {
@@ -356,6 +378,7 @@ export default function GuiaPage() {
               return (
                 <Acordeon
                   key={m.id}
+                  anchor={`guia-${m.id}`}
                   abierto={abierto === m.id}
                   onToggle={() => setAbierto(abierto === m.id ? null : m.id)}
                   cabecera={

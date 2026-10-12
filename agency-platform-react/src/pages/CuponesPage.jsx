@@ -4,12 +4,22 @@ import { ArrowLeft, Tag, Loader2, Plus, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import TipNova from '../components/TipNova';
 import FeedbackMessage from '../components/FeedbackMessage';
+import AyudaRapida from '../components/AyudaRapida';
+import EmptyState from '../components/EmptyState';
+import { mensajeError } from '../utils/errores';
 
 const LABEL = 'block text-sm font-semibold text-text mb-2';
 const CONTROL =
   'w-full h-11 bg-white border border-[#C9C9C9] rounded-xl px-4 text-sm text-text placeholder:text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors';
 
 const VACIO = { codigo: '', tipo: 'porcentaje', valor: '', minimo_compra: '', usos_max: '', vence_el: '' };
+
+// Cupones de ejemplo para quien no sabe por dónde empezar.
+const EJEMPLOS = [
+  { etiqueta: '10% de bienvenida', datos: { codigo: 'BIENVENIDO10', tipo: 'porcentaje', valor: '10', minimo_compra: '', usos_max: '', vence_el: '' } },
+  { etiqueta: '$5.000 de descuento', datos: { codigo: 'AHORRA5000', tipo: 'fijo', valor: '5000', minimo_compra: '30000', usos_max: '50', vence_el: '' } },
+  { etiqueta: '20% por pocos días', datos: { codigo: 'FINDE20', tipo: 'porcentaje', valor: '20', minimo_compra: '', usos_max: '30', vence_el: '' } },
+];
 
 const dinero = (n) => `$${Number(n).toLocaleString('es-CO')}`;
 
@@ -33,7 +43,7 @@ export default function CuponesPage() {
       const r = await api.get('/cupones');
       setCupones(r.data.cupones || []);
     } catch (e) {
-      setMsg({ type: 'error', text: 'No se pudieron cargar los cupones' });
+      setMsg({ type: 'error', text: mensajeError(e, 'cargar los cupones') });
     } finally {
       setLoading(false);
     }
@@ -50,10 +60,10 @@ export default function CuponesPage() {
     try {
       await api.post('/cupones', form);
       setForm(VACIO);
-      setMsg({ type: 'success', text: 'Cupón creado' });
+      setMsg({ type: 'success', text: `Cupón ${form.codigo} creado. Ahora compártelo: pégalo en una campaña, en tus redes o en la automatización de recuperar pedidos. El cliente solo tiene que escribirlo al hacer su pedido.` });
       cargar();
     } catch (err) {
-      setMsg({ type: 'error', text: err.response?.data?.error || 'No se pudo crear el cupón' });
+      setMsg({ type: 'error', text: mensajeError(err, 'crear el cupón') });
     } finally {
       setSaving(false);
     }
@@ -64,7 +74,7 @@ export default function CuponesPage() {
       await api.patch(`/cupones/${id}/toggle`);
       cargar();
     } catch (err) {
-      setMsg({ type: 'error', text: 'No se pudo cambiar el estado' });
+      setMsg({ type: 'error', text: mensajeError(err, 'cambiar el estado del cupón') });
     }
   }
 
@@ -74,7 +84,7 @@ export default function CuponesPage() {
       await api.delete(`/cupones/${id}`);
       cargar();
     } catch (err) {
-      setMsg({ type: 'error', text: 'No se pudo eliminar' });
+      setMsg({ type: 'error', text: mensajeError(err, 'eliminar el cupón') });
     }
   }
 
@@ -95,6 +105,15 @@ export default function CuponesPage() {
           </div>
         </div>
 
+        <AyudaRapida
+          guia="cupones"
+          pasos={[
+            'Elige un ejemplo (o escribe tu propio código, por ejemplo VERANO10) y define cuánto descuenta.',
+            'Pulsa “Crear cupón” y compártelo con tus clientes: en una campaña, en redes o por WhatsApp.',
+            'El cliente escribe el código al hacer su pedido y el bot aplica el descuento solo. Aquí ves cuántas veces se usó.',
+          ]}
+        />
+
         <TipNova id="cupones">
           Crea un código (por ejemplo VERANO10). Cuando un cliente lo escriba al hacer su pedido, el bot valida el
           cupón y descuenta el valor. Puedes compartirlo en una campaña o en la recuperación de pedidos.
@@ -106,6 +125,19 @@ export default function CuponesPage() {
           <div className="flex items-center gap-2">
             <Tag className="w-5 h-5 text-accent" />
             <h2 className="font-head text-xl font-bold text-text">Nuevo cupón</h2>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted">¿No sabes por dónde empezar? Prueba un ejemplo:</span>
+            {EJEMPLOS.map((e) => (
+              <button
+                key={e.etiqueta}
+                type="button"
+                onClick={() => setForm(e.datos)}
+                className="h-8 px-3 rounded-xl bg-[#FDECEA] border border-accent/20 text-xs font-semibold text-accent cursor-pointer hover:bg-accent-dim"
+              >
+                {e.etiqueta}
+              </button>
+            ))}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -177,7 +209,25 @@ export default function CuponesPage() {
           {loading ? (
             <Loader2 className="animate-spin text-accent" />
           ) : cupones.length === 0 ? (
-            <p className="text-muted text-sm">Todavía no has creado cupones.</p>
+            <EmptyState
+              character="sofia"
+              size={110}
+              className="py-6"
+              title="Aún no tienes cupones"
+              description="Un cupón es un código que tus clientes escriben al pedir para recibir un descuento. Crea el primero con un ejemplo."
+              action={
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm(EJEMPLOS[0].datos);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="h-10 px-4 rounded-xl bg-accent text-white text-sm font-semibold border-none cursor-pointer"
+                >
+                  Empezar con un ejemplo
+                </button>
+              }
+            />
           ) : (
             <div className="space-y-3">
               {cupones.map((c) => {

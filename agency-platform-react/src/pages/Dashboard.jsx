@@ -32,6 +32,7 @@ import {
   Store,
   BookOpen,
   Tag,
+  Send,
 } from 'lucide-react'
 import api, { analyticsService } from '../services/api'
 import { usePlan } from '../components/PlanGate'
@@ -229,6 +230,7 @@ export default function Dashboard() {
     { icon: Phone, label: 'Bot Llamadas', path: '/voice' },
     { icon: Users, label: 'Clientes', path: '/clientes' },
     { icon: Zap, label: 'Automatizaciones', path: '/automatizaciones' },
+    { icon: Send, label: 'Campañas', path: '/campanas' },
     { icon: Tag, label: 'Cupones', path: '/cupones' },
     {
       icon: Truck,
