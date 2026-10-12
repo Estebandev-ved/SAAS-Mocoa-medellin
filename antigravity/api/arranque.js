@@ -18,6 +18,17 @@ function correrMigraciones() {
     });
 }
 
+// Tablas/columnas de las funciones v3 (atención humana, cupones, encuestas). Es idempotente
+// y rápida, así que corre en cada arranque: el código nuevo nunca depende de que alguien
+// se acuerde de poner RUN_MIGRATIONS_ON_START.
+function asegurarEsquemaV3() {
+    return new Promise((resolve) => {
+        const hijo = spawn(process.execPath, [path.join(__dirname, '../db/migrate_v3_funciones.js')], { stdio: 'inherit', env: process.env });
+        hijo.on('error', () => resolve(false));
+        hijo.on('exit', (code) => resolve(code === 0));
+    });
+}
+
 async function promoverAdmin(email) {
     try {
         const [r] = await db.execute("UPDATE negocios SET rol = 'admin' WHERE email_dueno = ? AND rol NOT IN ('admin', 'superadmin')", [email]);
@@ -49,6 +60,7 @@ async function diagnosticarEfipay() {
 
 async function tareasDeArranque() {
     if (String(process.env.RUN_MIGRATIONS_ON_START).toLowerCase() === 'true') await correrMigraciones();
+    await asegurarEsquemaV3();
     const email = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
     if (email) await promoverAdmin(email);
     await diagnosticarEfipay();

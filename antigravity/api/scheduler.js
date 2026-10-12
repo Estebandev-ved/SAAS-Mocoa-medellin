@@ -138,6 +138,85 @@ async function revisarReporteSemanal() {
     }
 }
 
+// Segundo empujón para pedidos que siguen sin pagarse tras `horas` (distinto del
+// recordatorio de pago, que es el primer aviso a los pocos minutos). Si el dueño
+// configuró un cupón válido, el mensaje lo incluye.
+async function revisarRecuperacionPedidos() {
+    try {
+        const [negocios] = await db.execute(
+            `SELECT DISTINCT negocio_id FROM automatizaciones_config WHERE tipo = 'recuperacion_pedido' AND activa = 1`
+        );
+        for (const { negocio_id } of negocios) {
+            const { config } = await isAutomationActive(negocio_id, 'recuperacion_pedido');
+            const horas = Number(config.horas) || 24;
+
+            const [pedidos] = await db.execute(
+                `SELECT p.id, p.numero_pedido, c.whatsapp AS cliente_whatsapp
+                 FROM pedidos p JOIN clientes c ON p.cliente_id = c.id
+                 WHERE p.negocio_id = ? AND p.estado = 'pendiente_pago'
+                 AND p.created_at <= DATE_SUB(NOW(), INTERVAL ? HOUR)
+                 AND p.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)`,
+                [negocio_id, horas]
+            );
+
+            let lineaCupon = '';
+            if (config.cupon) {
+                try {
+                    const { validarCupon, normalizarCodigo } = require('./services/cupones');
+                    const [cp] = await db.execute('SELECT * FROM cupones WHERE negocio_id = ? AND codigo = ?', [negocio_id, normalizarCodigo(config.cupon)]);
+                    if (cp.length > 0 && validarCupon(cp[0], Infinity).ok) {
+                        lineaCupon = `
+
+🏷️ Usa el código *${cp[0].codigo}* y te damos ${cp[0].tipo === 'porcentaje' ? `${Number(cp[0].valor)}%` : `$${Number(cp[0].valor).toLocaleString('es-CO')}`} de descuento.`;
+                    }
+                } catch (e) { /* sin cupones: se envía solo el mensaje */ }
+            }
+
+            for (const pedido of pedidos) {
+                if (await yaSeNotifico(negocio_id, 'recuperacion_pedido', pedido.id)) continue;
+                const base = config.mensaje || 'Vimos que tu pedido quedó pendiente. ¿Quieres que te ayudemos a completarlo?';
+                const enviado = await enviarWhatsApp(negocio_id, pedido.cliente_whatsapp, `${base}${lineaCupon}`);
+                if (enviado) {
+                    await registrarNotificacion(negocio_id, 'recuperacion_pedido', 'Mensaje de recuperación enviado',
+                        `Se escribió al cliente del pedido ${pedido.numero_pedido} (sin pagar hace ${horas}+ h)`, pedido.id);
+                    console.log(`[Scheduler] Recuperación enviada: negocio ${negocio_id}, pedido ${pedido.numero_pedido}`);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('[Scheduler] Error en revisarRecuperacionPedidos:', error.code || error.message);
+    }
+}
+
+// Avisa al dueño (WhatsApp + notificación del panel) 3 días y 1 día antes de que
+// venza su plan o su prueba, ya que el pago es único por ciclo (sin cobro recurrente).
+async function revisarRenovaciones() {
+    try {
+        const [negocios] = await db.execute(
+            `SELECT id, nombre, whatsapp, plan, suscripcion_activa, suscripcion_inicio, suscripcion_fin, trial_hasta
+             FROM negocios WHERE activo = 1 AND rol = 'negocio'`
+        );
+        for (const n of negocios) {
+            const enTrial = !!n.trial_hasta && !n.suscripcion_inicio;
+            const fin = enTrial ? n.trial_hasta : (n.suscripcion_activa ? n.suscripcion_fin : null);
+            if (!fin) continue;
+            const dias = Math.ceil((new Date(fin).getTime() - Date.now()) / 86400000);
+            if (dias < 1 || dias > 3) continue;
+            const umbral = dias === 1 ? 1 : 3;
+            const ref = `${n.id}-${new Date(fin).toISOString().slice(0, 10)}-${umbral}`;
+            if (await yaSeNotifico(n.id, 'renovacion_plan', ref)) continue;
+
+            const que = enTrial ? 'tu prueba gratuita' : 'tu plan';
+            const mensaje = `⏰ ${que} de ${n.nombre} vence en ${dias} día${dias === 1 ? '' : 's'}. Renuévalo desde Suscripción para que tu bot no se detenga.`;
+            const enviado = n.whatsapp ? await enviarWhatsApp(n.id, n.whatsapp, mensaje) : false;
+            await registrarNotificacion(n.id, 'renovacion_plan', 'Tu plan está por vencer', mensaje, ref, { dias, enviado_whatsapp: enviado });
+            console.log(`[Scheduler] Aviso de renovación: negocio ${n.id}, vence en ${dias} día(s)`);
+        }
+    } catch (error) {
+        console.error('[Scheduler] Error en revisarRenovaciones:', error.code || error.message);
+    }
+}
+
 async function revisarReengagement() {
     try {
         const [negocios] = await db.execute(
@@ -247,6 +326,8 @@ async function tick() {
     await revisarStockBajo();
     await revisarReporteSemanal();
     await revisarReengagement();
+    await revisarRecuperacionPedidos();
+    await revisarRenovaciones();
     await revisarDomiciliosVencidos();
 }
 

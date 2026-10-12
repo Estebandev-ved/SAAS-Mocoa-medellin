@@ -267,6 +267,7 @@ app.use('/api/agentes', agentesRoutes);
 app.use('/api/domicilios', domiciliosRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/campanas', campanasRoutes);
+app.use('/api/cupones', require('./routes/cupones'));
 app.use('/api/horarios', horariosRoutes);
 app.use('/api/suscripcion', suscripcionRoutes);
 app.use('/api/stripe', stripeRoutes);

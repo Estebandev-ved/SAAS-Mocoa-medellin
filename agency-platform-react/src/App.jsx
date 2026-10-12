@@ -29,6 +29,7 @@ import PedidosPage from './pages/PedidosPage';
 import ClientesPage from './pages/ClientesPage';
 import AutomatizacionesPage from './pages/AutomatizacionesPage';
 import GuiaPage from './pages/GuiaPage';
+import CuponesPage from './pages/CuponesPage';
 import SuscripcionPage from './pages/SuscripcionPage';
 import AjustesPage from './pages/AjustesPage';
 import DomiciliosPage from './pages/DomiciliosPage';
@@ -164,6 +165,7 @@ function App() {
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/automatizaciones" element={<AutomatizacionesPage />} />
               <Route path="/guia" element={<GuiaPage />} />
+              <Route path="/cupones" element={<CuponesPage />} />
               <Route path="/suscripcion" element={<SuscripcionPage />} />
               <Route path="/caja" element={<CajaPage />} />
               <Route path="/domicilios" element={<DomiciliosPage />} />

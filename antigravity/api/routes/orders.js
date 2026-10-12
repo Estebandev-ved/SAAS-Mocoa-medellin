@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
-const { isAutomationActive, yaSeNotifico, registrarNotificacion, enviarWhatsApp } = require('../services/automationsService');
+const { isAutomationActive, yaSeNotifico, registrarNotificacion, enviarWhatsApp, enviarEncuestaSiCorresponde } = require('../services/automationsService');
 
 // Router canónico para /api/pedidos. Reemplaza la implementación duplicada
 // que vivía en routes/all.js (pool de MySQL propio, sin chequeo de cuenta
@@ -237,6 +237,7 @@ router.patch('/:id/estado', async (req, res) => {
 
         if (nuevoEstado === 'entregado') {
             pedirResenaSiCorresponde(req.negocioId, id);
+            enviarEncuestaSiCorresponde(req.negocioId, id);
         }
 
         res.json({ success: true, message: `Estado actualizado a ${nuevoEstado}` });

@@ -42,6 +42,7 @@ const MIGRACIONES = [
     'migrate_ui_estado.js',
     'migrate_push.js',
     'migrate_prospectos.js',
+    'migrate_v3_funciones.js',
 ];
 
 const BASE = process.env.MYSQL_DATABASE || 'antigravity';

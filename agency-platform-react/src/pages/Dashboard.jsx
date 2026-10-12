@@ -31,6 +31,7 @@ import {
   UtensilsCrossed,
   Store,
   BookOpen,
+  Tag,
 } from 'lucide-react'
 import api, { analyticsService } from '../services/api'
 import { usePlan } from '../components/PlanGate'
@@ -228,6 +229,7 @@ export default function Dashboard() {
     { icon: Phone, label: 'Bot Llamadas', path: '/voice' },
     { icon: Users, label: 'Clientes', path: '/clientes' },
     { icon: Zap, label: 'Automatizaciones', path: '/automatizaciones' },
+    { icon: Tag, label: 'Cupones', path: '/cupones' },
     {
       icon: Truck,
       label: 'Domicilios',
@@ -357,6 +359,28 @@ export default function Dashboard() {
           <InstallPrompt />
           <ActivationChecklist user={user} onActivando={setActivando} />
           <EstadoNegocio plan={planInfo} activando={activando} domicilios={!domiciliosLocked} />
+
+          {(() => {
+            // Plan de pago por vencer (la prueba gratis ya la avisa EstadoNegocio).
+            if (!planInfo?.activo || planInfo.en_trial || !planInfo.fin) return null
+            const diasRestantes = Math.ceil((new Date(planInfo.fin).getTime() - Date.now()) / 86400000)
+            if (diasRestantes > 5) return null
+            return (
+              <div role="alert" className="mb-6 flex items-center justify-between gap-3 flex-wrap rounded-2xl border border-warn/40 bg-warn/10 px-5 py-4">
+                <p className="text-sm text-text">
+                  {diasRestantes <= 0
+                    ? 'Tu plan venció. Renuévalo para que tu bot siga atendiendo.'
+                    : `Tu plan vence en ${diasRestantes} día${diasRestantes === 1 ? '' : 's'}. Renuévalo para que tu bot no se detenga.`}
+                </p>
+                <button
+                  onClick={() => navigate('/suscripcion')}
+                  className="h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer"
+                >
+                  Renovar ahora
+                </button>
+              </div>
+            )
+          })()}
 
           <motion.div
             variants={containerVariants}

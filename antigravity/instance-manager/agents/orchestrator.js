@@ -5,6 +5,7 @@ const { checkLimit } = require('../../config/planConfig');
 const { geocodificarDireccion } = require('../services/geocoding');
 const { calcularCondicionesDomicilio } = require('../services/domicilioTarifa');
 const { calcularEstado } = require('../../api/services/billing');
+const cupones = require('../../api/services/cupones');
 
 const LIMITES_POR_PLAN = {
     starter: { mensajes_por_minuto: 10, mensajes_por_hora: 100, tokens_por_dia: 50000 },
@@ -80,6 +81,12 @@ async function procesarMensaje(mensaje, negocioId, clienteId, contexto = [], con
 
         let pedidoCreado = null;
         if (resultado.datos_accion) {
+            // Cupón: si el cliente escribió un código válido del negocio (en este
+            // mensaje o en los recientes), se aplica al crear el pedido.
+            if (resultado.datos_accion.tipo === 'crear_pedido') {
+                const textosCliente = [mensaje, ...contexto.filter(m => m.rol === 'cliente').map(m => m.contenido)];
+                resultado.datos_accion.cupon = await cupones.buscarEnTextos(negocioId, textosCliente);
+            }
             pedidoCreado = await ejecutarAccion(resultado.datos_accion, negocioId, clienteId);
         }
 
@@ -313,6 +320,7 @@ async function ejecutarAccion(datosAccion, negocioId, clienteId) {
 async function crearPedido(negocioId, clienteId, datos) {
     if (!datos.productos || datos.productos.length === 0) return null;
 
+    let cuponAplicado = null;
     try {
         // Empresa de domicilios con varios restaurantes (ver db/migrate_marketplace.js):
         // el catálogo se limita al restaurante que el cliente eligió en la
@@ -357,13 +365,29 @@ async function crearPedido(negocioId, clienteId, datos) {
 
         if (items.length === 0) return null;
 
+        // Descuento por cupón (opcional). El uso se reclama antes de insertar y
+        // se libera si la creación del pedido falla.
+        const subtotalPedido = total;
+        let descuento = 0;
+        if (datos.cupon && cupones.validarCupon(datos.cupon, subtotalPedido).ok && await cupones.reclamarUso(datos.cupon.id)) {
+            descuento = cupones.calcularDescuento(datos.cupon, subtotalPedido);
+            cuponAplicado = datos.cupon;
+            total = subtotalPedido - descuento;
+        }
+
         const numeroPedido = `AG-${String(negocioId).padStart(3, '0')}-${Date.now().toString().slice(-6)}`;
 
         const [result] = await db.execute(
             `INSERT INTO pedidos (negocio_id, cliente_id, numero_pedido, estado, subtotal, total, direccion_entrega, restaurante_id)
              VALUES (?, ?, ?, 'pendiente_pago', ?, ?, ?, ?)`,
-            [negocioId, clienteId, numeroPedido, total, total, direccionEntrega, datos.restaurante_id || null]
+            [negocioId, clienteId, numeroPedido, subtotalPedido, total, direccionEntrega, datos.restaurante_id || null]
         );
+
+        if (cuponAplicado) {
+            try {
+                await db.execute('UPDATE pedidos SET descuento = ?, cupon_codigo = ? WHERE id = ?', [descuento, cuponAplicado.codigo, result.insertId]);
+            } catch (e) { console.error('[Orchestrator] No se pudo guardar el cupón en el pedido:', e.message); }
+        }
 
         for (const item of items) {
             await db.execute(
@@ -423,6 +447,8 @@ async function crearPedido(negocioId, clienteId, datos) {
             numero_pedido: numeroPedido,
             items,
             total,
+            descuento,
+            cupon: cuponAplicado ? cuponAplicado.codigo : null,
             direccion_entrega: direccionEntrega,
             nequi: negocio.numero_nequi || null,
             bancolombia: negocio.numero_bancolombia || null,
@@ -432,6 +458,7 @@ async function crearPedido(negocioId, clienteId, datos) {
         };
 
     } catch (error) {
+        if (cuponAplicado) await cupones.liberarUso(cuponAplicado.id);
         console.error('[Orchestrator] Error creando pedido:', error);
         return null;
     }

@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
-const { isAutomationActive, yaSeNotifico, registrarNotificacion } = require('../services/automationsService');
+const { isAutomationActive, yaSeNotifico, registrarNotificacion, enviarEncuestaSiCorresponde } = require('../services/automationsService');
 const { calcularCondicionesDomicilio } = require('../../instance-manager/services/domicilioTarifa');
 const { driverLoginRateLimit } = require('../middleware/security');
 
@@ -868,6 +868,7 @@ router.post('/driver/update-status', verificarAuthDomiciliario, async (req, res)
                 // para los pedidos que se entregan vía domiciliario en vez de
                 // marcarse "entregado" directo desde el dashboard.
                 pedirResenaSiCorresponde(req.domiciliario.negocio_id, domData[0].pedido_id, domData[0].cliente_whatsapp);
+                enviarEncuestaSiCorresponde(req.domiciliario.negocio_id, domData[0].pedido_id);
             }
         }
 

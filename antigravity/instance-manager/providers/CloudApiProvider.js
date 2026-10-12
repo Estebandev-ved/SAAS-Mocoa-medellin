@@ -108,7 +108,7 @@ class CloudApiProvider {
 
   _enviarContenido(jid, c) {
     const to = String(jid).split('@')[0].replace(/[^0-9]/g, '');
-    if (c.image) return this.sendImage(to, c.image, c.caption);
+    if (c.image) return this.sendImage(to, typeof c.image === 'string' ? c.image : c.image.url, c.caption);
     if (c.buttons) return this.sendButtons(to, c.text, c.buttons.map(b => ({ id: b.buttonId, text: b.buttonText?.displayText })));
     return this.sendMessage(to, c.text);
   }

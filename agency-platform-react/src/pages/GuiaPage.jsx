@@ -23,6 +23,7 @@ import {
   Phone,
   Crown,
   Lightbulb,
+  Tag,
 } from 'lucide-react';
 
 // Contenido de la guía. Cada módulo explica: qué es, cómo se usa paso a paso
@@ -91,6 +92,9 @@ const MODULOS = [
     como: [
       'Elige una conversación de la lista para leer los mensajes.',
       'Revisa de vez en cuando cómo responde el bot: si ves algo mal, corrige el producto, la política o el tono.',
+      'Atención personal: si un cliente escribe “quiero hablar con un asesor” (o califica mal una entrega), el bot se calla, le avisa que una persona lo atenderá y te manda un WhatsApp. Verás la etiqueta “Requiere atención” en la lista.',
+      'Escribe tu respuesta en la caja de abajo: llega al WhatsApp del cliente y el bot queda en pausa en ese chat. Cuando termines, pulsa “Retomar bot”. (También puedes pulsar “Atender yo” para tomar un chat cuando quieras.)',
+      'Si nadie retoma el chat, el bot vuelve solo a las 12 horas.',
     ],
     consejo: 'Leer 5 conversaciones a la semana es la mejor forma de mejorar tu bot.',
   },
@@ -115,6 +119,7 @@ const MODULOS = [
     que: 'Tu catálogo con nombre, precio, descripción, categoría y stock. Es la única fuente de precios del bot.',
     como: [
       'Pulsa agregar y llena nombre, precio real y una descripción corta.',
+      'Pega el enlace de una foto del producto (campo “Foto (URL)”): cuando el cliente o el bot lo nombren, el bot le envía la foto con el precio (máximo 3 por respuesta).',
       'Mantén el stock al día: la alerta de stock bajo se basa en ese número.',
       'Desactiva un producto cuando se acabe en vez de borrarlo.',
     ],
@@ -146,9 +151,26 @@ const MODULOS = [
       'Alerta de stock bajo: te avisa por WhatsApp cuando un producto baja del umbral.',
       'Reenganche: escribe a clientes que no compran hace N días (solo con marketing aceptado).',
       'Reporte semanal: te manda por WhatsApp las ventas y pedidos de la semana.',
+      'Encuesta de satisfacción: al entregar el pedido pide una nota de 1 a 5. Si es 1 a 3, el bot se pausa en ese chat y te avisa. El promedio aparece abajo.',
+      'Recuperar pedidos sin pagar (Professional+): si un pedido sigue sin pagarse pasadas N horas, escribe al cliente y puede ofrecerle un cupón.',
+      'Historial: al final de la sección ves lo último que hicieron las automatizaciones (qué mensaje salió y cuándo), para que sepas qué está pasando.',
       'Campañas masivas (plan Professional+): escribe el mensaje, elige el segmento, mira a cuántos llegará (máximo 200) y envíala ya o prográmala.',
     ],
     consejo: 'Todo arranca apagado: nada le llega a un cliente hasta que tú lo enciendas. Prueba con tu propio número primero.',
+  },
+  {
+    id: 'cupones',
+    icon: Tag,
+    titulo: 'Cupones',
+    resumen: 'Códigos de descuento que el bot aplica solo.',
+    que: 'Creas códigos (por ejemplo VERANO10) de porcentaje o valor fijo, con compra mínima, límite de usos y fecha de vencimiento opcionales.',
+    como: [
+      'Crea el cupón con su código y valor.',
+      'Compártelo en una campaña, en la automatización de recuperación o en tus redes.',
+      'El cliente lo escribe al hacer su pedido; el bot lo valida y el pedido sale con el descuento (se muestra en la confirmación).',
+      'Puedes desactivarlo en cualquier momento. Un cupón vencido, agotado o por debajo del mínimo no se aplica.',
+    ],
+    consejo: 'El bot nunca revela ni inventa códigos: solo aplica el que el cliente escribe.',
   },
   {
     id: 'domicilios',
@@ -229,7 +251,7 @@ const MODULOS = [
     resumen: 'Tu plan, tu uso y tus facturas.',
     que: 'Ves cuánto llevas del ciclo, cambias de plan (subir es inmediato, bajar queda programado para fin del ciclo) y descargas facturas.',
     como: ['Elige el plan y paga con el checkout.', 'Al volver, tu plan queda activo con su factura.'],
-    consejo: 'El pago es único por ciclo: te avisaremos antes de que venza para que renueves.',
+    consejo: 'El pago es único por ciclo: te avisamos por WhatsApp y en el panel 3 días y 1 día antes de que venza para que renueves.',
   },
 ];
 

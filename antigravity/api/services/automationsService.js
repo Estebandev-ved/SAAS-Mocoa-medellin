@@ -86,7 +86,40 @@ async function enviarWhatsApp(negocioId, numero, mensaje) {
     }
 }
 
+// Automatización "encuesta": tras la entrega pide una calificación de 1 a 5.
+// La respuesta la procesa instance-manager/handlers/encuesta.js.
+async function enviarEncuestaSiCorresponde(negocioId, pedidoId) {
+    try {
+        const { activa } = await isAutomationActive(negocioId, 'encuesta');
+        if (!activa) return;
+        if (await yaSeNotifico(negocioId, 'encuesta', pedidoId)) return;
+        const [rows] = await db.execute(
+            'SELECT p.cliente_id, c.whatsapp FROM pedidos p JOIN clientes c ON c.id = p.cliente_id WHERE p.id = ? AND p.negocio_id = ?',
+            [pedidoId, negocioId]
+        );
+        if (rows.length === 0 || !rows[0].whatsapp) return;
+        const mensaje = '⭐ ¿Cómo calificas tu pedido? Responde con un número del 1 (muy malo) al 5 (excelente). ¡Tu opinión nos ayuda a mejorar!';
+        const enviado = await enviarWhatsApp(negocioId, rows[0].whatsapp, mensaje);
+        if (enviado) {
+            await registrarNotificacion(negocioId, 'encuesta', 'Encuesta de satisfacción enviada', mensaje, pedidoId, { cliente_id: String(rows[0].cliente_id) });
+        }
+    } catch (error) {
+        console.error('[AutomationsService] Error enviando encuesta:', error.message);
+    }
+}
+
+async function avisarAlDueno(negocioId, mensaje) {
+    try {
+        const [neg] = await db.execute('SELECT whatsapp FROM negocios WHERE id = ?', [negocioId]);
+        return neg[0]?.whatsapp ? await enviarWhatsApp(negocioId, neg[0].whatsapp, mensaje) : false;
+    } catch (error) {
+        return false;
+    }
+}
+
 module.exports = {
+    enviarEncuestaSiCorresponde,
+    avisarAlDueno,
     isAutomationActive,
     yaSeNotifico,
     registrarNotificacion,

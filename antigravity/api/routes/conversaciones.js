@@ -11,10 +11,11 @@ router.get('/', async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const offset = (page - 1) * limit;
 
-        const [conversaciones] = await db.execute(
+        const consultar = (col) => db.execute(
             `SELECT c.id, c.negocio_id, c.cliente_id, c.intencion_detectada, c.pedido_id,
                     c.activa, c.updated_at,
                     cl.nombre as cliente_nombre, cl.whatsapp as cliente_whatsapp
+                    ${col}
              FROM conversaciones c
              LEFT JOIN clientes cl ON cl.id = c.cliente_id
              WHERE c.negocio_id = ?
@@ -22,6 +23,14 @@ router.get('/', async (req, res) => {
              LIMIT ? OFFSET ?`,
             [req.negocioId, limit, offset]
         );
+        // Si la migración v3 aún no corrió, la columna no existe: se lista igual sin el indicador.
+        let conversaciones;
+        try {
+            [conversaciones] = await consultar(', COALESCE(cl.atencion_humana, 0) as atencion_humana');
+        } catch (e) {
+            if (e.code !== 'ER_BAD_FIELD_ERROR') throw e;
+            [conversaciones] = await consultar('');
+        }
 
         const [countResult] = await db.execute(
             'SELECT COUNT(*) as total FROM conversaciones WHERE negocio_id = ?',
@@ -132,17 +141,47 @@ router.post('/:id/mensaje', async (req, res) => {
         );
         const numeroCliente = cliente[0]?.whatsapp || '';
 
+        // Antes solo se guardaba en la base y NUNCA llegaba al cliente por WhatsApp.
+        const { enviarWhatsApp } = require('../services/automationsService');
+        const enviado = await enviarWhatsApp(req.negocioId, numeroCliente, contenido.trim());
+        if (!enviado) {
+            return res.status(502).json({ error: 'No se pudo enviar por WhatsApp. Revisa que tu WhatsApp esté conectado.' });
+        }
+
         await db.execute(
             `INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido, agente_proceso)
              VALUES (?, ?, 'salida', ?, 'dueno')`,
-            [req.negocioId, numeroCliente, contenido]
+            [req.negocioId, numeroCliente, contenido.trim()]
         );
 
-        res.json({ success: true, mensaje: 'Mensaje enviado' });
+        // Si el dueño escribe, el bot se hace a un lado para no pisarlo.
+        try {
+            await db.execute('UPDATE clientes SET atencion_humana = 1, humano_desde = NOW() WHERE id = ? AND negocio_id = ?', [conversacion[0].cliente_id, req.negocioId]);
+        } catch (e) { /* migración v3 pendiente */ }
+
+        res.json({ success: true, mensaje: 'Mensaje enviado', atencion_humana: true });
     } catch (error) {
         console.error('[Conversaciones] Error enviar:', error);
         res.status(500).json({ error: 'Error al enviar mensaje' });
     }
 });
+
+// Devuelve el chat al bot / lo pone en manos de una persona.
+async function cambiarAtencion(req, res, valor) {
+    try {
+        const [conv] = await db.execute('SELECT cliente_id FROM conversaciones WHERE id = ? AND negocio_id = ?', [req.params.id, req.negocioId]);
+        if (conv.length === 0) return res.status(404).json({ error: 'Conversación no encontrada' });
+        await db.execute(
+            `UPDATE clientes SET atencion_humana = ?, humano_desde = ${valor ? 'NOW()' : 'NULL'} WHERE id = ? AND negocio_id = ?`,
+            [valor, conv[0].cliente_id, req.negocioId]
+        );
+        res.json({ success: true, atencion_humana: !!valor });
+    } catch (error) {
+        console.error('[Conversaciones] Error cambiando atención:', error.message);
+        res.status(500).json({ error: 'No se pudo cambiar el modo de atención' });
+    }
+}
+router.post('/:id/retomar-bot', (req, res) => cambiarAtencion(req, res, 0));
+router.post('/:id/tomar', (req, res) => cambiarAtencion(req, res, 1));
 
 module.exports = router;

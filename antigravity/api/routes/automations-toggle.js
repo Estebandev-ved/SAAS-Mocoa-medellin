@@ -81,4 +81,49 @@ router.put('/', async (req, res) => {
     }
 });
 
+// Historial: lo último que las automatizaciones hicieron por este negocio
+// (queda registrado en `notificaciones`).
+const TIPOS_HISTORIAL = [
+    'recordatorio_pago', 'resena', 'encuesta', 'stock_bajo', 'reengagement', 'reporte_semanal',
+    'recuperacion_pedido', 'renovacion_plan', 'atencion_humana',
+];
+
+router.get('/historial', async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, tipo, titulo, mensaje, created_at FROM notificaciones
+             WHERE negocio_id = ? AND tipo IN (${TIPOS_HISTORIAL.map(() => '?').join(',')})
+             ORDER BY id DESC LIMIT 50`,
+            [req.negocioId, ...TIPOS_HISTORIAL]
+        );
+        res.json({ historial: rows });
+    } catch (error) {
+        console.error('[Automations] Error historial:', error.message);
+        res.status(500).json({ error: 'Error al obtener el historial' });
+    }
+});
+
+// Satisfacción: promedio y distribución de las calificaciones de los últimos 90 días.
+router.get('/encuestas', async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT calificacion, COUNT(*) AS total FROM encuestas
+             WHERE negocio_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+             GROUP BY calificacion`,
+            [req.negocioId]
+        );
+        const distribucion = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        let total = 0, suma = 0;
+        for (const r of rows) {
+            distribucion[r.calificacion] = r.total;
+            total += r.total;
+            suma += r.calificacion * r.total;
+        }
+        res.json({ total, promedio: total ? Math.round((suma / total) * 10) / 10 : null, distribucion });
+    } catch (error) {
+        // Sin la tabla (migración pendiente) simplemente no hay datos.
+        res.json({ total: 0, promedio: null, distribucion: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } });
+    }
+});
+
 module.exports = router;

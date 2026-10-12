@@ -65,6 +65,23 @@ const ConversacionesPage = () => {
         fetchMensajes(conv.id);
     };
 
+    const [errorEnvio, setErrorEnvio] = useState('');
+
+    const cambiarAtencionLocal = (valor) => {
+        setSelectedConv((c) => (c ? { ...c, atencion_humana: valor } : c));
+        setConversaciones((lista) => lista.map((c) => (c.id === selectedConv?.id ? { ...c, atencion_humana: valor } : c)));
+    };
+
+    // "Retomar bot" devuelve el chat al bot; "Atender yo" lo pone en manos de una persona.
+    const cambiarAtencion = async (humano) => {
+        try {
+            await api.post(`/conversaciones/${selectedConv.id}/${humano ? 'tomar' : 'retomar-bot'}`);
+            cambiarAtencionLocal(humano ? 1 : 0);
+        } catch (error) {
+            setErrorEnvio(error.response?.data?.error || 'No se pudo cambiar el modo de atención');
+        }
+    };
+
     const handleEnviarMensaje = async (e) => {
         e.preventDefault();
         if (!nuevoMensaje.trim() || !selectedConv) return;
@@ -73,9 +90,12 @@ const ConversacionesPage = () => {
             setEnviando(true);
             await api.post(`/conversaciones/${selectedConv.id}/mensaje`, { contenido: nuevoMensaje });
             setNuevoMensaje('');
+            // Al escribir tú, el bot se hace a un lado de este chat.
+            cambiarAtencionLocal(1);
             fetchMensajes(selectedConv.id);
         } catch (error) {
             console.error('Error:', error);
+            setErrorEnvio(error.response?.data?.error || 'No se pudo enviar el mensaje');
         } finally {
             setEnviando(false);
         }
@@ -161,6 +181,7 @@ const ConversacionesPage = () => {
                                         <div className="flex items-center justify-between mb-1">
                                             <span className="font-bold text-sm truncate">
                                                 {conv.cliente_nombre || conv.numero_cliente || 'Desconocido'}
+                                                {conv.atencion_humana ? <span className="ml-2 text-[10px] font-semibold text-warn-text bg-warn/10 px-1.5 py-0.5 rounded">Requiere atención</span> : null}
                                             </span>
                                             <span className="text-xs text-muted flex items-center gap-1">
                                                 <Clock size={12} />
@@ -197,9 +218,37 @@ const ConversacionesPage = () => {
                                 <p className="font-bold text-sm">
                                     {selectedConv.cliente_nombre || selectedConv.numero_cliente || 'Desconocido'}
                                 </p>
-                                <p className="text-xs text-muted">{selectedConv.numero_cliente}</p>
+                                <p className="text-xs text-muted">{selectedConv.numero_cliente || selectedConv.cliente_whatsapp}</p>
+                            </div>
+                            <div className="ml-auto flex items-center gap-2">
+                                {selectedConv.atencion_humana ? (
+                                    <>
+                                        <span className="hidden sm:inline text-xs font-semibold text-warn-text bg-warn/10 px-2 py-1 rounded-lg">
+                                            Atiendes tú · el bot está en pausa
+                                        </span>
+                                        <button
+                                            onClick={() => cambiarAtencion(false)}
+                                            className="h-9 px-3 rounded-xl bg-accent text-white text-xs font-semibold border-none cursor-pointer"
+                                        >
+                                            Retomar bot
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        onClick={() => cambiarAtencion(true)}
+                                        className="h-9 px-3 rounded-xl bg-bg border border-border text-text text-xs font-semibold cursor-pointer"
+                                    >
+                                        Atender yo
+                                    </button>
+                                )}
                             </div>
                         </div>
+                        {errorEnvio && (
+                            <div role="alert" className="px-4 py-2 text-xs bg-danger/10 text-danger flex justify-between">
+                                <span>{errorEnvio}</span>
+                                <button onClick={() => setErrorEnvio('')} className="bg-transparent border-none text-danger cursor-pointer">×</button>
+                            </div>
+                        )}
 
                         {/* Mensajes */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-4">

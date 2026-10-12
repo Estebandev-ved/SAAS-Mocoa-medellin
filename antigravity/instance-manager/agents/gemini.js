@@ -61,6 +61,12 @@ async function obtenerConfigNegocio(negocioId) {
             }
         } catch (e) { /* sin config de agentes: no se restringe nada */ }
 
+        let hayCupones = false;
+        try {
+            const [c] = await db.execute('SELECT id FROM cupones WHERE negocio_id = ? AND activo = 1 LIMIT 1', [negocioId]);
+            hayCupones = c.length > 0;
+        } catch (e) { /* tabla aún sin migrar */ }
+
         // Empresa de domicilios con varios restaurantes (db/migrate_marketplace.js):
         // el modo "elige tu restaurante" se activa solo con tener filas acá, sin
         // bandera aparte que se pueda desincronizar de la realidad.
@@ -75,6 +81,7 @@ async function obtenerConfigNegocio(negocioId) {
             moduloDomicilios,
             restaurantes,
             agentesActivos,
+            hayCupones,
         };
     } catch (error) {
         return { negocio: {}, productos: {}, moduloDomicilios: { activo: false }, restaurantes: [], agentesActivos: null };

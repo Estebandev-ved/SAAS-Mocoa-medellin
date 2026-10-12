@@ -114,6 +114,19 @@ const AUTO_UI = {
     ],
   },
   resena: { icon: Star, campos: [] },
+  encuesta: {
+    icon: Star,
+    campos: [],
+    nota: 'El cliente responde con un número de 1 a 5. Si califica 1 a 3, el bot se pausa y te avisa para que lo contactes.',
+  },
+  recuperacion_pedido: {
+    icon: ShoppingCart,
+    campos: [
+      { k: 'horas', label: 'Escribir si sigue sin pagar después de (horas)', type: 'number', min: 2, max: 168 },
+      { k: 'mensaje', label: 'Mensaje', type: 'text' },
+      { k: 'cupon', label: 'Código de cupón a ofrecer (opcional, créalo en Cupones)', type: 'text' },
+    ],
+  },
   stock_bajo: {
     icon: Package,
     campos: [{ k: 'umbral', label: 'Avisar cuando queden (unidades o menos)', type: 'number', min: 1, max: 100 }],
@@ -243,6 +256,70 @@ function AutomatizacionReal({ auto, onChange, onError }) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+const TITULO_TIPO = {
+  recordatorio_pago: 'Recordatorio de pago',
+  resena: 'Reseña',
+  encuesta: 'Encuesta',
+  stock_bajo: 'Stock bajo',
+  reengagement: 'Reenganche',
+  reporte_semanal: 'Reporte semanal',
+  recuperacion_pedido: 'Recuperación',
+  renovacion_plan: 'Renovación',
+  atencion_humana: 'Atención humana',
+};
+
+function HistorialYSatisfaccion() {
+  const [historial, setHistorial] = useState([]);
+  const [enc, setEnc] = useState(null);
+
+  useEffect(() => {
+    api.get('/automations/historial').then((r) => setHistorial(r.data.historial || [])).catch(() => {});
+    api.get('/automations/encuestas').then((r) => setEnc(r.data)).catch(() => {});
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      {enc && enc.total > 0 && (
+        <div className="p-4 rounded-xl border border-border bg-white">
+          <p className="text-text font-semibold text-sm mb-1">Satisfacción de tus clientes (últimos 90 días)</p>
+          <p className="text-3xl font-bold text-text">
+            {enc.promedio} <span className="text-base font-normal text-muted">/ 5 · {enc.total} respuesta{enc.total === 1 ? '' : 's'}</span>
+          </p>
+          <div className="mt-3 space-y-1">
+            {[5, 4, 3, 2, 1].map((n) => (
+              <div key={n} className="flex items-center gap-2 text-xs text-muted">
+                <span className="w-4">{n}★</span>
+                <div className="flex-1 h-2 bg-bg2 rounded-full overflow-hidden">
+                  <div className="h-full bg-accent" style={{ width: `${(enc.distribucion[n] / enc.total) * 100}%` }} />
+                </div>
+                <span className="w-6 text-right">{enc.distribucion[n]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="p-4 rounded-xl border border-border bg-white">
+        <p className="text-text font-semibold text-sm mb-3">Historial: lo último que hicieron tus automatizaciones</p>
+        {historial.length === 0 ? (
+          <p className="text-muted text-xs">Aún no hay actividad. Cuando una automatización envíe algo, lo verás aquí.</p>
+        ) : (
+          <ul className="space-y-2 list-none p-0 m-0 max-h-80 overflow-y-auto">
+            {historial.map((h) => (
+              <li key={h.id} className="text-xs flex gap-3">
+                <span className="shrink-0 text-muted w-28">
+                  {new Date(h.created_at).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
+                </span>
+                <span className="shrink-0 font-semibold text-text w-32">{TITULO_TIPO[h.tipo] || h.tipo}</span>
+                <span className="text-muted min-w-0">{h.mensaje}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
@@ -928,6 +1005,7 @@ export default function AutomatizacionesPage() {
                 disponible={['professional', 'enterprise'].includes(plan)}
                 onError={(text) => setMessage({ type: 'error', text })}
               />
+              <HistorialYSatisfaccion />
             </div>
           </motion.div>
         )}

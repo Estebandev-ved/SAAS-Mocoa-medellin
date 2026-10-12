@@ -33,6 +33,22 @@ const AUTOMATION_TYPES = {
     plan_requerido: 'starter',
     config_schema: {}
   },
+  encuesta: {
+    name: 'Encuesta de satisfacción',
+    description: 'Pide una calificación de 1 a 5 cuando el pedido se entrega. Si es baja (1 a 3), te avisa para que contactes al cliente',
+    plan_requerido: 'starter',
+    config_schema: {}
+  },
+  recuperacion_pedido: {
+    name: 'Recuperar pedidos sin pagar',
+    description: 'Si un pedido sigue sin pagarse pasadas varias horas, escribe al cliente (opcionalmente con un cupón)',
+    plan_requerido: 'professional',
+    config_schema: {
+      horas: { type: 'number', default: 24, min: 2, max: 168 },
+      mensaje: { type: 'string', default: 'Vimos que tu pedido quedó pendiente. ¿Quieres que te ayudemos a completarlo?' },
+      cupon: { type: 'string', default: '' }
+    }
+  },
   stock_bajo: {
     name: 'Alerta Stock Bajo',
     description: 'Notifica cuando el inventario está bajo',

@@ -2,6 +2,9 @@ const db = require('../../db/config');
 const instanceManager = require('../InstanceManager');
 const { emitNewMessage, emitPedidoConfirmado } = require('../socketEmitter');
 const orchestrator = require('../agents/orchestrator');
+const { pideHumano, estaEnHumano, derivarAHumano } = require('./atencionHumana');
+const { registrarRespuesta: registrarEncuesta } = require('./encuesta');
+const { enviarFotosProductos } = require('./fotos');
 
 async function handleMessage(sock, msg, negocioId) {
     try {
@@ -307,6 +310,30 @@ Tus datos no serán usados para marketing. ¿En qué puedo ayudarte?`;
             [negocioId, `+${numero}`, texto]
         );
 
+        // Respuesta (1 a 5) a la encuesta de satisfacción enviada tras la entrega
+        if (tipo === 'text') {
+            const enc = await registrarEncuesta(negocioId, cliente, texto);
+            if (enc) {
+                await sock.sendMessage(msg.key.remoteJid, { text: enc.respuesta });
+                await db.execute(
+                    `INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido, agente_proceso, intencion_detectada)
+                     VALUES (?, ?, 'salida', ?, 'encuesta', 'encuesta')`,
+                    [negocioId, `+${numero}`, enc.respuesta]
+                );
+                if (enc.baja) {
+                    try {
+                        await db.execute('UPDATE clientes SET atencion_humana = 1, humano_desde = NOW() WHERE id = ?', [cliente.id]);
+                        await db.execute(
+                            'INSERT INTO notificaciones (negocio_id, tipo, titulo, mensaje, datos) VALUES (?, ?, ?, ?, ?)',
+                            [negocioId, 'atencion_humana', 'Calificación baja en encuesta', `${cliente.nombre} calificó con ${enc.calificacion}/5. Conviene contactarlo.`, JSON.stringify({ referencia_id: String(cliente.id), cliente_id: String(cliente.id) })]
+                        );
+                    } catch (e) { /* sin migración v3 solo se registra la calificación */ }
+                }
+                emitNewMessage(negocioId, { cliente, conversacion_id: conversacion.id, mensaje: texto, tipo, respuesta: enc.respuesta });
+                return;
+            }
+        }
+
         // Si es imagen, intentar verificar pago
         if (tipo === 'image' && msg.message.imageMessage) {
             // Buscar pedido pendiente o con pago enviado
@@ -400,6 +427,21 @@ Tus datos no serán usados para marketing. ¿En qué puedo ayudarte?`;
             }
         }
 
+        // Atención humana: si una persona está atendiendo este chat, el bot no responde
+        // (el mensaje ya quedó guardado y el dueño lo ve en Conversaciones).
+        if (await estaEnHumano(cliente)) {
+            console.log(`[Handler] ${numero} está en atención humana: el bot no responde`);
+            emitNewMessage(negocioId, { cliente, conversacion_id: conversacion.id, mensaje: texto, tipo });
+            return;
+        }
+        if (tipo === 'text' && pideHumano(texto)) {
+            const derivado = await derivarAHumano({ sock, jid: msg.key.remoteJid, negocioId, cliente, numero, motivo: `dijo: "${texto.slice(0, 80)}"` });
+            if (derivado) {
+                emitNewMessage(negocioId, { cliente, conversacion_id: conversacion.id, mensaje: texto, tipo });
+                return;
+            }
+        }
+
         // Obtener contexto de la conversacion
         const [contextoRows] = await db.execute(
             `SELECT tipo, contenido, agente_proceso FROM mensajes 
@@ -439,6 +481,9 @@ Tus datos no serán usados para marketing. ¿En qué puedo ayudarte?`;
         // Enviar respuesta por WhatsApp
         await sock.sendMessage(msg.key.remoteJid, { text: respuesta.respuesta });
 
+        // Fotos de los productos que se nombraron (solo si tienen imagen cargada)
+        await enviarFotosProductos({ sock, jid: msg.key.remoteJid, negocioId, numero, textos: [texto, respuesta.respuesta || ''] });
+
         // Si se creó un pedido, enviar confirmación estructurada + instrucciones de pago
         if (respuesta.pedido_creado) {
             const p = respuesta.pedido_creado;
@@ -447,6 +492,7 @@ Tus datos no serán usados para marketing. ¿En qué puedo ayudarte?`;
             let msgPedido = `✅ *Pedido confirmado*\n\n`
                 + `📋 Pedido: *${p.numero_pedido}*\n`
                 + `📦 Productos:\n${itemsList}\n`
+                + (p.descuento > 0 ? `🏷️ Descuento (${p.cupon}): -$${p.descuento.toLocaleString('es-CO')}\n` : '')
                 + `💰 Total: *$${p.total.toLocaleString('es-CO')}*\n`;
 
             if (p.direccion_entrega) {
