@@ -216,8 +216,15 @@ router.post('/campañas', checkPlan('professional', 'enterprise'), async (req, r
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
 
-    const { contarDestinatarios } = require('../services/campaignSender');
+    const { contarDestinatarios, MAX_DESTINATARIOS } = require('../services/campaignSender');
     const totalDestinatarios = await contarDestinatarios(req.negocioId, segmento, segmento_config || {});
+    if (totalDestinatarios > MAX_DESTINATARIOS) {
+      return res.status(400).json({
+        error: `Esa campaña llegaría a ${totalDestinatarios} clientes y el máximo por campaña es ${MAX_DESTINATARIOS} (para proteger tu número de WhatsApp). Reduce el segmento (menos días) o divídela en varias.`,
+        total: totalDestinatarios,
+        maximo: MAX_DESTINATARIOS
+      });
+    }
     if (totalDestinatarios === 0) {
       return res.status(400).json({ error: 'Ningún cliente aceptó recibir marketing en ese segmento' });
     }
@@ -343,7 +350,8 @@ router.get('/campañas-destinatarios', async (req, res) => {
   try {
     const { contarDestinatarios } = require('../services/campaignSender');
     const cfg = req.query.dias ? { dias: Number(req.query.dias) } : {};
-    res.json({ total: await contarDestinatarios(req.negocioId, req.query.segmento || 'todos', cfg) });
+    const { MAX_DESTINATARIOS } = require('../services/campaignSender');
+    res.json({ total: await contarDestinatarios(req.negocioId, req.query.segmento || 'todos', cfg), maximo: MAX_DESTINATARIOS });
   } catch (error) {
     res.status(500).json({ error: 'Error al contar destinatarios' });
   }

@@ -7,8 +7,13 @@ const { enviarWhatsApp } = require('./automationsService');
 // pausas aleatorias (anti-bloqueo de WhatsApp). Solo se escribe a clientes que
 // aceptaron marketing (Ley 1581).
 
-const PAUSA_MIN_MS = parseInt(process.env.CAMPANA_PAUSA_MIN_MS) || 2000;
-const PAUSA_MAX_MS = parseInt(process.env.CAMPANA_PAUSA_MAX_MS) || 5000;
+const entero = (v, def) => (Number.isFinite(parseInt(v)) ? parseInt(v) : def);
+const PAUSA_MIN_MS = entero(process.env.CAMPANA_PAUSA_MIN_MS, 2000);
+const PAUSA_MAX_MS = Math.max(PAUSA_MIN_MS, entero(process.env.CAMPANA_PAUSA_MAX_MS, 5000));
+
+// Tope por campaña: con WhatsApp por QR, ráfagas grandes de mensajes a gente
+// que no escribió primero son la causa típica de bloqueo del número.
+const MAX_DESTINATARIOS = parseInt(process.env.CAMPANA_MAX_DESTINATARIOS) || 200;
 
 let procesando = false;
 
@@ -49,7 +54,7 @@ async function contarDestinatarios(negocioId, segmento, segmentoConfig) {
 }
 
 async function enviarCampana(camp) {
-    const lista = await destinatarios(camp.negocio_id, camp.segmento, camp.segmento_config);
+    const lista = (await destinatarios(camp.negocio_id, camp.segmento, camp.segmento_config)).slice(0, MAX_DESTINATARIOS);
     await db.execute('UPDATE campañas SET total_destinatarios = ? WHERE id = ?', [lista.length, camp.id]);
 
     let enviados = 0;
@@ -112,4 +117,4 @@ async function cerrarCampanasHuerfanas() {
     }
 }
 
-module.exports = { procesarCampanasPendientes, cerrarCampanasHuerfanas, contarDestinatarios };
+module.exports = { procesarCampanasPendientes, cerrarCampanasHuerfanas, contarDestinatarios, destinatarios, MAX_DESTINATARIOS };

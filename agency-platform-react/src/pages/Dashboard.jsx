@@ -30,6 +30,7 @@ import {
   Phone,
   UtensilsCrossed,
   Store,
+  BookOpen,
 } from 'lucide-react'
 import api, { analyticsService } from '../services/api'
 import { usePlan } from '../components/PlanGate'
@@ -255,6 +256,7 @@ export default function Dashboard() {
   ]
 
   const bottomItems = [
+    { icon: BookOpen, label: 'Guía de uso', path: '/guia' },
     { icon: Settings, label: 'Ajustes', path: '/ajustes' }
   ]
 

@@ -259,6 +259,7 @@ function Campanas({ disponible, onError }) {
   const [lista, setLista] = useState([]);
   const [form, setForm] = useState({ nombre: '', mensaje: '', segmento: 'todos', dias: 30, fecha: '' });
   const [alcance, setAlcance] = useState(null);
+  const [maximo, setMaximo] = useState(200);
   const [busy, setBusy] = useState(false);
 
   async function cargar() {
@@ -285,7 +286,10 @@ function Campanas({ disponible, onError }) {
     if (!disponible) return;
     api
       .get('/campañas-destinatarios', { params: { segmento: form.segmento, dias: form.dias } })
-      .then((r) => setAlcance(r.data.total))
+      .then((r) => {
+        setAlcance(r.data.total);
+        if (r.data.maximo) setMaximo(r.data.maximo);
+      })
       .catch(() => setAlcance(null));
   }, [disponible, form.segmento, form.dias]);
 
@@ -385,9 +389,14 @@ function Campanas({ disponible, onError }) {
                 {form.fecha ? 'Se enviará en la fecha elegida.' : 'Se envía en cuanto la crees.'}
               </p>
             )}
+            {alcance !== null && alcance > maximo && (
+              <p className="text-xs text-danger">
+                El máximo por campaña es {maximo} clientes (protege tu número de WhatsApp). Reduce los días o el segmento.
+              </p>
+            )}
             <button
               onClick={crear}
-              disabled={busy}
+              disabled={busy || (alcance !== null && (alcance > maximo || alcance === 0))}
               className="h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors inline-flex items-center gap-2 disabled:bg-[#F0F0F0] disabled:text-muted disabled:cursor-not-allowed"
             >
               {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
