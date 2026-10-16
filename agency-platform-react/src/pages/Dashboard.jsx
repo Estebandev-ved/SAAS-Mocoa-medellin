@@ -40,31 +40,15 @@ import { useHitos } from '../context/HitosContext'
 import OwnerAvatar from '../components/avatar/OwnerAvatar'
 import ActivationChecklist from '../components/ActivationChecklist'
 import InstallPrompt from '../components/InstallPrompt'
-import Logo from '../components/Logo'
+import { SkeletonCards } from '../components/Skeleton'
+import { planLabel } from '../components/shell/navConfig'
 import EstadoNegocio from '../components/EstadoNegocio'
-
-const NavItem = ({ icon: Icon, label, active, onClick, locked, lockTooltip }) => (
-  <button
-    onClick={locked ? undefined : onClick}
-    className={`relative w-full flex items-center gap-3 px-4 h-11 rounded-xl text-sm font-semibold transition-colors duration-200 border-none ${
-      active
-        ? 'bg-white/10 text-inverse-text'
-        : 'bg-transparent text-[#A0A0A0] hover:bg-white/5 hover:text-inverse-text'
-    } ${locked ? 'opacity-45 cursor-not-allowed' : 'cursor-pointer'}`}
-    title={locked ? lockTooltip : undefined}
-  >
-    {active && <span className="absolute -left-4 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[#E53935] rounded-r" />}
-    <Icon size={20} className={active ? 'text-[#E53935]' : ''} />
-    <span>{label}</span>
-    {locked && <Lock size={14} className="ml-auto text-[#A0A0A0]" />}
-  </button>
-)
 
 const StatCard = ({ title, value, trend, icon: Icon, variants, inverse = false }) => (
   <motion.div
     variants={variants}
-    className={`rounded-2xl p-6 border ${
-      inverse ? 'bg-inverse border-inverse text-inverse-text' : 'bg-white border-border'
+    className={`noma-lift rounded-2xl p-5 sm:p-6 border ${
+      inverse ? 'bg-inverse border-inverse text-inverse-text' : 'bg-bg border-border'
     }`}
   >
     <div className="flex items-start justify-between">
@@ -122,42 +106,6 @@ export default function Dashboard() {
 
   const effectivePlan = apiPlan || plan
   const domiciliosLocked = effectivePlan === 'starter' || effectivePlan === 'emprendedor'
-
-  const getPlanIcon = () => {
-    switch (effectivePlan) {
-      case 'enterprise':
-        return <Crown size={16} className="text-[#E53935]" />
-      case 'professional':
-        return <Star size={16} className="text-[#E53935]" />
-      case 'starter':
-        return <Shield size={16} className="text-[#A0A0A0]" />
-      case 'emprendedor':
-        return <Store size={16} className="text-[#E53935]" />
-      default:
-        return <Shield size={16} className="text-[#A0A0A0]" />
-    }
-  }
-
-  const getPlanLabel = () => {
-    switch (effectivePlan) {
-      case 'enterprise':
-        return 'Empresarial'
-      case 'professional':
-        return 'Profesional'
-      case 'starter':
-        return 'Inicial'
-      case 'emprendedor':
-        return 'Emprendedor'
-      default:
-        return 'Inicial'
-    }
-  }
-
-  const getUpgradeLabel = () => {
-    if (effectivePlan === 'starter') return 'MEJORAR'
-    if (effectivePlan === 'professional') return 'MEJORAR'
-    return 'CAMBIAR'
-  }
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -218,52 +166,6 @@ export default function Dashboard() {
     fetchPlan()
   }, [])
 
-  const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-    { icon: Smartphone, label: 'WhatsApp', path: '/whatsapp' },
-    { icon: MessageSquare, label: 'Conversaciones', path: '/conversaciones' },
-    { icon: ShoppingCart, label: 'Pedidos', path: '/pedidos' },
-    { icon: Package, label: 'Productos', path: '/productos' },
-    { icon: Activity, label: 'Monitoreo', path: '/monitoreo' },
-    { icon: TrendingUp, label: 'Analytics', path: '/analytics' },
-    { icon: MessageSquare, label: 'Multi-Canal', path: '/multichannel' },
-    { icon: Phone, label: 'Bot Llamadas', path: '/voice' },
-    { icon: Users, label: 'Clientes', path: '/clientes' },
-    { icon: Zap, label: 'Automatizaciones', path: '/automatizaciones' },
-    { icon: Send, label: 'Campañas', path: '/campanas' },
-    { icon: Tag, label: 'Cupones', path: '/cupones' },
-    {
-      icon: Truck,
-      label: 'Domicilios',
-      path: '/domicilios',
-      locked: domiciliosLocked,
-      lockTooltip: 'Mejora tu plan para acceder a Domicilios'
-    },
-    {
-      icon: UtensilsCrossed,
-      label: 'Restaurantes',
-      path: '/restaurantes',
-      locked: domiciliosLocked,
-      lockTooltip: 'Mejora tu plan para acceder a Domicilios'
-    },
-    {
-      icon: Store,
-      label: 'Caja',
-      path: '/caja',
-      locked: effectivePlan !== 'emprendedor',
-      lockTooltip: 'La caja es del plan Emprendedor'
-    },
-    { icon: CreditCard, label: 'Suscripcion', path: '/suscripcion' },
-    ...(user?.rol === 'admin' || user?.rol === 'superadmin'
-      ? [{ icon: Users, label: 'Panel Admin', path: '/admin' }]
-      : [])
-  ]
-
-  const bottomItems = [
-    { icon: BookOpen, label: 'Guía de uso', path: '/guia' },
-    { icon: Settings, label: 'Ajustes', path: '/ajustes' }
-  ]
-
   const hora = new Date().getHours()
   const saludo = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches'
   const resumenHoy =
@@ -271,89 +173,32 @@ export default function Dashboard() {
       ? `Hoy llevas ${stats.pedidosHoy} ${stats.pedidosHoy === 1 ? 'pedido' : 'pedidos'} y $${stats.ventasHoy.toLocaleString()} en ventas.`
       : 'Aún no hay pedidos hoy.'
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
-        <Loader2 size={48} className="text-accent animate-spin" />
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-bg flex">
-      <aside className="w-72 bg-inverse text-inverse-text border-r border-white/10 hidden lg:flex flex-col">
-        <div className="p-6 border-b border-white/10">
-          <h1 className="m-0">
-            <Logo size={40} tone="light" />
-          </h1>
-        </div>
-
-        <div className="p-4 mx-4 mt-4 rounded-xl bg-white/10 flex items-center gap-3">
-          {getPlanIcon()}
-          <span className="text-sm text-inverse-text font-medium">{getPlanLabel()}</span>
-          <button
-            onClick={() => navigate('/suscripcion')}
-            className="ml-auto text-xs font-semibold text-[#E53935] hover:text-inverse-text transition-colors bg-transparent border-none cursor-pointer"
-          >
-            {getUpgradeLabel()}
-          </button>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => (
-            <NavItem
-              key={item.path}
-              icon={item.icon}
-              label={item.label}
-              active={location.pathname === item.path}
-              onClick={() => navigate(item.path)}
-              locked={item.locked}
-              lockTooltip={item.lockTooltip}
-            />
-          ))}
-        </nav>
-
-        <div className="p-4 border-t border-white/10 space-y-1">
-          {bottomItems.map((item) => (
-            <NavItem
-              key={item.path}
-              icon={item.icon}
-              label={item.label}
-              active={location.pathname === item.path}
-              onClick={() => navigate(item.path)}
-            />
-          ))}
-          <button
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-4 h-11 rounded-xl text-sm font-semibold text-[#A0A0A0] bg-transparent border-none hover:bg-white/5 hover:text-inverse-text transition-colors duration-200 cursor-pointer"
-          >
-            <LogOut size={20} />
-            <span>Cerrar Sesion</span>
-          </button>
-        </div>
-      </aside>
-
-      <main className="flex-1 overflow-auto bg-bg2">
-        <div className="p-8">
+    <div className="min-h-screen bg-bg2">
+      <main>
+        <div className="p-4 sm:p-6 lg:p-8">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-8 flex items-center gap-5"
           >
-            <div className="w-20 h-20 rounded-full bg-[#FDECEA] overflow-hidden shrink-0 flex items-end justify-center">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-accent-dim overflow-hidden shrink-0 flex items-end justify-center">
               <OwnerAvatar config={user?.avatar} variant="busto" height={92} label={`Avatar de ${user?.nombre || 'tu negocio'}`} />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-text">
+              <h1 className="text-2xl sm:text-3xl font-bold text-text">
                 {saludo}, {user?.nombre}!
               </h1>
               <p className="text-muted mt-1">{resumenHoy}</p>
               <div className="flex items-center gap-4 mt-2">
                 <span className="text-muted">{user?.email}</span>
-                <div className="flex items-center gap-1 px-2 py-1 bg-accent-dim rounded-lg">
-                  {getPlanIcon()}
-                  <span className="text-xs text-accent font-medium">{getPlanLabel()}</span>
-                </div>
+                <button
+                  onClick={() => navigate('/suscripcion')}
+                  className="flex items-center gap-1 px-2 py-1 bg-accent-dim rounded-lg border-none cursor-pointer"
+                >
+                  <Crown size={14} className="text-accent" />
+                  <span className="text-xs text-accent font-medium">{planLabel(effectivePlan)}</span>
+                </button>
               </div>
             </div>
           </motion.div>
@@ -384,6 +229,9 @@ export default function Dashboard() {
             )
           })()}
 
+          {loading ? (
+            <SkeletonCards className="mb-8" />
+          ) : (
           <motion.div
             variants={containerVariants}
             initial="hidden"
@@ -420,6 +268,7 @@ export default function Dashboard() {
               variants={itemVariants}
             />
           </motion.div>
+          )}
 
           {/* Alertas y Advertencias */}
           {alertas.length > 0 && (

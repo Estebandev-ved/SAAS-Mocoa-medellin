@@ -63,7 +63,7 @@ export function Character({ name, height = 280, alt = '', className = '' }) {
       src={src}
       alt={alt}
       height={height}
-      className={className}
+      className={`noma-char ${className}`}
       style={{ display: 'block', height, width: 'auto', maxWidth: '100%' }}
     />
   );

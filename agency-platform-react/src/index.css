@@ -125,6 +125,62 @@
   border-radius: 2px;
 }
 
+
+/* ─── TEMA OSCURO ─── (design.md: black / ink / charcoal como superficies, el rojo sigue siendo el acento) */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0F0F10;
+  --bg2: #0A0A0A;
+  --bg3: #1F1F21;
+  --accent: #EF5350;
+  --accent2: #E53935;
+  --accent-dim: rgba(229, 57, 53, 0.16);
+  --border: #2A2A2D;
+  --text: #F2F2F2;
+  --muted: #A0A0A0;
+  --card: #161617;
+  --glass: #161617;
+  --danger-text: #FF8A80;
+  --warn-text: #FFD54F;
+  --info-text: #4FC3F7;
+  --inverse: #000000;
+  --inverse-text: #F5F5F5;
+}
+:root[data-theme='dark'] .noma-char { background: #FDECEA; border-radius: 20px; padding: 4px 8px; box-sizing: content-box; }
+:root[data-theme='dark'] .bg-white { background-color: var(--card); }
+:root[data-theme='dark'] .text-black { color: var(--text); }
+
+/* ─── SKELETON ─── */
+.noma-skeleton {
+  background: linear-gradient(90deg, var(--bg3) 25%, var(--border) 50%, var(--bg3) 75%);
+  background-size: 200% 100%;
+  animation: noma-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes noma-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .noma-skeleton { animation: none; }
+}
+
+/* ─── FOCO VISIBLE (accesibilidad con teclado) ─── */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ─── Micro-interacciones ─── */
+.noma-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.noma-lift:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08); }
+@media (prefers-reduced-motion: reduce) {
+  .noma-lift:hover { transform: none; }
+}
+
+/* Safe area (iPhone con notch / barra inferior) */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.pt-safe { padding-top: env(safe-area-inset-top); }
+
 /* ─── UTILS ─── */
 .text-accent { color: var(--accent); }
 .bg-accent { background: var(--accent); }

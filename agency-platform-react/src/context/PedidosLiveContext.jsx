@@ -9,7 +9,7 @@ import { Character } from '../components/Illustration';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3002';
 
-const PedidosLiveContext = createContext({ conectado: false });
+const PedidosLiveContext = createContext({ conectado: false, eventos: 0 });
 export const usePedidosLive = () => useContext(PedidosLiveContext);
 
 // Pitido corto de dos notas, generado con Web Audio (sin archivo de audio que
@@ -46,6 +46,7 @@ export function PedidosLiveProvider({ children }) {
   const navigate = useNavigate();
   const socketRef = useRef(null);
   const [conectado, setConectado] = useState(false);
+  const [eventos, setEventos] = useState(0); // sube con cada pedido nuevo/confirmado: el menú lo usa para refrescar su contador
   const [avisos, setAvisos] = useState([]); // pedido_confirmado: acción real
   const [notas, setNotas] = useState([]); // nuevo_pedido: solo informativo
 
@@ -65,12 +66,15 @@ export function PedidosLiveProvider({ children }) {
 
     socket.on('nuevo_pedido', (data) => {
       const id = `n-${data.pedido_id}-${Date.now()}`;
+      setEventos((n) => n + 1);
       setNotas((prev) => [...prev, { ...data, id }]);
       setTimeout(() => setNotas((prev) => prev.filter((n) => n.id !== id)), 6000);
     });
 
     socket.on('pedido_confirmado', (data) => {
       reproducirAviso();
+      setEventos((n) => n + 1);
+      try { navigator.vibrate?.([120, 60, 120]); } catch { /* sin vibración: no pasa nada */ }
       setAvisos((prev) => (prev.some((a) => a.pedido_id === data.pedido_id) ? prev : [...prev, data]));
     });
 
@@ -96,7 +100,7 @@ export function PedidosLiveProvider({ children }) {
   );
 
   return (
-    <PedidosLiveContext.Provider value={{ conectado }}>
+    <PedidosLiveContext.Provider value={{ conectado, eventos }}>
       {children}
 
       {/* Avisos suaves de "nuevo pedido, esperando pago": informativos, se van solos */}
