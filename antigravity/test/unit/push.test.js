@@ -17,7 +17,7 @@ test('construirPayload: pedido nuevo y pago confirmado', () => {
     assert.match(n.title, /Nuevo pedido/);
     assert.match(n.body, /Ana/);
     assert.match(n.body, /45\.000|45,000/);
-    assert.equal(n.url, '/dashboard/pedidos');
+    assert.equal(n.url, '/pedidos');
     assert.equal(n.tag, 'pedido-7');
     const c = push.construirPayload('pedido_confirmado', { total: 'abc' });
     assert.match(c.title, /Pago confirmado/);

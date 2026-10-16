@@ -5,6 +5,10 @@ import { BrandingProvider } from './context/BrandingContext';
 import { AuthProvider } from './context/AuthContext';
 import { HitosProvider } from './context/HitosContext';
 import { PedidosLiveProvider } from './context/PedidosLiveContext';
+import { UndoProvider } from './context/UndoContext';
+import MobileNav from './components/MobileNav';
+import CommandPalette from './components/CommandPalette';
+import BannersGlobales from './components/BannersGlobales';
 
 // Components
 import Navbar from './components/Navbar';
@@ -139,6 +143,8 @@ function App() {
           <BrandingProvider>
             <HitosProvider>
             <PedidosLiveProvider>
+            <UndoProvider>
+            <BannersGlobales />
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
@@ -183,7 +189,10 @@ function App() {
               <Route path="/privacidad" element={<LegalPage />} />
               <Route path="/cookies" element={<LegalPage />} />
             </Routes>
+            <MobileNav />
+            <CommandPalette />
             <CookieBanner />
+            </UndoProvider>
             </PedidosLiveProvider>
             </HitosProvider>
           </BrandingProvider>

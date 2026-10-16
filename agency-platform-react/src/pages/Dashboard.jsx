@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import {
   LayoutDashboard,
   MessageSquare,
@@ -33,6 +33,8 @@ import {
   BookOpen,
   Tag,
   Send,
+  Search,
+  PlayCircle,
 } from 'lucide-react'
 import api, { analyticsService } from '../services/api'
 import { usePlan } from '../components/PlanGate'
@@ -42,6 +44,18 @@ import ActivationChecklist from '../components/ActivationChecklist'
 import InstallPrompt from '../components/InstallPrompt'
 import Logo from '../components/Logo'
 import EstadoNegocio from '../components/EstadoNegocio'
+import AccionesSugeridas from '../components/AccionesSugeridas'
+import ProductTour, { tourVisto } from '../components/ProductTour'
+import { SkeletonCards, Skeleton } from '../components/Skeleton'
+
+const PASOS_TOUR = [
+  { selector: '[data-tour="saludo"]', titulo: 'Tu resumen del día', texto: 'Aquí ves cuántos pedidos y cuánto has vendido hoy. Se actualiza solo.' },
+  { selector: '[data-tour="acciones"]', titulo: 'Qué hacer ahora', texto: 'Tus tareas pendientes: comprobantes por revisar, pedidos por preparar y clientes que esperan una persona. Cada una te lleva directo a resolverla.' },
+  { selector: '[data-tour="stats"]', titulo: 'Tus números', texto: 'Ventas, pedidos, mensajes y cuánto trabajo hizo la IA por ti.' },
+  { selector: '[data-tour="menu"]', titulo: 'Tu menú', texto: 'Desde aquí vas a pedidos, conversaciones, productos, automatizaciones y más.' },
+  { selector: '[data-tour="menu-movil"]', titulo: 'Tu menú', texto: 'Abajo tienes lo principal. En “Más” están el resto de pantallas, el tema oscuro y el sonido.' },
+  { selector: '[data-tour="buscar"]', titulo: 'Búsqueda rápida', texto: 'Busca cualquier pantalla, pedido, cliente o producto. En computador también con Ctrl + K.' },
+]
 
 const NavItem = ({ icon: Icon, label, active, onClick, locked, lockTooltip }) => (
   <button
@@ -102,6 +116,8 @@ export default function Dashboard() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [params, setParams] = useSearchParams()
+  const [tourActivo, setTourActivo] = useState(false)
   const { plan, hasFeature } = usePlan()
   const { celebrar } = useHitos()
   const [stats, setStats] = useState({
@@ -264,6 +280,23 @@ export default function Dashboard() {
     { icon: Settings, label: 'Ajustes', path: '/ajustes' }
   ]
 
+  // El tour arranca solo la primera vez (cuando ya cargó la pantalla) o al pedirlo desde la Guía.
+  useEffect(() => {
+    if (loading) return undefined
+    const pedido = params.get('tour') === '1'
+    if (!pedido && tourVisto()) return undefined
+    const t = setTimeout(() => setTourActivo(true), 600)
+    return () => clearTimeout(t)
+  }, [loading, params])
+
+  const terminarTour = () => {
+    setTourActivo(false)
+    if (params.get('tour')) {
+      params.delete('tour')
+      setParams(params, { replace: true })
+    }
+  }
+
   const hora = new Date().getHours()
   const saludo = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches'
   const resumenHoy =
@@ -273,15 +306,22 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
-        <Loader2 size={48} className="text-accent animate-spin" />
+      <div className="min-h-screen bg-bg2 p-6 lg:p-8" role="status" aria-label="Cargando">
+        <div className="flex items-center gap-5 mb-8">
+          <Skeleton className="w-20 h-20 rounded-full" />
+          <div>
+            <Skeleton className="h-7 w-64 mb-3" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+        </div>
+        <SkeletonCards n={4} />
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-bg flex">
-      <aside className="w-72 bg-inverse text-inverse-text border-r border-white/10 hidden lg:flex flex-col">
+      <aside data-tour="menu" className="w-72 bg-inverse text-inverse-text border-r border-white/10 hidden lg:flex flex-col">
         <div className="p-6 border-b border-white/10">
           <h1 className="m-0">
             <Logo size={40} tone="light" />
@@ -338,6 +378,7 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
+            data-tour="saludo"
             className="mb-8 flex items-center gap-5"
           >
             <div className="w-20 h-20 rounded-full bg-[#FDECEA] overflow-hidden shrink-0 flex items-end justify-center">
@@ -348,7 +389,7 @@ export default function Dashboard() {
                 {saludo}, {user?.nombre}!
               </h1>
               <p className="text-muted mt-1">{resumenHoy}</p>
-              <div className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-4 mt-2 flex-wrap">
                 <span className="text-muted">{user?.email}</span>
                 <div className="flex items-center gap-1 px-2 py-1 bg-accent-dim rounded-lg">
                   {getPlanIcon()}
@@ -356,6 +397,16 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+            <button
+              data-tour="buscar"
+              onClick={() => window.dispatchEvent(new CustomEvent('abrir-paleta'))}
+              aria-label="Buscar (Ctrl K)"
+              className="ml-auto h-11 px-4 rounded-xl bg-white border border-border text-muted text-sm cursor-pointer inline-flex items-center gap-2 hover:border-accent/40 shrink-0"
+            >
+              <Search size={16} />
+              <span className="hidden sm:inline">Buscar</span>
+              <kbd className="hidden lg:inline text-[11px] border border-border rounded px-1.5 py-0.5">Ctrl K</kbd>
+            </button>
           </motion.div>
 
           <InstallPrompt />
@@ -384,10 +435,13 @@ export default function Dashboard() {
             )
           })()}
 
+          <AccionesSugeridas />
+
           <motion.div
             variants={containerVariants}
             initial="hidden"
             animate="show"
+            data-tour="stats"
             className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8"
           >
             <StatCard
@@ -621,6 +675,7 @@ export default function Dashboard() {
           </motion.div>
         </div>
       </main>
+      <ProductTour pasos={PASOS_TOUR} activo={tourActivo} onTerminar={terminarTour} />
     </div>
   )
 }
