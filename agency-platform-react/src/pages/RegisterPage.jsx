@@ -54,8 +54,8 @@ const RegisterPage = () => {
 
     const handleNext = (e) => {
         e.preventDefault();
-        if (password.length < 6) {
-            setError('La contraseña debe tener al menos 6 caracteres');
+        if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+            setError('La contraseña debe tener al menos 8 caracteres, con letras y números');
             return;
         }
         if (!terminos) {
@@ -150,7 +150,7 @@ const RegisterPage = () => {
                             <Field label="Nombre completo" icon={User} type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" />
                             <Field label="Email" icon={Mail} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" />
                             <Field label="Teléfono (WhatsApp)" icon={Phone} type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+57 300 123 4567" />
-                            <Field label="Contraseña" icon={Lock} type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                            <Field label="Contraseña" icon={Lock} type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 8, con letras y números" />
 
                             <label className="flex items-start gap-3 text-sm text-muted cursor-pointer leading-5">
                                 <input

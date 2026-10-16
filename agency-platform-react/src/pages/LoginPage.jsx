@@ -101,6 +101,12 @@ const LoginPage = () => {
                         </div>
                     </div>
 
+                    <div className="text-right -mt-3">
+                        <Link to="/olvide-password" className="text-xs text-muted hover:text-accent transition-colors">
+                            ¿Olvidaste tu contraseña?
+                        </Link>
+                    </div>
+
                     <button 
                         type="submit"
                         disabled={isLoading}

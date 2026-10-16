@@ -37,6 +37,14 @@ export const authService = {
             nombre: name, email_dueno: email, password, whatsapp: phone, avatar, terminos_aceptados: !!terminos
         });
         return response.data;
+    },
+    forgotPassword: async (email) => {
+        const response = await api.post('/auth/forgot-password', { email });
+        return response.data;
+    },
+    resetPassword: async (email, token, newPassword) => {
+        const response = await api.post('/auth/reset-password', { email, token, newPassword });
+        return response.data;
     }
 };
 

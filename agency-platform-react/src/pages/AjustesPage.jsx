@@ -1177,20 +1177,22 @@ function SeguridadTab() {
       setToast({ type: 'error', message: 'Las contraseñas no coinciden' });
       return;
     }
-    if (form.passwordNueva.length < 6) {
-      setToast({ type: 'error', message: 'La contraseña debe tener al menos 6 caracteres' });
+    if (form.passwordNueva.length < 8 || !/[A-Za-z]/.test(form.passwordNueva) || !/\d/.test(form.passwordNueva)) {
+      setToast({ type: 'error', message: 'La contraseña debe tener al menos 8 caracteres, con letras y números' });
       return;
     }
     setSaving(true);
     try {
-      await api.put('/business/password', {
+      const { data } = await api.put('/business/password', {
         passwordActual: form.passwordActual,
         passwordNueva: form.passwordNueva,
       });
+      // El servidor cierra las demás sesiones y entrega un token nuevo para esta.
+      if (data?.token) localStorage.setItem('antigravity_token', data.token);
       setToast({ type: 'success', message: 'Contraseña actualizada correctamente' });
       setForm({ passwordActual: '', passwordNueva: '', passwordConfirmar: '' });
-    } catch {
-      setToast({ type: 'error', message: 'Error al actualizar contraseña' });
+    } catch (err) {
+      setToast({ type: 'error', message: err.response?.data?.error || 'Error al actualizar contraseña' });
     } finally {
       setSaving(false);
     }

@@ -51,6 +51,15 @@ const loginRateLimit = rateLimit({
     legacyHeaders: false
 });
 
+// Recuperación de contraseña: evita spam de correos a un tercero y adivinar el token.
+const passwordResetRateLimit = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    message: { error: 'Demasiados intentos de recuperación. Intenta de nuevo en una hora.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
 // Rate limiting para el login del domiciliario: el PIN es de solo 4 dígitos
 // (10.000 combinaciones) y esta ruta no tenía NINGÚN límite propio — solo caía
 // en el límite genérico de la API (300 req/min por IP), suficiente para probar
@@ -216,6 +225,7 @@ module.exports = {
     helmetConfig,
     apiRateLimit,
     loginRateLimit,
+    passwordResetRateLimit,
     driverLoginRateLimit,
     botRateLimit,
     whatsappRateLimit,

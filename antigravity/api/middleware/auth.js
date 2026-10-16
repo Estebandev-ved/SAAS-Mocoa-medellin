@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const db = require('../../db/config');
 const { isTokenBlacklisted } = require('./security');
+const { huellaPassword } = require('../services/passwordPolicy');
 
 async function verificarAuth(req, res, next) {
     try {
@@ -40,7 +41,7 @@ async function verificarAuth(req, res, next) {
         const [negocios] = await db.execute(
             `SELECT id, nombre, email_dueno as email, plan, activo, suscripcion_activa, 
              whatsapp_conectado, bot_nombre, bot_tono,
-             color_principal, numero_nequi, numero_bancolombia, rol
+             color_principal, numero_nequi, numero_bancolombia, rol, password
              FROM negocios WHERE id = ?`,
             [decoded.negocio_id]
         );
@@ -53,6 +54,15 @@ async function verificarAuth(req, res, next) {
         }
         
         const negocio = negocios[0];
+
+        // Tokens emitidos antes de un cambio/recuperación de contraseña dejan de servir.
+        // (Los tokens viejos sin "pv" siguen valiendo hasta que expiren.)
+        if (decoded.pv && decoded.pv !== huellaPassword(negocio.password)) {
+            return res.status(401).json({
+                error: 'Tu contraseña cambió. Inicia sesión de nuevo.',
+                codigo: 'SESION_REVOCADA'
+            });
+        }
         
         if (!negocio.activo) {
             return res.status(403).json({
@@ -109,7 +119,8 @@ function generarToken(negocio) {
         nombre: negocio.nombre,
         plan: negocio.plan,
         email: negocio.email,
-        rol: negocio.rol || 'negocio'
+        rol: negocio.rol || 'negocio',
+        pv: negocio.password ? huellaPassword(negocio.password) : undefined
     };
     
     const token = jwt.sign(payload, process.env.JWT_SECRET, {

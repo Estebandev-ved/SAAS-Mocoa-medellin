@@ -110,6 +110,21 @@ function getEmailContent(tipo, data) {
         <a href="${process.env.FRONTEND_URL || 'https://antigravity.co'}/dashboard" style="display: inline-block; background-color: #00FFD1; color: #080C10; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">Ir al Dashboard</a>
       `
     },
+    recuperar_password: {
+      titulo: 'Recupera tu contraseña',
+      contenido: `
+        <p style="color: #FFFFFF; font-size: 18px;">Pediste restablecer tu contraseña</p>
+        <p style="color: #8B949E; margin: 20px 0;">Este enlace sirve una sola vez y vence en 30 minutos. Si no lo pediste tú, ignora este correo: tu contraseña no cambia.</p>
+        <a href="${data.enlace}" style="display: inline-block; background-color: #00FFD1; color: #080C10; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">Crear nueva contraseña</a>
+      `
+    },
+    password_cambiada: {
+      titulo: 'Tu contraseña fue cambiada',
+      contenido: `
+        <p style="color: #FFFFFF; font-size: 18px;">Cambiamos la contraseña de tu cuenta</p>
+        <p style="color: #8B949E; margin: 20px 0;">Por seguridad cerramos las sesiones abiertas. Si no fuiste tú, recupera tu cuenta de inmediato desde "Olvidé mi contraseña" y escríbenos.</p>
+      `
+    },
     cuenta_bloqueada: {
       titulo: 'Alerta de Cuenta',
       contenido: `

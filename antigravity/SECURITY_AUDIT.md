@@ -241,3 +241,14 @@ El sistema tiene una base sólida de seguridad con autenticación JWT, rate limi
 3. Sanitizar logs
 
 Los fixes están disponibles en `api/middleware/security.js` para integración inmediata.
+
+---
+
+## Actualización: cuenta y recuperación de contraseña
+
+- Recuperación: el enlace ahora se **envía por correo** (requiere `SMTP_USER`/`SMTP_PASS` y `FRONTEND_URL`), vence en 30 min, es de un solo uso y tiene límite de 10 solicitudes/hora por IP. La respuesta es igual exista o no el correo.
+- Restablecer contraseña **desbloquea la cuenta** (antes un bloqueo por 5 intentos era permanente) y avisa por correo.
+- Política de contraseñas única (`api/services/passwordPolicy.js`): 8–72 caracteres, letras y números, sin claves comunes ni igual al correo. Aplica en registro, recuperación y cambio desde Ajustes.
+- Cambiar o recuperar la contraseña **cierra todas las sesiones anteriores** (el JWT lleva una huella `pv` del hash; `verificarAuth` la compara). Tokens emitidos antes de este cambio siguen valiendo hasta su vencimiento (máx. 7 días).
+- Avisos por correo: cuenta bloqueada y contraseña cambiada.
+- Pendiente recomendado: verificación en dos pasos (2FA) para el dueño y blacklist de tokens en Redis (hoy es en memoria).

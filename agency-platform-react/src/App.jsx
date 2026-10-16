@@ -22,6 +22,7 @@ import Contact from './components/Contact';
 import Footer from './components/Footer';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import { OlvidePasswordPage, RestablecerPasswordPage } from './pages/RecuperarPasswordPage';
 import InfoPage from './pages/InfoPage';
 import Dashboard from './pages/Dashboard';
 import ConversacionesPage from './pages/ConversacionesPage';
@@ -143,6 +144,8 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/olvide-password" element={<OlvidePasswordPage />} />
+              <Route path="/reset-password" element={<RestablecerPasswordPage />} />
               <Route path="/info" element={<InfoPage />} />
               <Route path="/admin" element={<Lazy><AdminGuard><AdminLayout /></AdminGuard></Lazy>}>
                 <Route index element={<Navigate to="/admin/resumen" replace />} />

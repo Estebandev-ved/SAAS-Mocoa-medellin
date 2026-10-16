@@ -1,7 +1,9 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../../db/config');
-const { verificarAuth } = require('../middleware/auth');
+const { verificarAuth, generarToken } = require('../middleware/auth');
+const { passwordResetRateLimit } = require('../middleware/security');
+const { validarPassword } = require('../services/passwordPolicy');
 const { checkPlan } = require('../middleware/tenant');
 const { sanitizeAvatar, parseAvatar } = require('../services/avatar');
 const { sanitizeVistos, parseVistos } = require('../services/uiEstado');
@@ -159,7 +161,7 @@ router.put('/perfil', async (req, res) => {
     }
 });
 
-router.put('/password', async (req, res) => {
+router.put('/password', passwordResetRateLimit, async (req, res) => {
     try {
         const negocioId = req.negocio.id;
         const passwordActual = req.body.passwordActual;
@@ -170,8 +172,9 @@ router.put('/password', async (req, res) => {
             return res.status(400).json({ error: 'Passwords requeridos' });
         }
 
-        if (passwordNueva.length < 8) {
-            return res.status(400).json({ error: 'Mínimo 8 caracteres' });
+        const errorPassword = validarPassword(passwordNueva, { email: req.negocio.email });
+        if (errorPassword) {
+            return res.status(400).json({ error: errorPassword });
         }
 
         const [negocios] = await db.execute(
@@ -194,7 +197,17 @@ router.put('/password', async (req, res) => {
             [passwordHash, negocioId]
         );
 
-        res.json({ mensaje: 'Password actualizado correctamente' });
+        // El cambio invalida todas las sesiones anteriores; se entrega un token nuevo
+        // para que quien cambió la contraseña no tenga que iniciar sesión otra vez.
+        const token = generarToken({ ...req.negocio, password: passwordHash });
+
+        try {
+            await require('../../queue/workers/emailWorker').sendEmail('password_cambiada', req.negocio.email, {});
+        } catch (e) {
+            console.error('[Business] No se pudo avisar del cambio de contraseña:', e.message);
+        }
+
+        res.json({ mensaje: 'Password actualizado correctamente', token });
     } catch (error) {
         console.error('[Business] Error updating password:', error);
         res.status(500).json({ error: 'Error al actualizar password' });

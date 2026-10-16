@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return {
         success: false,
-        error: error.response?.data?.error || 'Error de conexión con el servidor'
+        error: error.response?.data?.error || error.response?.data?.errors?.[0]?.msg || 'Error de conexión con el servidor'
       };
     }
   };
@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return { 
         success: false, 
-        error: error.response?.data?.error || 'Error de conexión con el servidor' 
+        error: error.response?.data?.error || error.response?.data?.errors?.[0]?.msg || 'Error de conexión con el servidor' 
       };
     }
   };

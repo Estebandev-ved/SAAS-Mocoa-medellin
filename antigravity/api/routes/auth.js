@@ -3,16 +3,35 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool = require('../../db/config');
 const { sanitizeAvatar, parseAvatar } = require('../services/avatar');
+const { validarPassword, huellaPassword } = require('../services/passwordPolicy');
 
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
 const { body, validationResult } = require('express-validator');
-const { loginRateLimit, sanitizeLog, blacklistToken, checkBlacklist } = require('../middleware/security');
+const { loginRateLimit, passwordResetRateLimit, sanitizeLog, blacklistToken, checkBlacklist } = require('../middleware/security');
 
 function getClientIP(req) {
     return req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+}
+
+// Envía un correo de seguridad sin que un fallo del SMTP rompa la petición.
+async function avisarPorCorreo(tipo, email, data) {
+    try {
+        const { sendEmail } = require('../../queue/workers/emailWorker');
+        await sendEmail(tipo, email, data);
+    } catch (e) {
+        console.error(`[Auth] No se pudo enviar el correo "${tipo}":`, e.message);
+    }
+}
+
+function firmarToken(negocio, extra = {}) {
+    return jwt.sign(
+        { negocio_id: negocio.id, email: negocio.email_dueno, plan: negocio.plan, nombre: negocio.nombre, pv: huellaPassword(negocio.password), ...extra },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+    );
 }
 
 // Lee el avatar guardado. Tolerante: si la migración (avatar_config) aún no se corrió, devuelve null.
@@ -27,7 +46,11 @@ async function leerAvatar(negocioId) {
 
 router.post('/registro', [
     body('email_dueno').isEmail().withMessage('Debe ser un correo electrónico válido').normalizeEmail(),
-    body('password').isLength({ min: 6 }).withMessage('La contraseña debe tener al menos 6 caracteres'),
+    body('password').custom((v, { req }) => {
+        const error = validarPassword(v, { email: req.body.email_dueno });
+        if (error) throw new Error(error);
+        return true;
+    }),
     body('nombre').trim().notEmpty().withMessage('El nombre es requerido'),
     body('whatsapp').optional({ checkFalsy: true }).trim().isLength({ min: 7, max: 20 }).withMessage('El número de WhatsApp debe tener entre 7 y 20 caracteres')
 ], async (req, res) => {
@@ -70,11 +93,7 @@ router.post('/registro', [
             }
         }
 
-        const token = jwt.sign(
-            { negocio_id: result.insertId, email: email_dueno, plan: 'starter', nombre },
-            JWT_SECRET,
-            { expiresIn: '7d' }
-        );
+        const token = firmarToken({ id: result.insertId, email_dueno, plan: 'starter', nombre, password: passwordHash });
 
         res.status(201).json({
             token,
@@ -120,7 +139,7 @@ router.post('/login', [
         const negocio = negocios[0];
 
         if (negocio.cuenta_bloqueada) {
-            return res.status(403).json({ error: 'Cuenta bloqueada' });
+            return res.status(403).json({ error: 'Cuenta bloqueada por demasiados intentos. Usa "Olvidé mi contraseña" para recuperarla.', codigo: 'CUENTA_BLOQUEADA' });
         }
 
         // Verify password with bcrypt
@@ -138,7 +157,10 @@ router.post('/login', [
                     'UPDATE negocios SET intentos_login_fallidos = ?, cuenta_bloqueada = true WHERE id = ?',
                     [nuevosIntentos, negocio.id]
                 );
-                return res.status(403).json({ error: 'Cuenta bloqueada' });
+                avisarPorCorreo('cuenta_bloqueada', negocio.email_dueno, {
+                    mensaje: 'Bloqueamos tu cuenta tras 5 intentos fallidos de inicio de sesión. Si fuiste tú, usa "Olvidé mi contraseña" para recuperarla. Si no fuiste tú, hazlo igual y elige una contraseña nueva.'
+                });
+                return res.status(403).json({ error: 'Cuenta bloqueada por demasiados intentos. Usa "Olvidé mi contraseña" para recuperarla.', codigo: 'CUENTA_BLOQUEADA' });
             }
 
             await pool.query(
@@ -160,11 +182,7 @@ router.post('/login', [
         );
         const modulosActivos = modulos.map(m => m.modulo_name);
 
-        const token = jwt.sign(
-            { negocio_id: negocio.id, email: negocio.email_dueno, plan: negocio.plan, nombre: negocio.nombre, rol: negocio.rol || 'negocio' },
-            JWT_SECRET,
-            { expiresIn: '7d' }
-        );
+        const token = firmarToken(negocio, { rol: negocio.rol || 'negocio' });
 
         res.json({
             token,
@@ -263,42 +281,62 @@ router.get('/verify', checkBlacklist, async (req, res) => {
 
 // ============ RECUPERACIÓN DE CONTRASEÑA ============
 
-router.post('/forgot-password', async (req, res) => {
+const MENSAJE_RECUPERACION = 'Si el correo está registrado, te enviamos un enlace para recuperar tu contraseña. Revisa también tu carpeta de spam.';
+
+router.post('/forgot-password', [
+    passwordResetRateLimit,
+    body('email').isEmail().withMessage('Email requerido').normalizeEmail()
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ error: 'Email requerido' });
     try {
         const { email } = req.body;
-        if (!email) return res.status(400).json({ error: 'Email requerido' });
 
         const [negocios] = await pool.query('SELECT id FROM negocios WHERE email_dueno = ?', [email]);
         if (negocios.length === 0) {
-            // Devuelve success igual por seguridad para no revelar si existe el correo
-            return res.json({ success: true, mensaje: 'Si el correo existe, se enviará un enlace de recuperación.' });
+            // Misma respuesta exista o no el correo, para no revelar qué correos tienen cuenta.
+            return res.json({ success: true, mensaje: MENSAJE_RECUPERACION });
         }
 
         const resetToken = crypto.randomBytes(32).toString('hex');
         const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
-        
-        const expires = new Date();
-        expires.setHours(expires.getHours() + 1); // 1 hora de validez
+        const expires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutos de validez
 
         await pool.query(
             'UPDATE negocios SET reset_token_hash = ?, reset_token_expires = ? WHERE id = ?',
             [tokenHash, expires, negocios[0].id]
         );
 
-        // TODO: Módulo de emails real pendiente para prod
-        console.log(`[Seguridad] Enlace de recuperación (Solo Dev): http://localhost:5177/reset-password?token=${resetToken}&email=${email}`);
+        const base = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const enlace = `${base.replace(/\/$/, '')}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
 
-        res.json({ success: true, mensaje: 'Si el correo existe, se enviará un enlace de recuperación.' });
+        if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+            await avisarPorCorreo('recuperar_password', email, { enlace });
+        } else if (process.env.NODE_ENV !== 'production') {
+            console.log(`[Seguridad] SMTP sin configurar. Enlace de recuperación (solo dev): ${enlace}`);
+        } else {
+            console.error('[Seguridad] Falta SMTP_USER/SMTP_PASS: no se pudo enviar el correo de recuperación');
+        }
+
+        res.json({ success: true, mensaje: MENSAJE_RECUPERACION });
     } catch (error) {
         console.error('[Auth] Error forgot password:', error);
         res.status(500).json({ error: 'Error procesando solicitud' });
     }
 });
 
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', [
+    passwordResetRateLimit,
+    body('email').isEmail().normalizeEmail(),
+    body('token').isString().isLength({ min: 20, max: 200 })
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ error: 'Datos incompletos' });
     try {
         const { email, token, newPassword } = req.body;
-        if (!email || !token || !newPassword) return res.status(400).json({ error: 'Datos incompletos' });
+
+        const errorPassword = validarPassword(newPassword, { email });
+        if (errorPassword) return res.status(400).json({ error: errorPassword });
 
         const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
@@ -314,10 +352,16 @@ router.post('/reset-password', async (req, res) => {
         const bcrypt = require('bcryptjs');
         const passwordHash = bcrypt.hashSync(newPassword, 12);
 
+        // Además de cambiar la contraseña: el enlace es de un solo uso y se desbloquea la
+        // cuenta (poder leer el correo prueba que es el dueño). Cambiar el hash invalida
+        // las sesiones abiertas antes (ver huellaPassword).
         await pool.query(
-            'UPDATE negocios SET password = ?, reset_token_hash = NULL, reset_token_expires = NULL WHERE id = ?',
+            `UPDATE negocios SET password = ?, reset_token_hash = NULL, reset_token_expires = NULL,
+                    intentos_login_fallidos = 0, cuenta_bloqueada = false WHERE id = ?`,
             [passwordHash, negocios[0].id]
         );
+
+        avisarPorCorreo('password_cambiada', email, {});
 
         res.json({ success: true, mensaje: 'Contraseña actualizada correctamente. Ya puedes iniciar sesión.' });
     } catch (error) {
