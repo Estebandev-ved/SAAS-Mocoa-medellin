@@ -1,7 +1,22 @@
 import React from 'react';
-import { Layers, Instagram, Twitter, Linkedin, Mail } from 'lucide-react';
+import { Layers, Instagram, Facebook, Youtube } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useBranding } from '../context/BrandingContext';
+import { REDES } from '../siteConfig';
+
+// lucide-react no trae el logo de TikTok
+const TikTok = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M19.6 6.7a4.8 4.8 0 0 1-3.8-4.2h-3.4v13.3a2.9 2.9 0 1 1-2-2.8V9.5a6.3 6.3 0 1 0 5.4 6.3V9.3a8.2 8.2 0 0 0 4.8 1.5V7.4a4.8 4.8 0 0 1-1-.7z" />
+  </svg>
+);
+
+const REDES_FOOTER = [
+  { key: 'instagram', label: 'Instagram', Icon: Instagram },
+  { key: 'facebook', label: 'Facebook', Icon: Facebook },
+  { key: 'youtube', label: 'YouTube', Icon: Youtube },
+  { key: 'tiktok', label: 'TikTok', Icon: TikTok },
+];
 
 const Footer = () => {
   const { branding } = useBranding();
@@ -22,11 +37,21 @@ const Footer = () => {
               Tecnología IA de vanguardia para negocios que buscan escalar sin fricción.
             </p>
             <div className="flex gap-4">
-              {[Instagram, Twitter, Linkedin, Mail].map((Icon, i) => (
-                <a key={i} href="#" className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-muted hover:text-accent hover:border-accent transition-all">
-                  <Icon size={18} />
-                </a>
-              ))}
+              {REDES_FOOTER.map(({ key, label, Icon }) => {
+                const url = REDES[key];
+                return (
+                  <a
+                    key={key}
+                    href={url || undefined}
+                    aria-label={label}
+                    title={label}
+                    {...(url ? { target: '_blank', rel: 'noopener noreferrer' } : { 'aria-disabled': true })}
+                    className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-muted hover:text-accent hover:border-accent transition-all"
+                  >
+                    <Icon size={18} />
+                  </a>
+                );
+              })}
             </div>
           </div>
 

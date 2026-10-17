@@ -56,6 +56,7 @@ import {
   Info,
   Smile,
   Download,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 const TABS = [
@@ -65,8 +66,105 @@ const TABS = [
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
   { id: 'pago', label: 'Pago', icon: CreditCard },
   { id: 'notificaciones', label: 'Notificaciones', icon: Bell },
+  { id: 'preferencias', label: 'Preferencias', icon: SlidersHorizontal },
   { id: 'seguridad', label: 'Seguridad', icon: Shield },
 ];
+
+const PREFS_KEY = 'noma_preferencias';
+const PREFS_DEFAULT = { zona_horaria: 'America/Bogota', moneda: 'COP', formato_fecha: 'dd/mm/yyyy' };
+
+// Preferencias de la cuenta que otras pantallas podrán leer (formato de fechas, moneda, zona horaria).
+// Por ahora viven en el navegador; cuando haya endpoint se mueven al backend sin tocar quien las lee.
+export function leerPreferencias() {
+  try {
+    return { ...PREFS_DEFAULT, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') };
+  } catch {
+    return { ...PREFS_DEFAULT };
+  }
+}
+
+function PreferenciasTab() {
+  const [prefs, setPrefs] = useState(leerPreferencias);
+  const [toast, setToast] = useState(null);
+
+  const handleSave = () => {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+      setToast({ type: 'success', message: 'Preferencias guardadas' });
+    } catch {
+      setToast({ type: 'error', message: 'No se pudieron guardar las preferencias' });
+    }
+  };
+
+  const set = (e) => setPrefs((p) => ({ ...p, [e.target.name]: e.target.value }));
+
+  return (
+    <div className="space-y-8">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
+      <GlassCard>
+        <h3 className="font-head text-xl text-text mb-2 flex items-center gap-3">
+          <SlidersHorizontal className="w-5 h-5 text-accent" />
+          Preferencias
+        </h3>
+        <p className="text-muted text-sm mb-6 max-w-xl">
+          Cómo quieres ver fechas y montos en tu panel. Se guardan en este navegador.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <FormField label="Zona horaria" icon={Clock}>
+            <SelectField
+              name="zona_horaria"
+              value={prefs.zona_horaria}
+              onChange={set}
+              options={[
+                { value: 'America/Bogota', label: 'Colombia (GMT-5)' },
+                { value: 'America/Mexico_City', label: 'México (GMT-6)' },
+                { value: 'America/Lima', label: 'Perú (GMT-5)' },
+                { value: 'America/Santiago', label: 'Chile' },
+                { value: 'America/Argentina/Buenos_Aires', label: 'Argentina (GMT-3)' },
+                { value: 'Europe/Madrid', label: 'España' },
+              ]}
+            />
+          </FormField>
+          <FormField label="Moneda" icon={CreditCard}>
+            <SelectField
+              name="moneda"
+              value={prefs.moneda}
+              onChange={set}
+              options={[
+                { value: 'COP', label: 'Peso colombiano (COP)' },
+                { value: 'MXN', label: 'Peso mexicano (MXN)' },
+                { value: 'USD', label: 'Dólar (USD)' },
+                { value: 'EUR', label: 'Euro (EUR)' },
+              ]}
+            />
+          </FormField>
+          <FormField label="Formato de fecha" icon={Clock}>
+            <SelectField
+              name="formato_fecha"
+              value={prefs.formato_fecha}
+              onChange={set}
+              options={[
+                { value: 'dd/mm/yyyy', label: 'día/mes/año' },
+                { value: 'mm/dd/yyyy', label: 'mes/día/año' },
+                { value: 'yyyy-mm-dd', label: 'año-mes-día' },
+              ]}
+            />
+          </FormField>
+        </div>
+        <div className="flex justify-end pt-6">
+          <button
+            type="button"
+            onClick={handleSave}
+            className="h-11 px-6 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold inline-flex items-center gap-2 border-none cursor-pointer transition-colors"
+          >
+            <Save className="w-4 h-4" />
+            Guardar preferencias
+          </button>
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
 
 function LoadingSpinner() {
   return (
@@ -1516,6 +1614,7 @@ const TAB_COMPONENTS = {
   whatsapp: WhatsAppTab,
   pago: PagoTab,
   notificaciones: NotificacionesTab,
+  preferencias: PreferenciasTab,
   seguridad: SeguridadTab,
 };
 
