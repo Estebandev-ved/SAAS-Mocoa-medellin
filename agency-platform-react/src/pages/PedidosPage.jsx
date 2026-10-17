@@ -10,12 +10,10 @@ import {
     CheckCircle,
     XCircle,
     Package,
-    ArrowLeft,
     CreditCard,
     Smartphone,
     Building,
     X,
-    ChevronsRight,
     Zap,
     List,
     Columns3
@@ -25,6 +23,7 @@ import Illustration from '../components/Illustration';
 import { useHitos } from '../context/HitosContext';
 import { usePedidosLive } from '../context/PedidosLiveContext';
 import TipNova from '../components/TipNova';
+import PedidoSwipeCard from '../components/PedidoSwipeCard';
 import AyudaRapida from '../components/AyudaRapida';
 import { SkeletonList } from '../components/Skeleton';
 import PedidosKanban from '../components/PedidosKanban';
@@ -43,50 +42,6 @@ const SIGUIENTE_ESTADO = {
 };
 const PUEDE_CANCELAR = ['pendiente_pago', 'pago_enviado', 'pago_confirmado', 'en_preparacion'];
 const ESTADOS_PAGADOS = ['pago_confirmado', 'en_preparacion', 'enviado', 'entregado'];
-
-// Tarjeta de pedido para celular. Deslizar a la derecha avanza el pedido al siguiente estado;
-// el cambio se puede deshacer unos segundos (ver avanzarRapido).
-const PedidoCard = ({ pedido, badge, total, fecha, onAbrir, onAvanzar }) => {
-    const siguiente = SIGUIENTE_ESTADO[pedido.estado];
-    return (
-        <div className="relative rounded-2xl overflow-hidden">
-            {siguiente && (
-                <div className="absolute inset-0 bg-success/15 flex items-center pl-5 gap-2 text-success text-sm font-semibold" aria-hidden="true">
-                    <ChevronsRight size={20} /> {siguiente.label}
-                </div>
-            )}
-            <motion.div
-                drag={siguiente ? 'x' : false}
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={{ left: 0, right: 0.5 }}
-                onDragEnd={(_, info) => { if (siguiente && info.offset.x > 110) onAvanzar(); }}
-                onClick={onAbrir}
-                className="relative bg-white border border-border rounded-2xl p-4 cursor-pointer"
-            >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="min-w-0">
-                        <p className="font-mono text-sm font-bold">#{pedido.numero_pedido || pedido.id}</p>
-                        <p className="text-sm font-medium truncate">{pedido.cliente_nombre || 'Sin nombre'}</p>
-                    </div>
-                    <p className="font-mono font-bold text-accent shrink-0">{total}</p>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                    {badge}
-                    <span className="text-xs text-muted">{fecha}</span>
-                </div>
-                {siguiente && (
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onAvanzar(); }}
-                        className="mt-3 w-full h-11 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer inline-flex items-center justify-center gap-2"
-                    >
-                        <Zap size={16} />
-                        {pedido.estado === 'pago_enviado' ? 'Aprobar comprobante' : siguiente.label}
-                    </button>
-                )}
-            </motion.div>
-        </div>
-    );
-};
 
 const PedidosPage = () => {
     const navigate = useNavigate();
@@ -254,12 +209,6 @@ const PedidosPage = () => {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className="p-2 rounded-xl bg-bg2 border border-border hover:border-accent/30 hover:bg-accent/10 transition-all"
-                        >
-                            <ArrowLeft className="w-5 h-5 text-muted" />
-                        </button>
                         <div>
                             <h1 className="font-head text-3xl font-bold mb-2 flex items-center gap-3">
                                 Pedidos
@@ -378,17 +327,17 @@ const PedidosPage = () => {
                     <>
                     <div className="md:hidden space-y-3">
                         {pedidosFiltrados.map((pedido) => (
-                            <PedidoCard
+                            <PedidoSwipeCard
                                 key={pedido.id}
                                 pedido={pedido}
+                                siguiente={SIGUIENTE_ESTADO[pedido.estado]}
                                 badge={getEstadoBadge(pedido.estado)}
                                 total={formatCurrency(pedido.total)}
                                 fecha={formatFecha(pedido.created_at)}
-                                onAbrir={() => setPedidoSeleccionado(pedido)}
-                                onAvanzar={() => avanzarRapido(pedido, SIGUIENTE_ESTADO[pedido.estado].estado)}
+                                onAbrir={setPedidoSeleccionado}
+                                onAvanzar={(p, estado) => avanzarRapido(p, estado)}
                             />
                         ))}
-                        <p className="text-center text-xs text-muted pt-1">Desliza un pedido a la derecha para avanzarlo</p>
                     </div>
                     <div className="hidden md:block bg-white rounded-2xl border border-border overflow-hidden">
                         <div className="overflow-x-auto">

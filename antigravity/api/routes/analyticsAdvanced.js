@@ -105,7 +105,9 @@ router.get('/resumen', async (req, res) => {
             mensajes: mensajesHoy,
             ai_procesados: parseInt(hoyMensajes.ai_procesados) || 0,
             tasa_conversion: mensajesHoy > 0 ? parseFloat(((hoyVentas.total_pedidos / mensajesHoy) * 100).toFixed(1)) : 0,
-            cambio_ventas: variacion(hoyVentas.total_ventas, ayerVentas.total_ventas)
+            cambio_ventas: variacion(hoyVentas.total_ventas, ayerVentas.total_ventas),
+            ayer_ventas: ayerVentas.total_ventas,
+            ayer_pedidos: ayerVentas.total_pedidos
         };
 
         // Ventas de los últimos 7 días, con los días sin pedidos en cero.

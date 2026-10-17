@@ -3,6 +3,7 @@ import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Play, ArrowRight, Check } from 'lucide-react';
 import ChatMockup from './ChatMockup';
+import { evento } from '../utils/analitica';
 import { useBranding } from '../context/BrandingContext';
 import Illustration from './Illustration';
 
@@ -81,6 +82,7 @@ const Hero = () => {
             <motion.div variants={itemVariants} className="flex flex-wrap justify-center lg:justify-start items-center gap-x-6 gap-y-4 mb-12">
               <Link
                 to="/register"
+                onClick={() => evento('cta_registro', { donde: 'hero' })}
                 className="bg-accent hover:bg-accent2 text-white h-12 px-8 rounded-xl text-sm font-semibold inline-flex items-center gap-3 no-underline transition-colors"
               >
                 Probar gratis 7 días <ArrowRight size={16} />

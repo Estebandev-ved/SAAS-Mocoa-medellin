@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, Loader2, Store } from 'lucide-react';
+import { ExternalLink, Loader2, Store } from 'lucide-react';
 import api from '../services/api';
 import { usePlan } from '../components/PlanGate';
 import Toast from '../components/Toast';
@@ -52,13 +52,6 @@ export default function CajaPage() {
 
       <header className="sticky top-0 z-40 bg-bg2/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="p-2 hover:bg-bg3 rounded-xl transition-colors"
-            aria-label="Volver al dashboard"
-          >
-            <ArrowLeft className="w-5 h-5 text-muted" />
-          </button>
           <div>
             <h1 className="font-head text-xl text-text">Caja</h1>
             <p className="text-xs text-muted">Inventario, ventas y plata de tu emprendimiento.</p>

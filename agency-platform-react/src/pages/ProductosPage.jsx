@@ -9,7 +9,6 @@ import TipNova from '../components/TipNova';
 import AyudaRapida from '../components/AyudaRapida';
 import { useConfirm } from '../context/ConfirmContext';
 import {
-  ArrowLeft,
   Plus,
   Loader2,
   Package,
@@ -208,9 +207,6 @@ export default function ProductosPage() {
       <header className="sticky top-0 z-40 bg-bg2/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-bg3 rounded-xl transition-colors">
-              <ArrowLeft className="w-5 h-5 text-muted" />
-            </button>
             <div>
               <h1 className="font-head text-xl text-text">Productos y Servicios</h1>
               <p className="text-xs text-muted">Gestiona lo que vendes. El bot usará esta info para responder.</p>

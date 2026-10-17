@@ -2,6 +2,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
+import { iniciarAnalitica } from './utils/analitica'
+
+iniciarAnalitica() // solo actúa con consentimiento y dominio configurado
 
 // PWA: solo en producción — en desarrollo un service worker cacheando archivos de Vite
 // confunde (cambios que "no se ven"). El SW no toca la API ni el socket (ver public/sw.js).

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Illustration from '../components/Illustration';
@@ -229,13 +229,6 @@ export default function SuscripcionPage() {
     <div className="min-h-screen bg-bg p-6 lg:p-10">
       <div className="max-w-6xl mx-auto">
         <header className="flex items-center gap-3 mb-8">
-          <button
-            onClick={() => navigate('/dashboard')}
-            aria-label="Volver al dashboard"
-            className="p-2 rounded-xl bg-bg2 border border-border hover:border-accent/30 hover:bg-accent/10 transition-all"
-          >
-            <ArrowLeft className="w-5 h-5 text-muted" />
-          </button>
           <div>
             <h1 className="font-head text-3xl font-bold mb-1">Suscripción</h1>
             <p className="text-muted">Tu plan, tu uso y tu facturación en un solo lugar</p>

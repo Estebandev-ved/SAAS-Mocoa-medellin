@@ -40,6 +40,7 @@ import { useHitos } from '../context/HitosContext'
 import OwnerAvatar from '../components/avatar/OwnerAvatar'
 import ActivationChecklist from '../components/ActivationChecklist'
 import InstallPrompt from '../components/InstallPrompt'
+import Sparkline from '../components/Sparkline'
 import { SkeletonCards } from '../components/Skeleton'
 import AccionesSugeridas from '../components/AccionesSugeridas'
 import CompartirResumen from '../components/CompartirResumen'
@@ -56,7 +57,7 @@ const PASOS_TOUR = [
 import { planLabel } from '../components/shell/navConfig'
 import EstadoNegocio from '../components/EstadoNegocio'
 
-const StatCard = ({ title, value, trend, icon: Icon, variants, inverse = false }) => (
+const StatCard = ({ title, value, trend, sub, spark, icon: Icon, variants, inverse = false }) => (
   <motion.div
     variants={variants}
     className={`noma-lift rounded-2xl p-5 sm:p-6 border ${
@@ -67,15 +68,19 @@ const StatCard = ({ title, value, trend, icon: Icon, variants, inverse = false }
       <div>
         <p className={`text-sm ${inverse ? 'text-[#A0A0A0]' : 'text-muted'}`}>{title}</p>
         <p className={`font-mono text-3xl font-bold mt-1 ${inverse ? 'text-inverse-text' : 'text-text'}`}>{value}</p>
+        {sub && <p className={`text-xs mt-1 ${inverse ? 'text-[#A0A0A0]' : 'text-muted'}`}>{sub}</p>}
         {trend && (
           <div className="flex items-center gap-1 mt-2">
             <TrendingUp size={14} className={inverse ? 'text-[#81C784]' : 'text-success'} />
             <span className={`text-xs font-medium ${inverse ? 'text-[#81C784]' : 'text-success'}`}>{trend}</span>
           </div>
         )}
+        {spark && <Sparkline values={spark} width={120} height={28} className={`mt-3 ${inverse ? 'text-[#EF5350]' : 'text-accent'}`} />}
       </div>
-      <div className={`p-3 rounded-xl ${inverse ? 'bg-[#E53935]/15' : 'bg-accent-dim'}`}>
-        <Icon size={24} className={inverse ? 'text-[#E53935]' : 'text-accent'} />
+      <div>
+        <div className={`p-3 rounded-xl ${inverse ? 'bg-[#E53935]/15' : 'bg-accent-dim'}`}>
+          <Icon size={24} className={inverse ? 'text-[#E53935]' : 'text-accent'} />
+        </div>
       </div>
     </div>
   </motion.div>
@@ -109,7 +114,10 @@ export default function Dashboard() {
     tasaIA: 0,
     aiProcesados: 0,
     cambioVentas: 0,
+    ayerVentas: 0,
+    ayerPedidos: 0,
   })
+  const [serie, setSerie] = useState({ ventas: [], pedidos: [] })
   const [alertas, setAlertas] = useState([])
   const [botConfig, setBotConfig] = useState(null)
   const [autoEstado, setAutoEstado] = useState({})
@@ -134,7 +142,11 @@ export default function Dashboard() {
           tasaIA: hoy.tasa_conversion || 0,
           aiProcesados: hoy.ai_procesados || 0,
           cambioVentas: hoy.cambio_ventas || 0,
+          ayerVentas: hoy.ayer_ventas || 0,
+          ayerPedidos: hoy.ayer_pedidos || 0,
         })
+        const dias = response?.ventas_diarias || []
+        setSerie({ ventas: dias.map((d) => d.ventas), pedidos: dias.map((d) => d.pedidos) })
         const mensajesTotales = response?.resumen?.mensajes_totales || 0
         if (mensajesTotales >= 100) celebrar('cien_mensajes')
       } catch (error) {
@@ -280,6 +292,8 @@ export default function Dashboard() {
             <StatCard
               title="Ventas Hoy"
               value={`$${stats.ventasHoy.toLocaleString()}`}
+              sub={`Ayer: $${stats.ayerVentas.toLocaleString()}`}
+              spark={serie.ventas}
               trend={stats.cambioVentas !== 0 ? `${stats.cambioVentas > 0 ? '+' : ''}${stats.cambioVentas}% vs ayer` : null}
               icon={TrendingUp}
               variants={itemVariants}
@@ -288,6 +302,8 @@ export default function Dashboard() {
             <StatCard
               title="Pedidos Hoy"
               value={stats.pedidosHoy}
+              sub={`Ayer: ${stats.ayerPedidos}`}
+              spark={serie.pedidos}
               trend={null}
               icon={ShoppingCart}
               variants={itemVariants}
@@ -295,6 +311,7 @@ export default function Dashboard() {
             <StatCard
               title="Mensajes Hoy"
               value={stats.mensajesHoy}
+              sub="Mensajes que tu bot atendió"
               trend={null}
               icon={MessageSquare}
               variants={itemVariants}
@@ -302,6 +319,7 @@ export default function Dashboard() {
             <StatCard
               title="IA Procesados"
               value={stats.aiProcesados}
+              sub="Respuestas generadas con IA"
               trend={stats.tasaIA > 0 ? `${stats.tasaIA}% conversión` : null}
               icon={Zap}
               variants={itemVariants}

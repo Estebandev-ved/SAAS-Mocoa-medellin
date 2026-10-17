@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { evento } from '../utils/analitica';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -91,7 +92,8 @@ const RegisterPage = () => {
             } catch (e) {
                 console.error('Onboarding parcial:', e);
             }
-            navigate('/dashboard');
+            evento('registro_completo');
+            navigate('/bienvenida');
         } else {
             setError(result.error || 'No pudimos crear la cuenta');
         }

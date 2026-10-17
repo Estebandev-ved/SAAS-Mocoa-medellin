@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-    ArrowLeft,
     Phone,
     PhoneOff,
     Mic,
@@ -130,12 +129,6 @@ const VoiceBotPage = () => {
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-8">
-                    <button
-                        onClick={() => navigate('/dashboard')}
-                        className="p-2 rounded-xl bg-bg2 border border-border hover:border-accent/30 hover:bg-accent/10 transition-all"
-                    >
-                        <ArrowLeft className="w-5 h-5 text-muted" />
-                    </button>
                     <div>
                         <h1 className="font-head text-3xl font-bold mb-2">Bot de Llamadas</h1>
                         <p className="text-muted">Automatiza las llamadas telefónicas con IA</p>

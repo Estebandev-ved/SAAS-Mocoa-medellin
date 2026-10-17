@@ -1,40 +1,23 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { WifiOff, CreditCard, X } from 'lucide-react'
+import { CreditCard, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { usePedidosLive } from '../context/PedidosLiveContext'
 
-// Franja superior del panel: aviso de "sin conexión" y recordatorio de renovación
+// Franja superior del panel: recordatorio de renovación (el aviso de "sin conexión" es OfflineBanner)
 // (el backend lo manda por socket como `subscription_alert`). Se puede descartar por sesión.
 export default function BannersGlobales() {
   const { user } = useAuth()
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { alertaSuscripcion } = usePedidosLive()
-  const [offline, setOffline] = useState(typeof navigator !== 'undefined' && navigator.onLine === false)
   const [descartada, setDescartada] = useState(null) // el aviso descartado (uno nuevo vuelve a mostrarse)
-
-  useEffect(() => {
-    const on = () => setOffline(false)
-    const off = () => setOffline(true)
-    window.addEventListener('online', on)
-    window.addEventListener('offline', off)
-    return () => {
-      window.removeEventListener('online', on)
-      window.removeEventListener('offline', off)
-    }
-  }, [])
 
   if (!user) return null
   const mostrarRenovar = !!alertaSuscripcion && descartada !== alertaSuscripcion && pathname !== '/suscripcion'
 
   return (
     <div className="sticky top-14 lg:top-0 z-[39]">
-      {offline && (
-        <div role="status" className="bg-inverse text-inverse-text text-sm px-4 py-2.5 flex items-center justify-center gap-2">
-          <WifiOff size={16} /> Sin conexión. Lo que ves puede estar desactualizado; volverá solo al reconectar.
-        </div>
-      )}
       {mostrarRenovar && (
         <div role="alert" className="bg-warn/15 border-b border-warn/40 text-text text-sm px-4 py-2 flex items-center gap-3">
           <CreditCard size={16} className="text-warn-text shrink-0" />

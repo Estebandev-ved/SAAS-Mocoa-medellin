@@ -54,7 +54,6 @@ import {
   Lock,
   Key,
   Info,
-  ArrowLeft,
   Smile,
   Download,
 } from 'lucide-react';
@@ -1538,13 +1537,6 @@ export default function AjustesPage() {
       <div className="max-w-6xl mx-auto">
         <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/dashboard')}
-              aria-label="Volver al panel"
-              className="w-11 h-11 rounded-xl bg-white border border-border flex items-center justify-center cursor-pointer hover:border-[#C9C9C9] transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-muted" />
-            </button>
             <div>
               <h1 className="font-head text-3xl font-bold text-text tracking-tight">Ajustes</h1>
               <p className="text-muted text-sm mt-1">Configura tu negocio, bot y preferencias</p>

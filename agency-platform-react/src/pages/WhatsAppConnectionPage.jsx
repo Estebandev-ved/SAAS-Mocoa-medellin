@@ -8,7 +8,6 @@ import api from '../services/api';
 import { useHitos } from '../context/HitosContext';
 import {
   Smartphone,
-  ArrowLeft,
   Loader2,
   CheckCircle,
   XCircle,
@@ -275,12 +274,6 @@ export default function WhatsAppConnectionPage() {
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="p-2 rounded-xl bg-bg2 border border-border hover:border-accent/30 hover:bg-accent/10 transition-all"
-        >
-          <ArrowLeft className="w-5 h-5 text-muted" />
-        </button>
         <Smartphone className="w-6 h-6 text-accent" />
         <h1 className="text-2xl font-bold text-text">WhatsApp Bot</h1>
       </div>

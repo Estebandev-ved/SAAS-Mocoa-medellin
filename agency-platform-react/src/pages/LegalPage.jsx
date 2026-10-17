@@ -212,7 +212,7 @@ export default function LegalPage() {
           <H2 id="cookies">9. Cookies y almacenamiento en tu dispositivo</H2>
           <P>
             Usamos tecnologías de almacenamiento en tu navegador (cookies y almacenamiento local) para que el sitio
-            funcione y recuerde tus decisiones. Hoy solo usamos las <strong>necesarias</strong>; no usamos cookies de
+            funcione y recuerde tus decisiones. Las <strong>necesarias</strong> siempre están activas; no usamos cookies de
             publicidad ni de seguimiento entre sitios.
           </P>
           <div className="overflow-x-auto mb-3">
@@ -234,8 +234,9 @@ export default function LegalPage() {
             </table>
           </div>
           <P>
-            Si algún día añadimos analítica (para medir el uso del sitio) la cargaremos solo si aceptas "Aceptar" en
-            el aviso de cookies. Puedes cambiar tu decisión{' '}
+            Si aceptas "Aceptar" en el aviso de cookies, medimos el uso de la web pública (páginas vistas y clics en
+            los botones de registro) con Plausible, una herramienta que no usa cookies ni crea perfiles individuales.
+            Si eliges "Solo necesarias" no se carga nada de esto. Puedes cambiar tu decisión{' '}
             <button type="button" onClick={reabrirCookies} className="text-accent underline bg-transparent border-none p-0 cursor-pointer text-sm">
               aquí
             </button>
