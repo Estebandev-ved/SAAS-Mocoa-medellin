@@ -2,7 +2,44 @@
 
 ---
 
-## 📅 Plan para Hoy: 2026-10-10
+## 📅 Plan para Hoy: 2026-10-18
+
+**Rama de trabajo: `caja-emprendedor` (todo va ahí, no a `main`).** Idea grande para diseñar: un **constructor de flujos tipo ManyChat con la esencia de Antigravity** (flujos visuales, disparadores, IA en español colombiano, pedidos/pagos/domicilios integrados).
+
+### 🔐 Seguridad (2FA, recuperación de contraseña y política de contraseñas ya están hechos)
+- [ ] Seguir la auditoría de rutas: revisar IDOR por `negocio_id` en `/cupones`, `/api/campanas`, `/bot/config`, `/clientes`; el `express.json({ limit: '50mb' })` global es excesivo (bajarlo y subir solo en las rutas de imágenes).
+- [ ] Revisar `SELECT *` restantes en `auth.js` (líneas ~205 y ~262) para que no viajen al cliente.
+- [ ] CORS/helmet/CSP y rate limit con almacén compartido (Redis) antes de escalar a más de una instancia.
+- [ ] Secretos: confirmar que no quedan claves en el repo; rotar si hace falta.
+
+### 🧑‍💼 Cliente
+- [ ] **Redes del negocio del cliente** (Instagram/Facebook/TikTok) en Ajustes → Negocio, para que el bot las comparta (necesita columna nueva en `negocios`).
+- [ ] **Mover Preferencias (zona horaria/moneda/fecha) al backend** y usarlas en Pedidos, Pagos y Dashboard (hoy `localStorage`).
+- [ ] ETA y aviso por WhatsApp "va en camino" en el seguimiento del domiciliario.
+- [ ] Videos cortos de 30-60 s por sección en `AyudaRapida` (material del socio).
+- [ ] Probar con datos reales: sockets en vivo, push (faltan claves VAPID), `/bot/test` con Gemini real.
+
+### ✨ Visual e interactivo
+- [ ] Tema oscuro: revisar pantallas con colores hex sueltos. Auditoría a 375px del admin y botones ≥44px.
+- [ ] Micro-interacciones y `Skeleton` en las pantallas que faltan. Texto `ANTIGRAVITY` suelto en `Ecosystem.jsx` y `AdminLayout.jsx`.
+
+### 🧩 Constructor de flujos tipo ManyChat (fase de diseño)
+- [ ] Documento en `docs/`: qué toma de ManyChat (disparadores por palabra clave, pasos, botones, etiquetas, difusiones, captura de datos) y qué lo hace nuestro (IA con contexto del negocio, pedidos/pagos/domicilios/cupones integrados, planes de $25.000-$449.000).
+- [ ] Modelo de datos (`flujos`, `flujo_nodos`, `flujo_ejecuciones`, `etiquetas_cliente`) y qué reutiliza de `automationsService` y `campaignSender`.
+- [ ] Prototipo visual del editor (lienzo de nodos), solo front con datos locales.
+
+---
+
+## ✅ 17 oct — Footer con redes, Preferencias y fuga en el perfil
+
+- [x] **Footer**: Instagram, Facebook, YouTube y TikTok (enlaces en `agency-platform-react/src/siteConfig.js`, ya puestos por el socio; vacío = ícono sin enlace).
+- [x] **Ajustes → Preferencias** (zona horaria, moneda, formato de fecha; `localStorage`, `leerPreferencias()` exportada; aún ninguna pantalla las usa).
+- [x] **Seguridad**: `PUT /api/business/perfil` devolvía `SELECT *` (hash de contraseña, secreto del 2FA y tokens de recuperación) y aceptaba cualquier valor sin validar. Ahora usa columnas explícitas y `api/services/perfilNegocio.js` valida tipo/longitud (sitio web solo `http(s)`). 5 tests nuevos en `test/unit/perfilNegocio.test.js`.
+- [x] **Git**: `origin/caja-emprendedor` ya tenía 8 commits que no estaban en local (2FA, recuperación de contraseña, mejoras visuales/interactivas propias, herramientas por tipo de negocio). Choca en muchos archivos con lo de `main`, así que se partió de la rama remota y solo se pasó lo del footer/Preferencias; la copia local anterior quedó en la rama `backup-local-16oct`. Quedan en `main` las "mejoras interactivas" del commit `9690c60`, que no están en esta rama.
+
+---
+
+## 📌 Pendientes arrastrados (plan del 10 oct, siguen abiertos)
 
 **Contexto:** todo está publicado en `main` (Vercel despliega `main`, Root Directory `agency-platform-react`). El panel admin (`/admin`), el portal del domiciliario (`/delivery/*`), el formulario público (`/info`) y las migraciones/rol admin automáticos al arrancar ya están en producción. Las variables de Efipay ya están puestas en Railway (`EFIPAY_OFFICE_ID` = ID de **sucursal 3161**, no el de comercio 221). Falta verificar con datos reales y hacer el primer pago.
 

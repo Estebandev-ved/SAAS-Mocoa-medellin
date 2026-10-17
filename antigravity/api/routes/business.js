@@ -7,6 +7,7 @@ const { validarPassword } = require('../services/passwordPolicy');
 const { checkPlan } = require('../middleware/tenant');
 const { sanitizeAvatar, parseAvatar } = require('../services/avatar');
 const { sanitizeVistos, parseVistos } = require('../services/uiEstado');
+const { sanearPerfil, COLUMNAS_PERFIL } = require('../services/perfilNegocio');
 const { getPlan, getPlanFeatures, checkLimit, getNextPlan, getPlanPrice, getIncludedFeatureLabels, getUpgradeBenefits, getAllPlans } = require('../../config/planConfig');
 
 // Router canónico para /api/business (antes montado en /api/negocio, que
@@ -105,28 +106,11 @@ router.get('/perfil', async (req, res) => {
 router.put('/perfil', async (req, res) => {
     try {
         const negocioId = req.negocio.id;
-        const camposPermitidos = [
-            'nombre', 'color_principal', 'logo_url', 'whatsapp',
-            'nit', 'razon_social', 'tipo_negocio', 'ciudad', 'departamento',
-            'direccion', 'telefono', 'sitio_web', 'descripcion_negocio',
-            'numero_empleados', 'volumen_pedidos_dia', 'metodos_pago_activos',
-            'numero_nequi', 'numero_bancolombia'
-        ];
+        const { valores, error } = sanearPerfil(req.body);
+        if (error) return res.status(400).json({ error });
 
-        const updates = [];
-        const values = [];
-
-        for (const [key, value] of Object.entries(req.body)) {
-            if (camposPermitidos.includes(key)) {
-                if (key === 'metodos_pago_activos' && Array.isArray(value)) {
-                    updates.push(`${key} = ?`);
-                    values.push(JSON.stringify(value));
-                } else if (value !== undefined) {
-                    updates.push(`${key} = ?`);
-                    values.push(value);
-                }
-            }
-        }
+        const updates = Object.keys(valores).map((k) => `${k} = ?`);
+        const values = Object.values(valores);
 
         if (updates.length === 0) {
             return res.status(400).json({ error: 'No hay campos válidos para actualizar' });
@@ -149,8 +133,9 @@ router.put('/perfil', async (req, res) => {
             values
         );
 
+        // Nunca `SELECT *`: traería el hash de la contraseña y los secretos del 2FA.
         const [negocios] = await db.execute(
-            'SELECT * FROM negocios WHERE id = ?',
+            `SELECT ${COLUMNAS_PERFIL} FROM negocios WHERE id = ?`,
             [negocioId]
         );
 
