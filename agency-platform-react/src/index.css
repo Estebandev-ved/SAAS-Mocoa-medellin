@@ -147,6 +147,16 @@
   --inverse-text: #F5F5F5;
 }
 :root[data-theme='dark'] .noma-char { background: #FDECEA; border-radius: 20px; padding: 4px 8px; box-sizing: content-box; }
+:root[data-theme='dark'] .bg-\[\#FDECEA\] { background-color: rgba(239, 83, 80, 0.14); }
+:root[data-theme='dark'] .bg-\[\#F0F0F0\],
+:root[data-theme='dark'] .bg-\[\#E4E4E4\] { background-color: var(--bg3); }
+:root[data-theme='dark'] .border-\[\#C9C9C9\] { border-color: var(--border); }
+:root[data-theme='dark'] .text-\[\#0A0A0A\] { color: var(--text); }
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] textarea,
+:root[data-theme='dark'] select { color: var(--text); }
+:root[data-theme='dark'] input::placeholder,
+:root[data-theme='dark'] textarea::placeholder { color: var(--muted); }
 :root[data-theme='dark'] .bg-white { background-color: var(--card); }
 :root[data-theme='dark'] .text-black { color: var(--text); }
 

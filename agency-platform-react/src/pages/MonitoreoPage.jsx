@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import TipNova from '../components/TipNova';
 import {
-  ArrowLeft,
   Activity,
   Users,
   MessageSquare,
@@ -85,9 +84,6 @@ export default function MonitoreoPage() {
       <header className="sticky top-0 z-40 bg-bg2/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-bg3 rounded-xl transition-colors">
-              <ArrowLeft className="w-5 h-5 text-muted" />
-            </button>
             <div>
               <h1 className="font-head text-xl text-text">Monitoreo</h1>
               <p className="text-xs text-muted">Estado del sistema y métricas en tiempo real</p>

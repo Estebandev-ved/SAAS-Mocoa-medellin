@@ -119,12 +119,6 @@ const ConversacionesPage = () => {
             <div className={`w-full md:w-96 bg-bg2 border-r border-border flex flex-col ${selectedConv ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-border">
                     <div className="flex items-center gap-3 mb-4">
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className="p-2 rounded-xl bg-bg border border-border hover:border-accent/30 hover:bg-accent/10 transition-all"
-                        >
-                            <ArrowLeft className="w-4 h-4 text-muted" />
-                        </button>
                         <h2 className="font-head text-xl font-bold">Conversaciones</h2>
                     </div>
                     <form onSubmit={handleBuscar} className="flex gap-2">

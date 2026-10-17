@@ -5,10 +5,10 @@
 //  - Navegaciones: red primero (toma lo recién desplegado), con el index.html cacheado
 //    como respaldo si no hay señal, para que la app abra en vez de mostrar el dinosaurio.
 //  - /assets/* (nombres con hash, inmutables) e íconos: caché primero.
-const VERSION = 'noma-shell-v1';
+const VERSION = 'noma-shell-v2';
 
 self.addEventListener('install', (event) => {
-    event.waitUntil(caches.open(VERSION).then((c) => c.addAll(['/', '/icons/noma-192.png'])).catch(() => {}));
+    event.waitUntil(caches.open(VERSION).then((c) => c.addAll(['/', '/offline.html', '/icons/noma-192.png'])).catch(() => {}));
     self.skipWaiting();
 });
 
@@ -34,7 +34,7 @@ self.addEventListener('fetch', (event) => {
                     caches.open(VERSION).then((c) => c.put('/', copy)).catch(() => {});
                     return res;
                 })
-                .catch(() => caches.match('/'))
+                .catch(() => caches.match('/').then((r) => r || caches.match('/offline.html')))
         );
         return;
     }

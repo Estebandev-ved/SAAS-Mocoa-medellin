@@ -67,7 +67,7 @@ export default function ActivationChecklist({ user, onActivando }) {
       desc: 'Nequi, Bancolombia, efectivo… el bot los ofrece al cerrar la venta.',
       hecho: estado.pagos,
       cta: 'Configurar pagos',
-      to: '/ajustes?tab=pago',
+      to: '/bienvenida',
     },
     {
       id: 'whatsapp',
@@ -147,6 +147,11 @@ export default function ActivationChecklist({ user, onActivando }) {
         <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
           <h2 className="font-head text-xl font-bold text-text">{baseCompleta ? 'Saca más provecho a tu bot' : 'Activa tu bot'}</h2>
           <span className="text-sm font-semibold text-accent">{completados} de {lista.length} listos</span>
+          {!baseCompleta && (
+            <button onClick={() => navigate('/bienvenida')} className="basis-full text-left bg-transparent border-none p-0 text-sm font-semibold text-accent underline cursor-pointer">
+              Hacerlo paso a paso con el asistente →
+            </button>
+          )}
         </div>
         <p className="text-sm text-muted mb-4">
           {baseCompleta

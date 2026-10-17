@@ -10,7 +10,6 @@ import {
     CheckCircle,
     XCircle,
     Package,
-    ArrowLeft,
     CreditCard,
     Smartphone,
     Building,
@@ -21,6 +20,7 @@ import Illustration from '../components/Illustration';
 import { useHitos } from '../context/HitosContext';
 import { usePedidosLive } from '../context/PedidosLiveContext';
 import TipNova from '../components/TipNova';
+import PedidoSwipeCard from '../components/PedidoSwipeCard';
 import AyudaRapida from '../components/AyudaRapida';
 
 // Mismas transiciones válidas que valida el backend (api/routes/orders.js) — la etiqueta es lo único
@@ -79,6 +79,17 @@ const PedidosPage = () => {
             alert(error.response?.data?.error || 'No se pudo actualizar el pedido');
         } finally {
             setAvanzando(false);
+        }
+    };
+
+    // Avanza cualquier pedido de la lista (deslizar en celular); el servidor valida la transición
+    const avanzarPedido = async (pedido, nuevoEstado) => {
+        try {
+            await api.patch(`/pedidos/${pedido.id}/estado`, { estado: nuevoEstado });
+            setPedidos((prev) => prev.map((p) => (p.id === pedido.id ? { ...p, estado: nuevoEstado } : p)));
+            try { navigator.vibrate?.(30); } catch { /* sin vibración */ }
+        } catch (error) {
+            alert(error.response?.data?.error || 'No se pudo actualizar el pedido');
         }
     };
 
@@ -152,12 +163,6 @@ const PedidosPage = () => {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className="p-2 rounded-xl bg-bg2 border border-border hover:border-accent/30 hover:bg-accent/10 transition-all"
-                        >
-                            <ArrowLeft className="w-5 h-5 text-muted" />
-                        </button>
                         <div>
                             <h1 className="font-head text-3xl font-bold mb-2 flex items-center gap-3">
                                 Pedidos
@@ -254,7 +259,22 @@ const PedidosPage = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-2xl border border-border overflow-hidden">
+                    <>
+                    <div className="md:hidden space-y-3">
+                        {pedidosFiltrados.map((pedido) => (
+                            <PedidoSwipeCard
+                                key={pedido.id}
+                                pedido={pedido}
+                                siguiente={SIGUIENTE_ESTADO[pedido.estado]}
+                                badge={getEstadoBadge(pedido.estado)}
+                                total={formatCurrency(pedido.total)}
+                                fecha={formatFecha(pedido.created_at)}
+                                onAbrir={setPedidoSeleccionado}
+                                onAvanzar={avanzarPedido}
+                            />
+                        ))}
+                    </div>
+                    <div className="hidden md:block bg-white rounded-2xl border border-border overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead>
@@ -325,6 +345,7 @@ const PedidosPage = () => {
                             </table>
                         </div>
                     </div>
+                    </>
                 )}
             </div>
 

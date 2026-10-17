@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Loader2, Lock, Sparkles } from 'lucide-react';
+import { Send, Loader2, Lock, Sparkles } from 'lucide-react';
 import api from '../services/api';
 import TipNova from '../components/TipNova';
 import AyudaRapida from '../components/AyudaRapida';
@@ -134,13 +134,6 @@ export default function CampanasPage() {
     <div className="min-h-screen bg-bg2 p-6 lg:p-10">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/dashboard')}
-            aria-label="Volver al panel"
-            className="w-11 h-11 rounded-xl bg-white border border-border flex items-center justify-center cursor-pointer hover:border-[#C9C9C9] transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-muted" />
-          </button>
           <div>
             <h1 className="font-head text-3xl font-bold text-text tracking-tight">Campañas</h1>
             <p className="text-muted text-sm mt-1">Mensajes de marketing a tus clientes por WhatsApp</p>

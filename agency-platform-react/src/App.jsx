@@ -16,7 +16,7 @@ import Ecosystem from './components/Ecosystem';
 import InteractiveDemo from './components/InteractiveDemo';
 import ROISimulator from './components/ROISimulator';
 import Process from './components/Process';
-import Cases from './components/Cases';
+import VideoDemo from './components/VideoDemo';
 import Personajes from './components/Personajes';
 import Pricing from './components/Pricing';
 import Contact from './components/Contact';
@@ -37,6 +37,7 @@ import SuscripcionPage from './pages/SuscripcionPage';
 import AjustesPage from './pages/AjustesPage';
 import DomiciliosPage from './pages/DomiciliosPage';
 import WhatsAppConnectionPage from './pages/WhatsAppConnectionPage';
+import BienvenidaPage from './pages/BienvenidaPage';
 import ProductosPage from './pages/ProductosPage';
 import RestaurantesPage from './pages/RestaurantesPage';
 import MonitoreoPage from './pages/MonitoreoPage';
@@ -48,6 +49,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import FloatingActions from './components/FloatingActions';
 import LegalPage from './pages/LegalPage';
 import CookieBanner from './components/CookieBanner';
+import OfflineBanner from './components/OfflineBanner';
 
 // Panel de administración y portal del domiciliario (carga diferida: no pesan en la web principal)
 const L = (loader) => lazy(loader);
@@ -83,8 +85,8 @@ const HomePage = () => (
       <Features />
       <Ecosystem />
       <InteractiveDemo />
+      <VideoDemo />
       <ROISimulator />
-      <Cases />
       <Process />
       <Personajes />
       <Pricing />
@@ -129,6 +131,7 @@ function App() {
               <Route path="/delivery/track/:token" element={<Lazy><TrackingCliente /></Lazy>} />
               <Route element={<AppShell />}>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/bienvenida" element={<BienvenidaPage />} />
                 <Route path="/conversaciones" element={<ConversacionesPage />} />
                 <Route path="/pedidos" element={<PedidosPage />} />
                 <Route path="/clientes" element={<ClientesPage />} />
@@ -152,6 +155,7 @@ function App() {
               <Route path="/privacidad" element={<LegalPage />} />
               <Route path="/cookies" element={<LegalPage />} />
             </Routes>
+            <OfflineBanner />
             <CookieBanner />
             </PedidosLiveProvider>
             </HitosProvider>
