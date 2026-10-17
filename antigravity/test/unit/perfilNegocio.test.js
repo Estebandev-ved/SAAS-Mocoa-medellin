@@ -28,3 +28,10 @@ test('sitio web exige http(s) y métodos de pago van como JSON', () => {
 test('las columnas de respuesta no incluyen secretos', () => {
     assert.ok(!/password|secret|token|totp/i.test(COLUMNAS_PERFIL));
 });
+
+test('tipo_negocio es un ENUM: vacío pasa a null y valores desconocidos se rechazan', () => {
+    assert.strictEqual(sanearPerfil({ tipo_negocio: '' }).valores.tipo_negocio, null);
+    assert.strictEqual(sanearPerfil({ tipo_negocio: '  ' }).valores.tipo_negocio, null);
+    assert.strictEqual(sanearPerfil({ tipo_negocio: 'restaurante' }).valores.tipo_negocio, 'restaurante');
+    assert.ok(sanearPerfil({ tipo_negocio: 'panaderia' }).error);
+});
