@@ -142,10 +142,20 @@ router.post('/:id/mensaje', async (req, res) => {
         const numeroCliente = cliente[0]?.whatsapp || '';
 
         // Antes solo se guardaba en la base y NUNCA llegaba al cliente por WhatsApp.
-        const { enviarWhatsApp } = require('../services/automationsService');
-        const enviado = await enviarWhatsApp(req.negocioId, numeroCliente, contenido.trim());
-        if (!enviado) {
-            return res.status(502).json({ error: 'No se pudo enviar por WhatsApp. Revisa que tu WhatsApp esté conectado.' });
+        const { enviarWhatsAppDetalle } = require('../services/automationsService');
+        const envio = await enviarWhatsAppDetalle(req.negocioId, numeroCliente, contenido.trim());
+        if (!envio.ok) {
+            const explicaciones = {
+                sin_numero: 'Este cliente no tiene un número de WhatsApp guardado, así que no se le puede escribir.',
+                no_conectado: 'Tu WhatsApp aparece desconectado en el servidor. Ve a Ajustes y vuelve a vincularlo.',
+                gestor_inaccesible: 'El servicio de WhatsApp no responde (el gestor de instancias está caído o inaccesible).',
+                timeout: 'WhatsApp tardó demasiado en responder. Intenta de nuevo en unos segundos.'
+            };
+            const detalle = envio.detalle ? ` (${envio.detalle})` : '';
+            return res.status(502).json({
+                error: explicaciones[envio.motivo] || `No se pudo enviar por WhatsApp${detalle}.`,
+                motivo: envio.motivo
+            });
         }
 
         await db.execute(

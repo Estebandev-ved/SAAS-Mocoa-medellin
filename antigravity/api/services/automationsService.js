@@ -71,19 +71,28 @@ async function registrarNotificacion(negocioId, tipo, titulo, mensaje, referenci
     }
 }
 
-async function enviarWhatsApp(negocioId, numero, mensaje) {
-    if (!numero) return false;
+// Devuelve { ok, motivo } para que quien llama pueda explicar por qué falló.
+async function enviarWhatsAppDetalle(negocioId, numero, mensaje) {
+    if (!numero) return { ok: false, motivo: 'sin_numero' };
     try {
         await axios.post(`${INSTANCE_MANAGER_URL}/internal/message`, {
             negocio_id: negocioId,
             numero: numero.startsWith('+') ? numero : `+${numero}`,
             mensaje
-        }, { timeout: 5000 });
-        return true;
+        }, { timeout: 15000 });
+        return { ok: true };
     } catch (error) {
-        console.error('[AutomationsService] Error enviando WhatsApp:', error.message);
-        return false;
+        const detalle = error.response?.data?.error || error.message;
+        let motivo = 'error';
+        if (!error.response) motivo = error.code === 'ECONNABORTED' ? 'timeout' : 'gestor_inaccesible';
+        else if (/no está conectado/i.test(detalle)) motivo = 'no_conectado';
+        console.error(`[AutomationsService] Error enviando WhatsApp (${motivo}) a negocio ${negocioId}:`, detalle);
+        return { ok: false, motivo, detalle };
     }
+}
+
+async function enviarWhatsApp(negocioId, numero, mensaje) {
+    return (await enviarWhatsAppDetalle(negocioId, numero, mensaje)).ok;
 }
 
 // Automatización "encuesta": tras la entrega pide una calificación de 1 a 5.
@@ -123,5 +132,6 @@ module.exports = {
     isAutomationActive,
     yaSeNotifico,
     registrarNotificacion,
-    enviarWhatsApp
+    enviarWhatsApp,
+    enviarWhatsAppDetalle
 };
