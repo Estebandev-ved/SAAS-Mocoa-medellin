@@ -7,6 +7,7 @@ import FeedbackMessage from '../components/FeedbackMessage';
 import AyudaRapida from '../components/AyudaRapida';
 import EmptyState from '../components/EmptyState';
 import { mensajeError } from '../utils/errores';
+import { useHitos } from '../context/HitosContext';
 
 const LABEL = 'block text-sm font-semibold text-text mb-2';
 const CONTROL =
@@ -31,6 +32,7 @@ function estadoCupon(c) {
 }
 
 export default function CuponesPage() {
+  const { celebrar } = useHitos();
   const navigate = useNavigate();
   const [cupones, setCupones] = useState([]);
   const [form, setForm] = useState(VACIO);
@@ -59,6 +61,7 @@ export default function CuponesPage() {
     setMsg(null);
     try {
       await api.post('/cupones', form);
+      celebrar('cupon');
       setForm(VACIO);
       setMsg({ type: 'success', text: `Cupón ${form.codigo} creado. Ahora compártelo: pégalo en una campaña, en tus redes o en la automatización de recuperar pedidos. El cliente solo tiene que escribirlo al hacer su pedido.` });
       cargar();

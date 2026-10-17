@@ -333,6 +333,12 @@ export default function GuiaPage() {
             </h1>
             <p className="text-muted text-sm mt-1">Todo lo que necesitas para sacarle provecho a tu bot, paso a paso.</p>
           </div>
+          <button
+            onClick={() => navigate('/dashboard?tour=1')}
+            className="ml-auto h-11 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer shrink-0"
+          >
+            Ver el tour
+          </button>
         </div>
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="bg-white border border-border rounded-2xl p-6">

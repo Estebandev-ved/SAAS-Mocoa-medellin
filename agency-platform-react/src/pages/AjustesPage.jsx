@@ -9,6 +9,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import ActivarAvisos from '../components/ActivarAvisos';
+import { useTema } from '../hooks/useTema';
+import { sonidoActivo, guardarSonidoActivo, reproducirAviso } from '../context/PedidosLiveContext';
 import {
   Loader2,
   Store,
@@ -1131,6 +1134,25 @@ function PagoTab() {
   );
 }
 
+function PreferenciasLocales() {
+  const { oscuro, poner } = useTema();
+  const [sonido, setSonido] = useState(sonidoActivo());
+  return (
+    <div className="mb-6 divide-y divide-white/5">
+      <ToggleSwitch
+        checked={sonido}
+        onChange={() => { const v = !sonido; guardarSonidoActivo(v); setSonido(v); if (v) reproducirAviso('pago'); }}
+        label="Sonido y vibración al llegar pedidos y mensajes (este dispositivo)"
+      />
+      <ToggleSwitch
+        checked={oscuro}
+        onChange={() => poner(oscuro ? 'claro' : 'oscuro')}
+        label="Tema oscuro (este dispositivo)"
+      />
+    </div>
+  );
+}
+
 function NotificacionesTab() {
   const [prefs, setPrefs] = useState({
     email_nuevos_mensajes: true,
@@ -1204,6 +1226,8 @@ function NotificacionesTab() {
           <Bell className="w-5 h-5 text-accent" />
           Preferencias de Notificación
         </h3>
+        <ActivarAvisos />
+        <PreferenciasLocales />
         <div className="space-y-8">
           {groups.map((group) => (
             <div key={group.title}>

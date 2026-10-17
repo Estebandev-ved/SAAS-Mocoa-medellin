@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
     ShoppingCart, 
     Search, 
@@ -14,7 +14,9 @@ import {
     CreditCard,
     Smartphone,
     Building,
-    X
+    X,
+    ChevronsRight,
+    Zap
 } from 'lucide-react';
 import { api } from '../services/api';
 import Illustration from '../components/Illustration';
@@ -22,6 +24,8 @@ import { useHitos } from '../context/HitosContext';
 import { usePedidosLive } from '../context/PedidosLiveContext';
 import TipNova from '../components/TipNova';
 import AyudaRapida from '../components/AyudaRapida';
+import { SkeletonList } from '../components/Skeleton';
+import { useUndo } from '../context/UndoContext';
 
 // Mismas transiciones válidas que valida el backend (api/routes/orders.js) — la etiqueta es lo único
 // que decide esta pantalla; el servidor es quien de verdad permite o no el cambio.
@@ -35,15 +39,62 @@ const SIGUIENTE_ESTADO = {
 const PUEDE_CANCELAR = ['pendiente_pago', 'pago_enviado', 'pago_confirmado', 'en_preparacion'];
 const ESTADOS_PAGADOS = ['pago_confirmado', 'en_preparacion', 'enviado', 'entregado'];
 
+// Tarjeta de pedido para celular. Deslizar a la derecha avanza el pedido al siguiente estado;
+// el cambio se puede deshacer unos segundos (ver avanzarRapido).
+const PedidoCard = ({ pedido, badge, total, fecha, onAbrir, onAvanzar }) => {
+    const siguiente = SIGUIENTE_ESTADO[pedido.estado];
+    return (
+        <div className="relative rounded-2xl overflow-hidden">
+            {siguiente && (
+                <div className="absolute inset-0 bg-success/15 flex items-center pl-5 gap-2 text-success text-sm font-semibold" aria-hidden="true">
+                    <ChevronsRight size={20} /> {siguiente.label}
+                </div>
+            )}
+            <motion.div
+                drag={siguiente ? 'x' : false}
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={{ left: 0, right: 0.5 }}
+                onDragEnd={(_, info) => { if (siguiente && info.offset.x > 110) onAvanzar(); }}
+                onClick={onAbrir}
+                className="relative bg-white border border-border rounded-2xl p-4 cursor-pointer"
+            >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0">
+                        <p className="font-mono text-sm font-bold">#{pedido.numero_pedido || pedido.id}</p>
+                        <p className="text-sm font-medium truncate">{pedido.cliente_nombre || 'Sin nombre'}</p>
+                    </div>
+                    <p className="font-mono font-bold text-accent shrink-0">{total}</p>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                    {badge}
+                    <span className="text-xs text-muted">{fecha}</span>
+                </div>
+                {siguiente && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onAvanzar(); }}
+                        className="mt-3 w-full h-11 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer inline-flex items-center justify-center gap-2"
+                    >
+                        <Zap size={16} />
+                        {pedido.estado === 'pago_enviado' ? 'Aprobar comprobante' : siguiente.label}
+                    </button>
+                )}
+            </motion.div>
+        </div>
+    );
+};
+
 const PedidosPage = () => {
     const navigate = useNavigate();
     const { celebrar } = useHitos();
-    const { conectado } = usePedidosLive();
+    const { conectado, suscribir, refrescarPendientes } = usePedidosLive();
+    const { diferir } = useUndo();
+    const [params] = useSearchParams();
+    const buscarRef = useRef(null);
     const [avanzando, setAvanzando] = useState(false);
     const [pedidos, setPedidos] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [buscar, setBuscar] = useState('');
-    const [filtroEstado, setFiltroEstado] = useState('todos');
+    const [buscar, setBuscar] = useState(params.get('q') || '');
+    const [filtroEstado, setFiltroEstado] = useState(params.get('estado') || 'todos');
     const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
     const [imagenPago, setImagenPago] = useState(null);
     const [cargandoImagen, setCargandoImagen] = useState(false);
@@ -52,9 +103,26 @@ const PedidosPage = () => {
         fetchPedidos();
     }, []);
 
-    const fetchPedidos = async () => {
+    // Pedido nuevo o pago confirmado: la lista se actualiza sola, sin parpadeo de carga.
+    useEffect(() => suscribir('pedidos', () => fetchPedidos(true)), [suscribir]);
+
+    // Atajos de teclado (solo en escritorio y fuera de campos de texto): "/" busca, "r" recarga.
+    useEffect(() => {
+        const onKey = (e) => {
+            const t = e.target;
+            if (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.key === '/') { e.preventDefault(); buscarRef.current?.focus(); }
+            else if (e.key === 'r') fetchPedidos(true);
+            else if (e.key === 'Escape') { setPedidoSeleccionado(null); setImagenPago(null); }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, []);
+
+    const fetchPedidos = async (silencioso = false) => {
         try {
-            setLoading(true);
+            if (!silencioso) setLoading(true);
             const response = await api.get('/pedidos');
             const lista = response.data.pedidos || [];
             setPedidos(lista);
@@ -62,11 +130,31 @@ const PedidosPage = () => {
             if (lista.some((p) => ESTADOS_PAGADOS.includes(p.estado))) celebrar('venta_cobrada');
         } catch (error) {
             console.error('Error:', error);
-            setPedidos([]);
+            if (!silencioso) setPedidos([]);
         } finally {
             setLoading(false);
         }
     };
+
+    // Avance con un toque: la pantalla cambia al instante y el cambio real se confirma tras
+    // unos segundos, con "Deshacer" mientras tanto (los estados del backend solo avanzan).
+    const avanzarRapido = useCallback((pedido, nuevoEstado, mensaje) => {
+        const anterior = pedido.estado;
+        const poner = (estado) => {
+            setPedidos((prev) => prev.map((p) => (p.id === pedido.id ? { ...p, estado } : p)));
+            setPedidoSeleccionado((prev) => (prev && prev.id === pedido.id ? { ...prev, estado } : prev));
+        };
+        poner(nuevoEstado);
+        diferir({
+            mensaje: mensaje || `Pedido #${pedido.numero_pedido || pedido.id} actualizado`,
+            onDeshacer: () => poner(anterior),
+            onConfirmar: async () => {
+                await api.patch(`/pedidos/${pedido.id}/estado`, { estado: nuevoEstado });
+                if (nuevoEstado === 'pago_confirmado' || ESTADOS_PAGADOS.includes(nuevoEstado)) celebrar('venta_cobrada');
+                refrescarPendientes();
+            },
+        });
+    }, [diferir, celebrar, refrescarPendientes]);
 
     const avanzarEstado = async (nuevoEstado) => {
         if (!pedidoSeleccionado) return;
@@ -214,19 +302,20 @@ const PedidosPage = () => {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
                             <input
                                 type="text"
+                                ref={buscarRef}
                                 value={buscar}
                                 onChange={(e) => setBuscar(e.target.value)}
-                                placeholder="Buscar por número, cliente o teléfono..."
-                                className="w-full bg-white border border-[#C9C9C9] rounded-xl h-11 pl-10 pr-4 text-sm focus:outline-none focus:border-accent"
+                                placeholder="Buscar por número, cliente o teléfono…  ( / )"
+                                className="w-full bg-white border border-[#C9C9C9] rounded-xl h-12 md:h-11 pl-10 pr-4 text-sm focus:outline-none focus:border-accent"
                             />
                         </div>
                     </form>
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-2 md:flex-wrap overflow-x-auto md:overflow-visible -mx-6 px-6 md:mx-0 md:px-0 pb-1">
                         {['todos', 'pendiente_pago', 'pago_enviado', 'pago_confirmado', 'en_preparacion', 'enviado', 'entregado', 'cancelado'].map(estado => (
                             <button
                                 key={estado}
                                 onClick={() => setFiltroEstado(estado)}
-                                className={`h-7 px-3 rounded-full text-xs font-semibold tracking-[0.04em] border-none cursor-pointer transition-colors ${
+                                className={`h-9 md:h-7 px-3.5 md:px-3 shrink-0 rounded-full text-xs font-semibold tracking-[0.04em] border-none cursor-pointer transition-colors ${
                                     filtroEstado === estado 
                                         ? 'bg-accent-dim text-accent' 
                                         : 'bg-bg3 text-muted hover:text-text'
@@ -240,9 +329,7 @@ const PedidosPage = () => {
 
                 {/* Lista de pedidos */}
                 {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <Loader2 className="animate-spin text-accent" size={24} />
-                    </div>
+                    <SkeletonList filas={6} />
                 ) : pedidosFiltrados.length === 0 ? (
                     <div className="text-center py-12 bg-white border border-border rounded-3xl flex flex-col items-center">
                         <Illustration name="vacio-pedidos" size={160} alt="Lucía sostiene una caja vacía: aún no hay pedidos" style={{ marginBottom: 24 }} />
@@ -254,7 +341,22 @@ const PedidosPage = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-2xl border border-border overflow-hidden">
+                    <>
+                    <div className="md:hidden space-y-3">
+                        {pedidosFiltrados.map((pedido) => (
+                            <PedidoCard
+                                key={pedido.id}
+                                pedido={pedido}
+                                badge={getEstadoBadge(pedido.estado)}
+                                total={formatCurrency(pedido.total)}
+                                fecha={formatFecha(pedido.created_at)}
+                                onAbrir={() => setPedidoSeleccionado(pedido)}
+                                onAvanzar={() => avanzarRapido(pedido, SIGUIENTE_ESTADO[pedido.estado].estado)}
+                            />
+                        ))}
+                        <p className="text-center text-xs text-muted pt-1">Desliza un pedido a la derecha para avanzarlo</p>
+                    </div>
+                    <div className="hidden md:block bg-white rounded-2xl border border-border overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead>
@@ -266,7 +368,7 @@ const PedidosPage = () => {
                                         <th className="text-left p-4 text-xs font-semibold tracking-[0.04em] text-muted bg-bg2">PAGO</th>
                                         <th className="text-left p-4 text-xs font-semibold tracking-[0.04em] text-muted bg-bg2">ESTADO</th>
                                         <th className="text-left p-4 text-xs font-semibold tracking-[0.04em] text-muted bg-bg2">FECHA</th>
-                                        <th className="text-left p-4 text-xs font-semibold tracking-[0.04em] text-muted bg-bg2">DETALLE</th>
+                                        <th className="text-left p-4 text-xs font-semibold tracking-[0.04em] text-muted bg-bg2">ACCIÓN</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -315,9 +417,21 @@ const PedidosPage = () => {
                                                 <span className="text-xs text-muted">{formatFecha(pedido.created_at)}</span>
                                             </td>
                                             <td className="p-4">
-                                                <button className="text-accent hover:text-text transition-colors">
-                                                    <Eye size={18} />
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    {SIGUIENTE_ESTADO[pedido.estado] && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); avanzarRapido(pedido, SIGUIENTE_ESTADO[pedido.estado].estado); }}
+                                                            title={SIGUIENTE_ESTADO[pedido.estado].label}
+                                                            className="h-9 px-3 rounded-lg bg-accent hover:bg-accent2 text-white text-xs font-semibold border-none cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
+                                                        >
+                                                            <Zap size={14} />
+                                                            {pedido.estado === 'pago_enviado' ? 'Aprobar pago' : SIGUIENTE_ESTADO[pedido.estado].label.replace('Marcar ', '')}
+                                                        </button>
+                                                    )}
+                                                    <button aria-label="Ver detalle" className="w-9 h-9 flex items-center justify-center bg-transparent border-none cursor-pointer text-accent hover:text-text transition-colors">
+                                                        <Eye size={18} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </motion.tr>
                                     ))}
@@ -325,6 +439,7 @@ const PedidosPage = () => {
                             </table>
                         </div>
                     </div>
+                    </>
                 )}
             </div>
 
@@ -335,19 +450,20 @@ const PedidosPage = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+                        className="fixed inset-0 bg-black/50 z-[70] flex items-end sm:items-center justify-center sm:p-4"
                         onClick={() => { setPedidoSeleccionado(null); setImagenPago(null); }}
                     >
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-[0_16px_48px_rgba(10,10,10,0.2)] max-h-[80vh] overflow-y-auto"
+                            initial={{ y: 60, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 60, opacity: 0 }}
+                            className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-8 w-full max-w-lg shadow-[0_16px_48px_rgba(10,10,10,0.2)] max-h-[88vh] sm:max-h-[80vh] overflow-y-auto"
+                            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
                             onClick={e => e.stopPropagation()}
                         >
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-bold">Detalle del Pedido</h2>
-                                <button onClick={() => { setPedidoSeleccionado(null); setImagenPago(null); }} className="p-2 rounded-xl hover:bg-bg3">
+                                <button aria-label="Cerrar" onClick={() => { setPedidoSeleccionado(null); setImagenPago(null); }} className="w-11 h-11 flex items-center justify-center rounded-xl hover:bg-bg3 bg-transparent border-none cursor-pointer">
                                     <X size={20} />
                                 </button>
                             </div>
@@ -403,7 +519,7 @@ const PedidosPage = () => {
                                         <div className="flex flex-wrap gap-2">
                                             {SIGUIENTE_ESTADO[pedidoSeleccionado.estado] && (
                                                 <button
-                                                    onClick={() => avanzarEstado(SIGUIENTE_ESTADO[pedidoSeleccionado.estado].estado)}
+                                                    onClick={() => { avanzarRapido(pedidoSeleccionado, SIGUIENTE_ESTADO[pedidoSeleccionado.estado].estado, `${SIGUIENTE_ESTADO[pedidoSeleccionado.estado].label} · #${pedidoSeleccionado.numero_pedido}`); setPedidoSeleccionado(null); setImagenPago(null); }}
                                                     disabled={avanzando}
                                                     className="h-11 px-5 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold border-none cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2"
                                                 >

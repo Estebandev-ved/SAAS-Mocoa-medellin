@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const BrandingContext = createContext();
 
@@ -48,9 +48,10 @@ export const BrandingProvider = ({ children }) => {
     }
   }, [branding]);
 
-  const updateBranding = (newBranding) => {
-    setBranding(prev => ({ ...prev, ...newBranding }));
-  };
+  // Estable y sin re-render si nada cambia (MobileNav lo usa dentro de un efecto).
+  const updateBranding = useCallback((newBranding) => {
+    setBranding(prev => (Object.keys(newBranding).every(k => prev[k] === newBranding[k]) ? prev : { ...prev, ...newBranding }));
+  }, []);
 
   return (
     <BrandingContext.Provider value={{ branding, updateBranding }}>

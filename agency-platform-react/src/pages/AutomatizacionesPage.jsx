@@ -28,6 +28,9 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import AyudaRapida from '../components/AyudaRapida';
+import BotPreview from '../components/BotPreview';
+import { useUndo } from '../context/UndoContext';
+import { useHitos } from '../context/HitosContext';
 import { mensajeError } from '../utils/errores';
 
 const LABEL = 'block text-sm font-semibold text-text mb-2';
@@ -177,17 +180,26 @@ function AutomatizacionReal({ auto, onChange, onError, onAviso }) {
   const [busy, setBusy] = useState(false);
   const [guardado, setGuardado] = useState(false);
 
-  async function toggle() {
-    setBusy(true);
-    try {
-      const res = await api.patch(`/automatizaciones/${auto.tipo}/toggle`, {});
-      onChange(auto.tipo, { activa: res.data.activa });
-      if (res.data.activa && AVISO_ACTIVADA[auto.tipo]) onAviso(AVISO_ACTIVADA[auto.tipo]);
-    } catch (e) {
-      onError(mensajeError(e, 'cambiar el estado'));
-    } finally {
-      setBusy(false);
-    }
+  const { diferir } = useUndo();
+  const { celebrar } = useHitos();
+
+  // Cambio optimista con "Deshacer": la tarjeta responde al instante y el servidor se entera
+  // pasados unos segundos (el endpoint es un interruptor, así que deshacer = no llamarlo).
+  function toggle() {
+    const antes = !!auto.activa;
+    onChange(auto.tipo, { activa: !antes });
+    diferir({
+      mensaje: `${auto.nombre}: ${antes ? 'apagada' : 'encendida'}`,
+      onDeshacer: () => onChange(auto.tipo, { activa: antes }),
+      onConfirmar: async () => {
+        const res = await api.patch(`/automatizaciones/${auto.tipo}/toggle`, {});
+        onChange(auto.tipo, { activa: res.data.activa });
+        if (res.data.activa) {
+          celebrar('automatizacion');
+          if (AVISO_ACTIVADA[auto.tipo]) onAviso(AVISO_ACTIVADA[auto.tipo]);
+        }
+      },
+    });
   }
 
   async function guardar() {
@@ -346,93 +358,6 @@ function HistorialYSatisfaccion() {
         )}
       </div>
     </div>
-  );
-}
-
-function TestBotModal({ onClose }) {
-  const [msg, setMsg] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [respuesta, setRespuesta] = useState(null);
-
-  async function handleTest() {
-    if (!msg.trim()) return;
-    setLoading(true);
-    try {
-      const res = await api.post('/bot/test', { mensaje: msg });
-      setRespuesta(res.data);
-    } catch (e) {
-      setRespuesta({ error: 'Error al conectar con el bot' });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.95 }}
-        animate={{ scale: 1 }}
-        exit={{ scale: 0.95 }}
-        className="bg-white border border-border rounded-2xl p-6 w-full max-w-md"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <TestTube className="w-5 h-5 text-accent" />
-            <h3 className="font-head text-lg font-bold text-text">Probar el Bot</h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-transparent border-none text-muted hover:bg-bg2 cursor-pointer flex items-center justify-center"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          <div className="bg-bg2 rounded-xl p-3 border border-border">
-            <span className="text-xs font-semibold text-muted">Tú:</span>
-            <input
-              value={msg}
-              onChange={(e) => setMsg(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleTest()}
-              placeholder="Escribe un mensaje de prueba..."
-              className="w-full bg-transparent text-text text-sm mt-1 focus:outline-none placeholder:text-muted"
-            />
-          </div>
-
-          <button
-            onClick={handleTest}
-            disabled={loading || !msg.trim()}
-            className="w-full h-11 bg-accent hover:bg-accent2 text-white text-sm font-semibold rounded-xl border-none cursor-pointer transition-colors flex items-center justify-center gap-2 disabled:bg-[#F0F0F0] disabled:text-muted disabled:cursor-not-allowed"
-          >
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <><Zap size={14} /> Enviar</>}
-          </button>
-
-          {respuesta && (
-            <div
-              className={`rounded-xl p-3 border ${
-                respuesta.error ? 'bg-danger/10 border-danger/30' : 'bg-success/10 border-success/30'
-              }`}
-            >
-              <span className="text-xs font-semibold text-muted">Bot:</span>
-              <p className="text-sm text-text mt-1">{respuesta.respuesta || respuesta.error}</p>
-              {respuesta.agente_usado && (
-                <span className="text-[11px] text-muted mt-2 block">
-                  Agente: {respuesta.agente_usado} | Tokens: {respuesta.tokens_usados}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }
 
@@ -873,7 +798,7 @@ export default function AutomatizacionesPage() {
         )}
       </div>
 
-      <AnimatePresence>{showTest &&<TestBotModal onClose={() => setShowTest(false)} />}</AnimatePresence>
+      <BotPreview abierto={showTest} onCerrar={() => setShowTest(false)} />
     </div>
   );
 }

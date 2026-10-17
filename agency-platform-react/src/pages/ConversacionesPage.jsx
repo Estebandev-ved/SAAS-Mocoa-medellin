@@ -2,7 +2,7 @@ import { mensajeError } from '../utils/errores';
 import TipNova from '../components/TipNova';
 import EmptyState from '../components/EmptyState';
 import { Character } from '../components/Illustration';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -14,9 +14,20 @@ import {
     Phone,
     Clock,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    Plus,
+    X
 } from 'lucide-react';
 import { api } from '../services/api';
+import { usePedidosLive } from '../context/PedidosLiveContext';
+import { SkeletonList } from '../components/Skeleton';
+
+const RESPUESTAS_BASE = [
+    '¡Hola! Con gusto te ayudo. ¿Qué necesitas?',
+    'Ya reviso tu pedido y te confirmo en un momento.',
+    'Recibimos tu pago, ¡gracias! Ya lo estamos preparando.',
+    'Tu pedido va en camino.',
+];
 
 const ConversacionesPage = () => {
     const { user } = useAuth();
@@ -31,14 +42,31 @@ const ConversacionesPage = () => {
     const [buscar, setBuscar] = useState('');
     const [error, setError] = useState('');
 
+    const { suscribir } = usePedidosLive();
+    const [respuestas, setRespuestas] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('noma_respuestas_rapidas') || 'null') || RESPUESTAS_BASE; } catch { return RESPUESTAS_BASE; }
+    });
+    const guardarRespuestas = (lista) => {
+        setRespuestas(lista);
+        try { localStorage.setItem('noma_respuestas_rapidas', JSON.stringify(lista)); } catch { /* sin almacenamiento */ }
+    };
+    const selRef = useRef(null);
+    selRef.current = selectedConv;
+
     useEffect(() => {
         fetchConversaciones();
     }, []);
 
-    const fetchConversaciones = async () => {
+    // Mensaje nuevo: refresca la lista y, si es el chat abierto, también sus mensajes.
+    useEffect(() => suscribir('mensajes', () => {
+        fetchConversaciones(true);
+        if (selRef.current) fetchMensajes(selRef.current.id, true);
+    }), [suscribir]);
+
+    const fetchConversaciones = async (silencioso = false) => {
         try {
             setError('');
-            setLoading(true);
+            if (!silencioso) setLoading(true);
             const response = await api.get('/conversaciones', { params: { buscar } });
             setConversaciones(response.data.conversaciones || []);
         } catch (error) {
@@ -49,9 +77,9 @@ const ConversacionesPage = () => {
         }
     };
 
-    const fetchMensajes = async (convId) => {
+    const fetchMensajes = async (convId, silencioso = false) => {
         try {
-            setLoadingMensajes(true);
+            if (!silencioso) setLoadingMensajes(true);
             const response = await api.get(`/conversaciones/${convId}/mensajes`);
             setMensajes(response.data || []);
         } catch (error) {
@@ -114,7 +142,7 @@ const ConversacionesPage = () => {
     };
 
     return (
-        <div className="h-screen bg-bg flex">
+        <div className="bg-bg flex" style={{ height: 'calc(100dvh - var(--nav-inferior, 0px))' }}>
             {/* Lista de conversaciones */}
             <div className={`w-full md:w-96 bg-bg2 border-r border-border flex flex-col ${selectedConv ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-border">
@@ -147,9 +175,7 @@ const ConversacionesPage = () => {
 
                 <div className="flex-1 overflow-y-auto">
                     {loading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <Loader2 className="animate-spin text-accent" size={24} />
-                        </div>
+                        <div className="p-3"><SkeletonList filas={6} /></div>
                     ) : error && conversaciones.length === 0 ? (
                         <EmptyState
                             name="error"
@@ -282,19 +308,51 @@ const ConversacionesPage = () => {
 
                         {/* Input */}
                         <div className="p-4 bg-bg2 border-t border-border">
+                            <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1" aria-label="Respuestas rápidas">
+                                {respuestas.map((r, i) => (
+                                    <span key={i} className="shrink-0 inline-flex items-center rounded-full bg-white border border-border">
+                                        <button
+                                            type="button"
+                                            onClick={() => setNuevoMensaje(r)}
+                                            title={r}
+                                            className="h-9 pl-3 pr-2 max-w-[220px] truncate text-xs font-medium text-text bg-transparent border-none cursor-pointer"
+                                        >
+                                            {r}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => guardarRespuestas(respuestas.filter((_, j) => j !== i))}
+                                            aria-label="Quitar respuesta rápida"
+                                            className="w-7 h-9 flex items-center justify-center text-muted bg-transparent border-none cursor-pointer"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </span>
+                                ))}
+                                <button
+                                    type="button"
+                                    disabled={!nuevoMensaje.trim() || respuestas.includes(nuevoMensaje.trim())}
+                                    onClick={() => guardarRespuestas([...respuestas, nuevoMensaje.trim()])}
+                                    title="Guardar lo que escribiste como respuesta rápida"
+                                    className="shrink-0 h-9 px-3 rounded-full border border-dashed border-border text-xs font-semibold text-muted bg-transparent cursor-pointer inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    <Plus size={12} /> Guardar
+                                </button>
+                            </div>
                             <form onSubmit={handleEnviarMensaje} className="flex gap-2">
                                 <input
                                     type="text"
                                     value={nuevoMensaje}
                                     onChange={(e) => setNuevoMensaje(e.target.value)}
                                     placeholder="Escribe un mensaje..."
-                                    className="flex-1 bg-bg/50 border border-border rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-accent"
+                                    className="flex-1 bg-bg border border-border rounded-xl h-12 px-4 text-base md:text-sm focus:outline-none focus:border-accent"
                                     disabled={enviando}
                                 />
                                 <button 
                                     type="submit" 
                                     disabled={enviando || !nuevoMensaje.trim()}
-                                    className="bg-accent text-bg px-6 py-3 rounded-xl font-bold disabled:opacity-50"
+                                    aria-label="Enviar mensaje"
+                                    className="bg-accent text-white min-w-[48px] h-12 px-5 rounded-xl font-bold disabled:opacity-50"
                                 >
                                     {enviando ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
                                 </button>
