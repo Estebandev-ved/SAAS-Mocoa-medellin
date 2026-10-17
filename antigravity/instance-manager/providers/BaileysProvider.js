@@ -8,8 +8,6 @@ const { Boom } = require('@hapi/boom');
 const fs = require('fs');
 const QRCode = require('qrcode');
 
-const aJid = (numero) => (numero.includes('@') ? numero : `${numero.replace(/[^0-9]/g, '')}@s.whatsapp.net`);
-
 class BaileysProvider {
   constructor({ negocioId, authPath, onMessage, onQR, onConnected, onDisconnected }) {
     this.kind = 'baileys';
@@ -25,6 +23,8 @@ class BaileysProvider {
     this.reconnectTimer = null;
     this.stopRequested = false;
     this.credSaveInterval = null;
+    this.lids = new Set(); // números que WhatsApp nos mostró como @lid (no son teléfonos)
+    this.jidCache = new Map();
   }
 
   async start() {
@@ -82,6 +82,8 @@ class BaileysProvider {
     sock.ev.on('messages.upsert', async (upsert) => {
       if (this.stopRequested) return;
       for (const msg of upsert.messages) {
+        const rj = msg.key?.remoteJid;
+        if (rj?.endsWith('@lid')) this.lids.add(rj.split('@')[0]);
         try {
           await this.onMessage(sock, msg);
         } catch (error) {
@@ -172,12 +174,42 @@ class BaileysProvider {
   isReady() { return !!this.sock?.user; }
   getPhoneNumber() { return this.phoneNumber; }
 
+  // El bot guarda como "teléfono" el número de un @lid cuando WhatsApp no revela el real.
+  // Enviar a <lid>@s.whatsapp.net no existe y Baileys se queda esperando, así que se resuelve el JID.
+  async resolverJid(numero) {
+    if (numero.includes('@')) return numero;
+    const digitos = numero.replace(/[^0-9]/g, '');
+    if (this.lids.has(digitos)) return `${digitos}@lid`;
+    if (this.jidCache.has(digitos)) return this.jidCache.get(digitos);
+    let jid = `${digitos}@s.whatsapp.net`;
+    try {
+      const res = await this.sock.onWhatsApp(jid);
+      if (res?.[0]?.exists) jid = res[0].jid;
+      else if (digitos.length > 13) jid = `${digitos}@lid`; // demasiado largo para ser teléfono
+      else throw new Error(`El número +${digitos} no tiene WhatsApp`);
+    } catch (e) {
+      if (/no tiene WhatsApp/.test(e.message)) throw e;
+      // si la consulta falla, se intenta con el JID normal
+    }
+    this.jidCache.set(digitos, jid);
+    return jid;
+  }
+
+  // Sin esto un destinatario inválido deja la petición colgada hasta que expira el timeout del API.
+  async enviar(numero, contenido) {
+    const jid = await this.resolverJid(numero);
+    return Promise.race([
+      this.sock.sendMessage(jid, contenido),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('WhatsApp no respondió al enviar el mensaje')), 12000))
+    ]);
+  }
+
   async sendMessage(numero, texto) {
-    return this.sock.sendMessage(aJid(numero), { text: texto });
+    return this.enviar(numero, { text: texto });
   }
 
   async sendButtons(numero, texto, botones) {
-    return this.sock.sendMessage(aJid(numero), {
+    return this.enviar(numero, {
       text: texto,
       buttons: botones.map((b, i) => ({ buttonId: b.id || `btn_${i}`, buttonText: { displayText: b.text }, type: 1 }))
     });
@@ -186,7 +218,7 @@ class BaileysProvider {
   async sendImage(numero, url, caption) {
     const { default: got } = require('got');
     const buffer = await got(url, { responseType: 'buffer' }).buffer();
-    return this.sock.sendMessage(aJid(numero), { image: buffer, caption: caption || '' });
+    return this.enviar(numero, { image: buffer, caption: caption || '' });
   }
 }
 
