@@ -82,7 +82,7 @@ export default function BotPreview({ abierto, onCerrar }) {
           aria-label="Mensaje de prueba"
           className="flex-1 h-12 rounded-xl border border-border bg-bg px-4 text-base md:text-sm text-text focus:outline-none focus:border-accent"
         />
-        <button type="submit" disabled={cargando || !texto.trim()} aria-label="Enviar" className="w-12 h-12 rounded-xl bg-accent text-white border-none cursor-pointer disabled:opacity-50 flex items-center justify-center">
+        <button type="submit" disabled={cargando || !texto.trim()} aria-label="Enviar" title={!texto.trim() ? 'Escribe un mensaje de prueba' : undefined} className="w-12 h-12 rounded-xl bg-accent text-white border-none cursor-pointer disabled:opacity-50 flex items-center justify-center">
           <Send size={18} />
         </button>
         {hilo.length > 0 && (

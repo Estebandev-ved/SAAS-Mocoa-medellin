@@ -15,7 +15,9 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 
+import { useUndo } from '../context/UndoContext';
 const MultiChannelPage = () => {
+  const { avisarError } = useUndo();
     const navigate = useNavigate();
     const [telegram, setTelegram] = useState({ connected: false, bot_nombre: null });
     const [instagram, setInstagram] = useState({ connected: false, nombre: null });
@@ -53,7 +55,7 @@ const MultiChannelPage = () => {
             setTelegram({ connected: true, bot_nombre: res.data.bot.nombre });
             setTelegramToken('');
         } catch (error) {
-            alert(error.response?.data?.error || 'Error conectando Telegram');
+            avisarError(error.response?.data?.error || 'Error conectando Telegram');
         } finally {
             setConnecting(null);
         }
@@ -80,7 +82,7 @@ const MultiChannelPage = () => {
             setIgPageId('');
             setIgAccessToken('');
         } catch (error) {
-            alert(error.response?.data?.error || 'Error conectando Instagram');
+            avisarError(error.response?.data?.error || 'Error conectando Instagram');
         } finally {
             setConnecting(null);
         }

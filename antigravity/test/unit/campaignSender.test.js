@@ -118,3 +118,10 @@ test('si otra instancia ya reclamó la campaña, no se envía', async () => {
     await s.procesarCampanasPendientes();
     assert.equal(enviados.length, 0);
 });
+
+test('personalizar: sustituye {nombre} por el primer nombre y limpia si no hay', () => {
+    const { personalizar } = cargar();
+    assert.equal(personalizar('Hola {nombre}, tenemos promo', { nombre: 'María José Gómez' }), 'Hola María, tenemos promo');
+    assert.equal(personalizar('Hola {nombre}, tenemos promo', { nombre: '' }), 'Hola, tenemos promo');
+    assert.equal(personalizar('Sin variable', { nombre: 'Ana' }), 'Sin variable');
+});

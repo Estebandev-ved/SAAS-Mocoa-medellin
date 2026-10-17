@@ -19,13 +19,21 @@ let procesando = false;
 
 const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Sustituye {nombre} por el primer nombre del cliente (o lo quita, sin dejar un espacio huérfano).
+// El frontend muestra esta misma regla en la vista previa de la campaña.
+function personalizar(mensaje, cliente) {
+    const primer = String((cliente && cliente.nombre) || '').trim().split(/\s+/)[0] || '';
+    const texto = String(mensaje || '').replace(/\{nombre\}/gi, primer);
+    return primer ? texto : texto.replace(/[ \t]+([,.!¡?¿])/g, '$1').replace(/^[,\s]+/, '').replace(/ {2,}/g, ' ');
+}
+
 async function destinatarios(negocioId, segmento, segmentoConfig) {
     let cfg = {};
     try {
         cfg = typeof segmentoConfig === 'string' ? JSON.parse(segmentoConfig) : (segmentoConfig || {});
     } catch (e) { cfg = {}; }
 
-    let query = `SELECT c.id, c.whatsapp FROM clientes c
+    let query = `SELECT c.id, c.whatsapp, c.nombre FROM clientes c
                  WHERE c.negocio_id = ? AND c.acepta_marketing = 1 AND c.whatsapp IS NOT NULL`;
     const params = [negocioId];
 
@@ -64,7 +72,7 @@ async function enviarCampana(camp) {
         const [[estado]] = await db.execute('SELECT estado FROM campañas WHERE id = ?', [camp.id]);
         if (!estado || estado.estado !== 'enviando') break;
 
-        const ok = await enviarWhatsApp(camp.negocio_id, cliente.whatsapp, camp.mensaje);
+        const ok = await enviarWhatsApp(camp.negocio_id, cliente.whatsapp, personalizar(camp.mensaje, cliente));
         if (ok) enviados++; else fallidos++;
 
         await db.execute('UPDATE campañas SET total_enviados = ?, total_fallidos = ? WHERE id = ?', [enviados, fallidos, camp.id]);
@@ -117,4 +125,4 @@ async function cerrarCampanasHuerfanas() {
     }
 }
 
-module.exports = { procesarCampanasPendientes, cerrarCampanasHuerfanas, contarDestinatarios, destinatarios, MAX_DESTINATARIOS };
+module.exports = { personalizar, procesarCampanasPendientes, cerrarCampanasHuerfanas, contarDestinatarios, destinatarios, MAX_DESTINATARIOS };

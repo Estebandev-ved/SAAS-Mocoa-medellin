@@ -39,6 +39,24 @@
 - [x] Avisos de pedido en vivo: vibración en celular y contador en el menú.
 - [ ] Pendiente: wizard de primer uso (un paso por pantalla), sparklines en métricas (el backend no entrega serie diaria), deslizar para aceptar/entregar pedidos, pantalla sin conexión, quitar flechas "atrás" redundantes de cada página, revisar en oscuro las páginas con colores fijos (`#FDECEA`, etc.), definir `VITE_WHATSAPP_VENTAS` en Vercel, probar con datos reales (solo se probó con API simulada).
 
+## ✅ 17 oct — Mejoras interactivas, ronda 2 (herramientas por tipo de negocio)
+
+- [x] **Capacidades por tipo de negocio** (`utils/capacidades.js` + `hooks/useNegocio.js`): una sola tabla decide qué herramientas ve cada tipo (`tipo_negocio` del registro). El núcleo lo ven todos; hoy solo `cocina` (restaurante) y `domicilios` (restaurante/tienda, aún sin aplicar al menú). **Bug corregido**: en Ajustes "Tipo de negocio" era un texto libre sobre una columna ENUM → ahora es un selector con los 7 valores reales.
+- [x] **Modo cocina** (`/cocina`, solo restaurantes): pedidos pagados en tarjetas grandes con "Empezar" / "Listo" (con Deshacer), minutos transcurridos, alerta de retraso (20 min), pantalla completa, pantalla siempre encendida, suena con cada pedido pagado. Un negocio que no es restaurante ve una explicación en vez de la pantalla, y el menú no lo muestra.
+- [x] **Pedidos: Lista o Tablero a elección del dueño** (se recuerda en el dispositivo). Tablero por estados con arrastrar-y-soltar (solo al paso siguiente; si no, avisa) y botón de avanzar en cada tarjeta para el celular.
+- [x] **Bandeja de conversaciones**: sin leer (punto + negrita), anclar chats, filtros (Todos / Sin leer / Requiere atención / Anclados) con contadores y panel "Pedidos" del cliente junto al chat. El estado de leído/anclado vive en el dispositivo (no hay columna en BD).
+- [x] **Campañas**: vista previa tipo burbuja de WhatsApp, botón "+ Nombre del cliente" y duración estimada. **Backend**: `{nombre}` ahora se sustituye por el primer nombre al enviar (`campaignSender.personalizar`, con test).
+- [x] **Diálogos propios** (`ConfirmContext`): se acabaron los `confirm()`/`alert()` del navegador en Pedidos, Cupones, Productos, Restaurantes, Domicilios, Voz, Multi-canal y Monitoreo.
+- [x] **Analytics**: ventas con filtro 7/14/30/90 días, comparación con el período anterior, tooltip, mejor hora y mejor día (se calcula en el navegador con los pedidos pagados).
+- [x] **Compartir resumen** del día (WhatsApp / copiar / PDF por impresión), **confeti** al completar el checklist de activación y en cada logro (respeta movimiento reducido), checklist que se actualiza al volver a la pestaña.
+- [x] **Domicilios**: tiempo estimado de llegada en el seguimiento del cliente (el aviso por WhatsApp "va en camino" ya existía en el backend).
+- [x] **Landing**: el chat de ejemplo ahora se puede conversar (respuestas guionadas locales, a propósito sin backend para no exponer el bot a abuso).
+- [x] **Atajos de teclado** (`g` + letra, `?` para ver la lista), objetivos táctiles de 44 px, motivo visible en botones desactivados clave, barrido de tema oscuro (bordes/fondos fijos).
+- [ ] **Sin probar con datos reales**: orden/estado reales del kanban, `items` de cada pedido en el modo cocina, `/business/perfil` con tipos reales. El arrastrar con ratón se probó con Playwright; el aviso de movimiento inválido se probó disparando los eventos directamente.
+- [ ] **Decisión del socio pendiente**: qué más se oculta o se muestra por tipo de negocio (ver `utils/capacidades.js`).
+
+---
+
 ## ✅ 16 oct — Mejoras interactivas (móvil + tiempo real)
 
 - [x] **Integración con el layout compartido** (`AppShell`, rama `caja-emprendedor`): se descartaron mis duplicados (menú inferior, paleta Ctrl+K, tema) y se usan los del shell. Se añadió insignia de pedidos en el ícono de la PWA, `BottomSheet` reutilizable (el detalle de pedido es hoja inferior en celular) y `alto-pantalla` para el chat.

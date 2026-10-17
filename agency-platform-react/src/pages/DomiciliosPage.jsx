@@ -36,6 +36,7 @@ import { usePlan } from '../components/PlanGate';
 import { useHitos } from '../context/HitosContext';
 import Illustration from '../components/Illustration';
 
+import { useConfirm } from '../context/ConfirmContext';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3002';
 
 // Mismas categorías que el domiciliario elige al reportar un problema
@@ -96,6 +97,7 @@ function MapAutoFit({ points }) {
 }
 
 export default function DomiciliosPage() {
+  const confirmar = useConfirm();
   const { hasFeature } = usePlan();
   const { user } = useAuth();
   const { celebrar } = useHitos();
@@ -259,10 +261,13 @@ export default function DomiciliosPage() {
   };
 
   const handleResolverIncidente = async (id, resultado) => {
-    const confirmMsg = resultado === 'robo_confirmado'
-      ? '¿Confirmas que este domicilio se perdió/robó? El domiciliario será penalizado.'
-      : '¿Marcar este incidente como resuelto (falsa alarma)?';
-    if (!window.confirm(confirmMsg)) return;
+    const robo = resultado === 'robo_confirmado';
+    if (!(await confirmar({
+      titulo: robo ? 'Confirmar pérdida o robo' : 'Resolver incidente',
+      mensaje: robo ? 'El domiciliario será penalizado. Esto no se puede deshacer.' : 'Se marcará como falsa alarma y se cerrará el incidente.',
+      boton: robo ? 'Sí, confirmar' : 'Marcar resuelto',
+      peligro: robo,
+    }))) return;
     try {
       await api.post(`/domicilios/incidentes/${id}/resolver`, { resultado });
       showToast('success', resultado === 'robo_confirmado' ? 'Domiciliario penalizado' : 'Incidente resuelto');

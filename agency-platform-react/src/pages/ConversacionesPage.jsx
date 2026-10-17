@@ -16,11 +16,26 @@ import {
     Loader2,
     AlertCircle,
     Plus,
-    X
+    X,
+    Pin,
+    ShoppingCart
 } from 'lucide-react';
 import { api } from '../services/api';
 import { usePedidosLive } from '../context/PedidosLiveContext';
 import { SkeletonList } from '../components/Skeleton';
+
+// Estado de la bandeja guardado en este dispositivo: qué chats ya se leyeron y cuáles están anclados.
+const leerLS = (clave, vacio) => {
+    try { return JSON.parse(localStorage.getItem(clave) || 'null') ?? vacio; } catch { return vacio; }
+};
+const guardarLS = (clave, valor) => {
+    try { localStorage.setItem(clave, JSON.stringify(valor)); } catch { /* sin almacenamiento */ }
+};
+const soloDigitos = (t) => String(t || '').replace(/\D/g, '');
+const ETIQUETA_ESTADO = {
+    pendiente_pago: 'Por pagar', pago_enviado: 'Comprobante', pago_confirmado: 'Pagado', en_preparacion: 'Preparando',
+    enviado: 'En camino', entregado: 'Entregado', cancelado: 'Cancelado',
+};
 
 const RESPUESTAS_BASE = [
     '¡Hola! Con gusto te ayudo. ¿Qué necesitas?',
@@ -53,6 +68,33 @@ const ConversacionesPage = () => {
     const selRef = useRef(null);
     selRef.current = selectedConv;
 
+    // Bandeja: leídos, anclados, filtros y pedidos del cliente abierto
+    const [leidas, setLeidas] = useState(() => leerLS('noma_conv_leidas', null));
+    const [ancladas, setAncladas] = useState(() => leerLS('noma_conv_ancladas', []));
+    const [filtro, setFiltro] = useState('todas');
+    const [pedidosCliente, setPedidosCliente] = useState(null);
+    const [verPedidos, setVerPedidos] = useState(false);
+    const marcarLeida = (conv) => {
+        setLeidas((prev) => {
+            const sig = { ...(prev || {}), [conv.id]: conv.ultimo_mensaje_at || new Date().toISOString() };
+            guardarLS('noma_conv_leidas', sig);
+            return sig;
+        });
+    };
+    const alternarAncla = (id) => {
+        setAncladas((prev) => {
+            const sig = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+            guardarLS('noma_conv_ancladas', sig);
+            return sig;
+        });
+    };
+    const sinLeer = (conv) => {
+        if (!leidas) return false;
+        const visto = leidas[conv.id];
+        if (!visto) return true;
+        return new Date(conv.ultimo_mensaje_at).getTime() > new Date(visto).getTime();
+    };
+
     useEffect(() => {
         fetchConversaciones();
     }, []);
@@ -68,7 +110,15 @@ const ConversacionesPage = () => {
             setError('');
             if (!silencioso) setLoading(true);
             const response = await api.get('/conversaciones', { params: { buscar } });
-            setConversaciones(response.data.conversaciones || []);
+            const lista = response.data.conversaciones || [];
+            setConversaciones(lista);
+            // Primera vez en este dispositivo: todo lo existente cuenta como leído (si no, todo saldría "sin leer")
+            setLeidas((prev) => {
+                if (prev) return prev;
+                const semilla = Object.fromEntries(lista.map((c) => [c.id, c.ultimo_mensaje_at || new Date().toISOString()]));
+                guardarLS('noma_conv_leidas', semilla);
+                return semilla;
+            });
         } catch (error) {
             console.error('Error:', error);
             setError('Error al cargar conversaciones');
@@ -91,8 +141,31 @@ const ConversacionesPage = () => {
 
     const handleSelectConv = (conv) => {
         setSelectedConv(conv);
+        setVerPedidos(false);
+        marcarLeida(conv);
         fetchMensajes(conv.id);
     };
+
+    // Pedidos del cliente del chat abierto (se cruzan por número de WhatsApp)
+    const abrirPedidos = async () => {
+        const abrir = !verPedidos;
+        setVerPedidos(abrir);
+        if (abrir && pedidosCliente === null) {
+            try {
+                const r = await api.get('/pedidos');
+                setPedidosCliente(r.data?.pedidos || []);
+            } catch {
+                setPedidosCliente([]);
+            }
+        }
+    };
+    const pedidosDeEste = selectedConv && pedidosCliente
+        ? pedidosCliente.filter((p) => {
+            const a = soloDigitos(p.cliente_whatsapp);
+            const b = soloDigitos(selectedConv.numero_cliente || selectedConv.cliente_whatsapp);
+            return a && b && (a.endsWith(b.slice(-10)) || b.endsWith(a.slice(-10)));
+        }).slice(0, 4)
+        : [];
 
     const [errorEnvio, setErrorEnvio] = useState('');
 
@@ -135,6 +208,21 @@ const ConversacionesPage = () => {
         fetchConversaciones();
     };
 
+    const conteo = {
+        todas: conversaciones.length,
+        sin_leer: conversaciones.filter(sinLeer).length,
+        atencion: conversaciones.filter((c) => c.atencion_humana).length,
+        ancladas: conversaciones.filter((c) => ancladas.includes(c.id)).length,
+    };
+    const listaVisible = conversaciones
+        .filter((c) => (
+            filtro === 'sin_leer' ? sinLeer(c)
+            : filtro === 'atencion' ? c.atencion_humana
+            : filtro === 'ancladas' ? ancladas.includes(c.id)
+            : true
+        ))
+        .sort((a, b) => Number(ancladas.includes(b.id)) - Number(ancladas.includes(a.id)));
+
     const formatTime = (dateStr) => {
         if (!dateStr) return '';
         const date = new Date(dateStr);
@@ -171,6 +259,19 @@ const ConversacionesPage = () => {
                         </button>
                     </form>
                 </div>
+                <div className="flex gap-2 overflow-x-auto px-3 py-2 border-b border-border" role="tablist" aria-label="Filtrar chats">
+                    {[['todas', 'Todos'], ['sin_leer', 'Sin leer'], ['atencion', 'Requiere atención'], ['ancladas', 'Anclados']].map(([id, label]) => (
+                        <button
+                            key={id}
+                            role="tab"
+                            aria-selected={filtro === id}
+                            onClick={() => setFiltro(id)}
+                            className={`shrink-0 h-9 px-3 rounded-full text-xs font-semibold border-none cursor-pointer ${filtro === id ? 'bg-accent text-white' : 'bg-white text-muted border border-border'}`}
+                        >
+                            {label} <span className="font-mono opacity-80">{conteo[id]}</span>
+                        </button>
+                    ))}
+                </div>
                 <TipNova id="conversaciones" className="m-3">Aquí ves todo lo que tu bot conversa con tus clientes, con su historial completo.</TipNova>
 
                 <div className="flex-1 overflow-y-auto">
@@ -193,7 +294,9 @@ const ConversacionesPage = () => {
                             <p className="text-muted text-sm max-w-md">Cuando un cliente escriba a tu bot, Lucía te lo avisa aquí con todo el historial.</p>
                         </div>
                     ) : (
-                        conversaciones.map((conv) => (
+                        listaVisible.length === 0 ? (
+                            <p className="text-center text-sm text-muted py-10 m-0">No hay chats en este filtro.</p>
+                        ) : listaVisible.map((conv) => (
                             <motion.div
                                 key={conv.id}
                                 whileHover={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
@@ -206,11 +309,20 @@ const ConversacionesPage = () => {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-1">
-                                            <span className="font-bold text-sm truncate">
+                                            <span className={`text-sm truncate ${sinLeer(conv) ? 'font-extrabold' : 'font-bold'}`}>
+                                                {sinLeer(conv) && <span aria-label="Sin leer" className="inline-block w-2 h-2 rounded-full bg-accent mr-1.5 align-middle" />}
                                                 {conv.cliente_nombre || conv.numero_cliente || 'Desconocido'}
                                                 {conv.atencion_humana ? <span className="ml-2 text-[10px] font-semibold text-warn-text bg-warn/10 px-1.5 py-0.5 rounded">Requiere atención</span> : null}
                                             </span>
                                             <span className="text-xs text-muted flex items-center gap-1">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); alternarAncla(conv.id); }}
+                                                    aria-label={ancladas.includes(conv.id) ? 'Quitar de anclados' : 'Anclar chat'}
+                                                    aria-pressed={ancladas.includes(conv.id)}
+                                                    className={`w-8 h-8 -my-2 flex items-center justify-center bg-transparent border-none cursor-pointer ${ancladas.includes(conv.id) ? 'text-accent' : 'text-muted/50 hover:text-muted'}`}
+                                                >
+                                                    <Pin size={14} className={ancladas.includes(conv.id) ? 'fill-current' : ''} />
+                                                </button>
                                                 <Clock size={12} />
                                                 {formatTime(conv.ultimo_mensaje_at)}
                                             </span>
@@ -248,6 +360,13 @@ const ConversacionesPage = () => {
                                 <p className="text-xs text-muted">{selectedConv.numero_cliente || selectedConv.cliente_whatsapp}</p>
                             </div>
                             <div className="ml-auto flex items-center gap-2">
+                                <button
+                                    onClick={abrirPedidos}
+                                    aria-pressed={verPedidos}
+                                    className={`h-9 px-3 rounded-xl border text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5 ${verPedidos ? 'bg-accent-dim border-accent/40 text-accent' : 'bg-bg border-border text-text'}`}
+                                >
+                                    <ShoppingCart size={14} /> <span className="hidden sm:inline">Pedidos</span>
+                                </button>
                                 {selectedConv.atencion_humana ? (
                                     <>
                                         <span className="hidden sm:inline text-xs font-semibold text-warn-text bg-warn/10 px-2 py-1 rounded-lg">
@@ -270,6 +389,30 @@ const ConversacionesPage = () => {
                                 )}
                             </div>
                         </div>
+                        {verPedidos && (
+                            <div className="border-b border-border bg-bg px-4 py-3" aria-label="Pedidos de este cliente">
+                                {pedidosCliente === null ? (
+                                    <p className="text-xs text-muted m-0">Buscando pedidos…</p>
+                                ) : pedidosDeEste.length === 0 ? (
+                                    <p className="text-xs text-muted m-0">Este cliente aún no tiene pedidos.</p>
+                                ) : (
+                                    <ul className="list-none m-0 p-0 space-y-1.5">
+                                        {pedidosDeEste.map((p) => (
+                                            <li key={p.id}>
+                                                <button
+                                                    onClick={() => navigate(`/pedidos?q=${encodeURIComponent(p.numero_pedido || p.id)}`)}
+                                                    className="w-full flex items-center gap-3 text-left bg-white border border-border rounded-xl px-3 min-h-[44px] cursor-pointer"
+                                                >
+                                                    <span className="font-mono text-sm font-bold">#{p.numero_pedido || p.id}</span>
+                                                    <span className="text-xs text-muted flex-1">{ETIQUETA_ESTADO[p.estado] || p.estado}</span>
+                                                    <span className="font-mono text-sm text-accent font-bold">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(p.total || 0)}</span>
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        )}
                         {errorEnvio && (
                             <div role="alert" className="px-4 py-2 text-xs bg-danger/10 text-danger flex justify-between">
                                 <span>{errorEnvio}</span>
@@ -352,6 +495,7 @@ const ConversacionesPage = () => {
                                     type="submit" 
                                     disabled={enviando || !nuevoMensaje.trim()}
                                     aria-label="Enviar mensaje"
+                                    title={!nuevoMensaje.trim() ? 'Escribe un mensaje para poder enviarlo' : undefined}
                                     className="bg-accent text-white min-w-[48px] h-12 px-5 rounded-xl font-bold disabled:opacity-50"
                                 >
                                     {enviando ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}

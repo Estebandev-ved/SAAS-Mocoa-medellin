@@ -42,6 +42,7 @@ import ActivationChecklist from '../components/ActivationChecklist'
 import InstallPrompt from '../components/InstallPrompt'
 import { SkeletonCards } from '../components/Skeleton'
 import AccionesSugeridas from '../components/AccionesSugeridas'
+import CompartirResumen from '../components/CompartirResumen'
 import ProductTour, { tourVisto } from '../components/ProductTour'
 
 const PASOS_TOUR = [
@@ -231,7 +232,12 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
+            <div className="ml-auto self-start hidden sm:block">
+              <CompartirResumen nombre={user?.nombre} stats={stats} />
+            </div>
           </motion.div>
+
+          <div className="sm:hidden mb-4"><CompartirResumen nombre={user?.nombre} stats={stats} /></div>
 
           <InstallPrompt />
           <ActivationChecklist user={user} onActivando={setActivando} />

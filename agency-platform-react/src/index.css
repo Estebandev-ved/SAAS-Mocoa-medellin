@@ -315,6 +315,9 @@
 }
 
 /* Tema oscuro: utilidades fijas que las variables no cubren */
+:root[data-theme='dark'] .bg-\[\#F0F0F0\], :root[data-theme='dark'] .bg-\[\#E4E4E4\] { background-color: var(--bg3); }
+:root[data-theme='dark'] .bg-\[\#C9C9C9\] { background-color: #4A4A4F; }
+:root[data-theme='dark'] .text-\[\#1A1A1A\] { color: var(--text); }
 :root[data-theme='dark'] .border-\[\#C9C9C9\] { border-color: var(--border); }
 :root[data-theme='dark'] .bg-\[\#FDECEA\] { background-color: rgba(239, 83, 80, 0.14); }
 :root[data-theme='dark'] input,
@@ -322,3 +325,22 @@
 :root[data-theme='dark'] select { color: var(--text); }
 :root[data-theme='dark'] input::placeholder,
 :root[data-theme='dark'] textarea::placeholder { color: var(--muted); }
+
+/* ─── Impresión / PDF del resumen: solo el contenido, sin menús ni botones ─── */
+@media print {
+  aside, header, nav, .no-print, [role='dialog'] { display: none !important; }
+  body { background: #fff !important; padding: 0 !important; }
+  main { padding: 0 !important; }
+}
+
+/* ─── Táctil: objetivos de toque de al menos 44 px en el panel (WCAG 2.5.5) ─── */
+@media (pointer: coarse) {
+  main button:not([role='switch']):not([data-compacto]),
+  main select,
+  main input:not([type='checkbox']):not([type='radio']):not([type='range']) {
+    min-height: 44px;
+  }
+  main button { min-width: 44px; }
+  /* evita el zoom automático de iOS al enfocar campos */
+  main input, main select, main textarea { font-size: max(16px, 1em); }
+}

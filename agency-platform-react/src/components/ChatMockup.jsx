@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { CheckCheck, Phone, Video } from 'lucide-react';
+import { CheckCheck, Phone, Video, Send } from 'lucide-react';
 import { Character } from './Illustration';
 
 // Conversación de ejemplo (datos 100% locales, igual que InteractiveDemo): el cliente pide, el bot toma el
@@ -14,7 +14,33 @@ const GUION = [
   { de: 'bot', texto: 'Pago verificado 🎉 Tu pedido #128 ya está en preparación.', hora: '12:07', ok: true },
 ];
 
+// Respuestas de la demo (100% locales, sin backend: la landing es pública y un bot real sería un
+// blanco de abuso). Orienta al visitante a registrarse para probar el bot de verdad con su catálogo.
+const RESPUESTAS = [
+  { claves: ['horario', 'hora', 'abren', 'cierran', 'abierto'], texto: 'Atendemos todos los días de 11:00 a 21:00 🕚 ¿Te anoto un pedido?' },
+  { claves: ['domicilio', 'envio', 'envío', 'llevan', 'entrega'], texto: 'Sí, hacemos domicilios en toda la zona: $4.000 y llega en unos 35 minutos 🛵' },
+  { claves: ['menu', 'menú', 'carta', 'precio', 'cuesta', 'vale', 'que venden', 'qué venden'], texto: 'Hoy tenemos: bandeja paisa $28.000, sancocho $22.000 y ajiaco $20.000. ¿Cuál te gusta?' },
+  { claves: ['pago', 'nequi', 'tarjeta', 'efectivo', 'pagar'], texto: 'Recibimos Nequi, Bancolombia y efectivo. Me envías el comprobante y lo verifico al instante ✅' },
+  { claves: ['hola', 'buenas', 'buenos'], texto: '¡Hola! 😊 Soy el asistente de Sabor Paisa. Pregúntame por el menú, domicilios o pagos.' },
+];
+const SUGERENCIAS = ['¿Qué horario tienen?', '¿Hacen domicilios?', '¿Cómo puedo pagar?'];
+const responder = (texto) => {
+  const t = texto.toLowerCase();
+  const r = RESPUESTAS.find((x) => x.claves.some((c) => t.includes(c)));
+  return r ? r.texto : 'Eso lo respondería con el catálogo y las reglas de TU negocio. Crea tu cuenta gratis y pruébalo con tus propios productos 🚀';
+};
+
 export default function ChatMockup({ className = '' }) {
+  const [extra, setExtra] = useState([]); // mensajes de la parte interactiva
+  const [texto, setTexto] = useState('');
+  const hora = () => new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  const preguntar = (q) => {
+    const t = (q ?? texto).trim();
+    if (!t) return;
+    setTexto('');
+    setExtra((e) => [...e, { de: 'cliente', texto: t, hora: hora() }]);
+    setTimeout(() => setExtra((e) => [...e, { de: 'bot', texto: responder(t), hora: hora() }]), 700);
+  };
   const reducir = useReducedMotion();
   const [visibles, setVisibles] = useState(reducir ? GUION.length : 0);
 
@@ -24,7 +50,7 @@ export default function ChatMockup({ className = '' }) {
     const paso = (n) => {
       setVisibles(n);
       // al terminar, deja leer un momento y reinicia el ciclo
-      t = setTimeout(() => paso(n >= GUION.length ? 0 : n + 1), n >= GUION.length ? 5000 : 1700);
+      if (n < GUION.length) t = setTimeout(() => paso(n + 1), 1700);
     };
     t = setTimeout(() => paso(1), 600);
     return () => clearTimeout(t);
@@ -33,8 +59,8 @@ export default function ChatMockup({ className = '' }) {
   return (
     <div
       className={`w-full max-w-[340px] mx-auto rounded-[28px] border border-border bg-bg shadow-[0_24px_60px_rgba(10,10,10,0.18)] overflow-hidden ${className}`}
-      role="img"
-      aria-label="Ejemplo: un cliente pide dos bandejas por WhatsApp, el bot toma el pedido y verifica el comprobante de pago"
+      role="group"
+      aria-label="Demostración: un cliente pide por WhatsApp y el bot toma el pedido. Puedes escribirle una pregunta"
     >
       <div className="bg-inverse text-inverse-text px-4 h-14 flex items-center gap-3">
         <span className="w-9 h-9 rounded-full bg-accent-dim overflow-hidden flex items-end justify-center shrink-0">
@@ -48,8 +74,8 @@ export default function ChatMockup({ className = '' }) {
         <Phone size={18} className="text-[#A0A0A0]" aria-hidden />
       </div>
 
-      <div className="h-[360px] p-3 flex flex-col justify-end gap-2 bg-bg2 overflow-hidden" aria-hidden="true">
-        {GUION.slice(0, visibles).map((m, i) => (
+      <div className="h-[360px] p-3 flex flex-col justify-end gap-2 bg-bg2 overflow-y-auto" aria-live="polite">
+        {[...GUION.slice(0, visibles), ...extra].map((m, i) => (
           <motion.div
             key={`${i}-${m.texto}`}
             initial={reducir ? false : { opacity: 0, y: 12, scale: 0.97 }}
@@ -69,6 +95,31 @@ export default function ChatMockup({ className = '' }) {
           </motion.div>
         ))}
       </div>
+
+      {visibles >= GUION.length && (
+        <div className="bg-bg border-t border-border p-2.5">
+          <div className="flex gap-1.5 overflow-x-auto pb-2">
+            {SUGERENCIAS.map((q) => (
+              <button key={q} onClick={() => preguntar(q)} className="shrink-0 h-8 px-3 rounded-full bg-accent-dim text-accent text-xs font-semibold border-none cursor-pointer">
+                {q}
+              </button>
+            ))}
+          </div>
+          <form onSubmit={(e) => { e.preventDefault(); preguntar(); }} className="flex gap-2">
+            <input
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              maxLength={120}
+              placeholder="Pregúntale tú…"
+              aria-label="Escribe una pregunta para el bot de ejemplo"
+              className="flex-1 h-10 rounded-full border border-border bg-bg2 px-4 text-base md:text-sm text-text focus:outline-none focus:border-accent"
+            />
+            <button type="submit" aria-label="Enviar" className="w-10 h-10 rounded-full bg-accent text-white border-none cursor-pointer flex items-center justify-center">
+              <Send size={16} />
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

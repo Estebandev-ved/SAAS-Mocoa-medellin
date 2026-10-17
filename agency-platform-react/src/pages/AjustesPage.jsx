@@ -11,6 +11,8 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import QRCode from 'qrcode';
 import ActivarAvisos from '../components/ActivarAvisos';
+import { ETIQUETA_TIPO } from '../utils/capacidades';
+import { olvidarNegocio } from '../hooks/useNegocio';
 import { useTheme } from '../context/ThemeContext';
 import { sonidoActivo, guardarSonidoActivo, reproducirAviso } from '../context/PedidosLiveContext';
 import {
@@ -199,6 +201,8 @@ function NegocioTab() {
     setSaving(true);
     try {
       await api.put('/business/perfil', form);
+      olvidarNegocio();
+      window.dispatchEvent(new Event('negocio-actualizado'));
       setToast({ type: 'success', message: 'Perfil actualizado correctamente' });
     } catch {
       setToast({ type: 'error', message: 'Error al guardar cambios' });
@@ -252,12 +256,13 @@ function NegocioTab() {
               />
             </FormField>
             <FormField label="Tipo de Negocio" icon={Info}>
-              <InputField
+              <SelectField
                 name="tipo_negocio"
-                value={form.tipo_negocio}
+                value={form.tipo_negocio || ''}
                 onChange={handleChange}
-                placeholder="Restaurante, Tienda, etc."
+                options={[{ value: '', label: 'Elige el tipo…' }, ...Object.entries(ETIQUETA_TIPO).map(([value, label]) => ({ value, label }))]}
               />
+              <p className="text-xs text-muted mt-1.5">Define qué herramientas ves en el menú (por ejemplo, el modo cocina es para restaurantes).</p>
             </FormField>
             <FormField label="Ciudad" icon={MapPin}>
               <InputField

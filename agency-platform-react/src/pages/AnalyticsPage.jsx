@@ -16,6 +16,7 @@ import {
     Loader2
 } from 'lucide-react';
 import { api } from '../services/api';
+import VentasInteractivas from '../components/VentasInteractivas';
 
 const AnalyticsPage = () => {
     const navigate = useNavigate();
@@ -73,6 +74,8 @@ const AnalyticsPage = () => {
                 </div>
 
                 <TipNova id="analytics" className="mb-6">Aquí comparas ventas, pedidos y conversión de tu bot. Revisa qué días y productos venden más para decidir qué promocionar.</TipNova>
+
+                <VentasInteractivas />
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

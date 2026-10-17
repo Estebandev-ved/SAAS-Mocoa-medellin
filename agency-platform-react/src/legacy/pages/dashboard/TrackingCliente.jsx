@@ -56,6 +56,17 @@ function FitRoute({ ruta, skip }) {
 
 const STEP_ORDER = ['pendiente', 'aceptado', 'en_ruta', 'entregado'];
 
+// Distancia en línea recta (km) entre dos puntos [lat, lng]
+const distanciaKm = (a, b) => {
+    const rad = (x) => (x * Math.PI) / 180;
+    const dLat = rad(b[0] - a[0]);
+    const dLng = rad(b[1] - a[1]);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLng / 2) ** 2;
+    return 6371 * 2 * Math.asin(Math.sqrt(h));
+};
+// Tiempo estimado: línea recta × 1,3 (las calles no son rectas) a ~22 km/h en moto por ciudad
+const minutosEstimados = (km) => Math.max(1, Math.round(((km * 1.3) / 22) * 60));
+
 export default function TrackingCliente() {
     const { token } = useParams();
     const [data, setData] = useState(null);
@@ -281,7 +292,10 @@ export default function TrackingCliente() {
                     )}
                 </MapContainer>
                 <div className="map-overlay-text">
-                    {data?.estado === 'en_ruta' ? 'Tu domiciliario está en camino' :
+                    {data?.estado === 'en_ruta' && driverPos && data?.destino
+                        ? `Llega en ~${minutosEstimados(distanciaKm(driverPos, [data.destino.lat, data.destino.lng]))} min · ${distanciaKm(driverPos, [data.destino.lat, data.destino.lng]).toFixed(1)} km`
+                        :
+                     data?.estado === 'en_ruta' ? 'Tu domiciliario está en camino' :
                      data?.estado === 'aceptado' ? 'Preparando tu pedido' :
                      data?.estado === 'entregado' ? 'Entregado' : 'Pendiente'}
                 </div>

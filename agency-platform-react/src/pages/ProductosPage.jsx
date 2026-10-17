@@ -7,6 +7,7 @@ import api from '../services/api';
 import { useHitos } from '../context/HitosContext';
 import TipNova from '../components/TipNova';
 import AyudaRapida from '../components/AyudaRapida';
+import { useConfirm } from '../context/ConfirmContext';
 import {
   ArrowLeft,
   Plus,
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 
 export default function ProductosPage() {
+  const confirmar = useConfirm();
   const navigate = useNavigate();
   const { celebrar } = useHitos();
   const [productos, setProductos] = useState([]);
@@ -172,7 +174,7 @@ export default function ProductosPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar este producto?')) return;
+    if (!(await confirmar({ titulo: 'Eliminar producto', mensaje: 'El bot dejará de ofrecerlo. Esto no se puede deshacer.', boton: 'Eliminar' }))) return;
     try {
       await api.delete(`/productos/${id}`);
       setToast({ type: 'success', message: 'Producto eliminado' });

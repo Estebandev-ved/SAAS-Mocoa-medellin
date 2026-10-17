@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Loader2, Lock, Sparkles } from 'lucide-react';
+import { ArrowLeft, Send, Loader2, Lock, Sparkles, CheckCheck, Clock } from 'lucide-react';
 import api from '../services/api';
 import TipNova from '../components/TipNova';
 import AyudaRapida from '../components/AyudaRapida';
@@ -8,6 +8,40 @@ import EmptyState from '../components/EmptyState';
 import FeedbackMessage from '../components/FeedbackMessage';
 import { mensajeError } from '../utils/errores';
 import { useUndo } from '../context/UndoContext';
+
+// Misma regla que el backend (campaignSender.personalizar): {nombre} → primer nombre del cliente
+const personalizar = (texto, nombre) => {
+  const primer = String(nombre || '').trim().split(/\s+/)[0] || '';
+  const t = String(texto || '').replace(/\{nombre\}/gi, primer);
+  return primer ? t : t.replace(/[ \t]+([,.!¡?¿])/g, '$1').replace(/^[,\s]+/, '').replace(/ {2,}/g, ' ');
+};
+
+// Burbuja tal como la verá el cliente en WhatsApp
+function VistaPrevia({ mensaje, alcance }) {
+  const texto = personalizar(mensaje, 'María') || 'Aquí verás tu mensaje tal como lo recibirá el cliente.';
+  const minutos = alcance ? Math.max(1, Math.round((alcance * 3.5) / 60)) : null;
+  return (
+    <aside aria-label="Vista previa del mensaje" className="rounded-2xl border border-border bg-bg2 p-4 lg:sticky lg:top-4 self-start">
+      <p className="text-xs font-semibold tracking-[0.04em] uppercase text-muted mb-3 m-0">Así lo verá tu cliente</p>
+      <div className="rounded-xl bg-[#E9E4DA] p-3 min-h-[120px] flex flex-col justify-end">
+        <div className="self-start max-w-[92%] bg-[#FFFFFF] text-[#1A1A1A] rounded-2xl rounded-bl-md px-3 py-2 text-[13px] leading-5 shadow-sm whitespace-pre-wrap break-words">
+          {texto}
+          <span className="flex items-center justify-end gap-1 text-[10px] text-[#666] mt-1">
+            ahora <CheckCheck size={12} className="text-info" />
+          </span>
+        </div>
+      </div>
+      <p className="text-xs text-muted mt-3 m-0 leading-5">
+        Ejemplo con el cliente “María”. Escribe <code className="bg-bg3 px-1 rounded">{'{nombre}'}</code> para saludar por su nombre.
+      </p>
+      {alcance !== null && alcance > 0 && (
+        <p className="text-xs text-muted mt-2 m-0 flex items-center gap-1.5">
+          <Clock size={12} /> {alcance} destinatario(s) · se envía en unos {minutos} min, con pausas entre mensajes.
+        </p>
+      )}
+    </aside>
+  );
+}
 
 const LABEL = 'block text-sm font-semibold text-text mb-2';
 const CONTROL =
@@ -196,6 +230,7 @@ export default function CampanasPage() {
           />
         ) : (
           <>
+            <div className="grid lg:grid-cols-[1fr_300px] gap-4">
             <form onSubmit={crear} className="bg-white border border-border rounded-2xl p-6 space-y-4">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
@@ -239,7 +274,12 @@ export default function CampanasPage() {
                   maxLength={1000}
                   className={`${CONTROL} h-auto py-3 resize-none`}
                 />
-                <span className="text-xs text-muted">{form.mensaje.length}/1000</span>
+                <div className="flex items-center justify-between mt-1">
+                  <button type="button" onClick={() => setForm((p) => ({ ...p, mensaje: `${p.mensaje}{nombre}` }))} className="h-8 px-2.5 rounded-lg bg-bg2 border border-border text-xs font-semibold text-muted cursor-pointer">
+                    + Nombre del cliente
+                  </button>
+                  <span className="text-xs text-muted">{form.mensaje.length}/1000</span>
+                </div>
               </div>
               <div>
                 <label className={LABEL}>Cuándo enviarla (déjalo vacío para enviarla ya)</label>
@@ -270,7 +310,12 @@ export default function CampanasPage() {
                 {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                 {form.fecha ? 'Programar campaña' : 'Enviar campaña'}
               </button>
+              {busy || !(alcance !== null && (alcance > maximo || alcance === 0)) ? null : (
+                <p className="text-xs text-muted m-0">El botón está desactivado porque {alcance === 0 ? 'nadie en este grupo aceptó marketing' : `el grupo supera el máximo de ${maximo} clientes`}.</p>
+              )}
             </form>
+            <VistaPrevia mensaje={form.mensaje} alcance={alcance} />
+            </div>
 
             <div className="bg-white border border-border rounded-2xl p-6">
               <h2 className="font-head text-xl font-bold text-text mb-4">Tus campañas</h2>

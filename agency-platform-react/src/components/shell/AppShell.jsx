@@ -8,8 +8,10 @@ import { usePedidosLive } from '../../context/PedidosLiveContext';
 import api from '../../services/api';
 import Logo from '../Logo';
 import CommandPalette from './CommandPalette';
+import AtajosTeclado from './AtajosTeclado';
 import BannersGlobales from '../BannersGlobales';
-import { GRUPOS, ITEM_ADMIN, BARRA_INFERIOR, estaBloqueado, textoBloqueo, planLabel } from './navConfig';
+import { useNegocio } from '../../hooks/useNegocio';
+import { GRUPOS, ITEM_ADMIN, ITEM_COCINA, BARRA_INFERIOR, estaBloqueado, textoBloqueo, planLabel } from './navConfig';
 
 const PlanIcon = ({ plan, size = 16 }) => {
   const c = 'text-[#E53935]';
@@ -99,12 +101,19 @@ export default function AppShell() {
   });
 
   const plan = planApi || user?.plan || 'starter';
-  const grupos = useMemo(
-    () => (user?.rol === 'admin' || user?.rol === 'superadmin'
-      ? [...GRUPOS.slice(0, -1), { ...GRUPOS[GRUPOS.length - 1], items: [...GRUPOS[GRUPOS.length - 1].items, ITEM_ADMIN] }]
-      : GRUPOS),
-    [user?.rol]
-  );
+  const { puede } = useNegocio();
+  const conCocina = puede('cocina');
+  const grupos = useMemo(() => {
+    let g = GRUPOS;
+    // Herramientas por tipo de negocio (utils/capacidades.js): el modo cocina va justo debajo de Pedidos
+    if (conCocina) {
+      g = g.map((gr, i) => (i === 0 ? { ...gr, items: [gr.items[0], gr.items[1], ITEM_COCINA, ...gr.items.slice(2)] } : gr));
+    }
+    if (user?.rol === 'admin' || user?.rol === 'superadmin') {
+      g = [...g.slice(0, -1), { ...g[g.length - 1], items: [...g[g.length - 1].items, ITEM_ADMIN] }];
+    }
+    return g;
+  }, [user?.rol, conCocina]);
   const todos = useMemo(() => grupos.flatMap((g) => g.items.map((i) => ({ ...i, grupo: g.label, bloqueado: estaBloqueado(i, plan) }))), [grupos, plan]);
 
   useEffect(() => {
@@ -311,6 +320,7 @@ export default function AppShell() {
         )}
       </AnimatePresence>
 
+      <AtajosTeclado extra={conCocina ? [{ tecla: 'k', label: 'Modo cocina', path: '/cocina' }] : []} />
       <CommandPalette abierto={paleta} onCerrar={() => setPaleta(false)} items={todos} accionesExtra={accionesExtra} onIr={ir} />
     </div>
   );

@@ -19,7 +19,9 @@ import {
   Zap,
 } from 'lucide-react';
 
+import { useUndo } from '../context/UndoContext';
 export default function MonitoreoPage() {
+  const { avisarOk, avisarError } = useUndo();
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState(null);
   const [health, setHealth] = useState(null);
@@ -47,9 +49,9 @@ export default function MonitoreoPage() {
     setBackupLoading(true);
     try {
       const res = await api.post('/backup/create');
-      alert(`Backup creado: ${res.data.size ? Math.round(res.data.size / 1024) + 'KB' : 'OK'}`);
+      avisarOk(`Backup creado: ${res.data.size ? Math.round(res.data.size / 1024) + 'KB' : 'OK'}`);
     } catch {
-      alert('Error creando backup');
+      avisarError('No se pudo crear el backup');
     } finally {
       setBackupLoading(false);
     }

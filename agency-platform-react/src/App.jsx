@@ -7,6 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 import { HitosProvider } from './context/HitosContext';
 import { PedidosLiveProvider } from './context/PedidosLiveContext';
 import { UndoProvider } from './context/UndoContext';
+import { ConfirmProvider } from './context/ConfirmContext';
 
 // Components
 import Navbar from './components/Navbar';
@@ -45,6 +46,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import MultiChannelPage from './pages/MultiChannelPage';
 import VoiceBotPage from './pages/VoiceBotPage';
 import CajaPage from './pages/CajaPage';
+import CocinaPage from './pages/CocinaPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import FloatingActions from './components/FloatingActions';
 import LegalPage from './pages/LegalPage';
@@ -106,6 +108,7 @@ function App() {
             <HitosProvider>
             <PedidosLiveProvider>
             <UndoProvider>
+            <ConfirmProvider>
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
@@ -140,6 +143,7 @@ function App() {
                 <Route path="/campanas" element={<CampanasPage />} />
                 <Route path="/suscripcion" element={<SuscripcionPage />} />
                 <Route path="/caja" element={<CajaPage />} />
+                <Route path="/cocina" element={<CocinaPage />} />
                 <Route path="/domicilios" element={<DomiciliosPage />} />
                 <Route path="/productos" element={<ProductosPage />} />
                 <Route path="/restaurantes" element={<RestaurantesPage />} />
@@ -155,6 +159,7 @@ function App() {
               <Route path="/cookies" element={<LegalPage />} />
             </Routes>
             <CookieBanner />
+            </ConfirmProvider>
             </UndoProvider>
             </PedidosLiveProvider>
             </HitosProvider>

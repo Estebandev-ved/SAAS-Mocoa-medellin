@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, MessageSquare, ShoppingCart, Package, Activity, Users, Zap, Settings, TrendingUp,
-  CreditCard, Truck, Smartphone, Phone, UtensilsCrossed, Store, BookOpen, Tag, Send, Layers, Shield,
+  CreditCard, Truck, Smartphone, Phone, UtensilsCrossed, Store, BookOpen, Tag, Send, Layers, Shield, ChefHat,
 } from 'lucide-react';
 
 // Fuente única de la navegación del panel del dueño: la usan el menú lateral, la barra inferior,
@@ -50,6 +50,9 @@ export const GRUPOS = [
     ],
   },
 ];
+
+// Solo para negocios tipo restaurante (utils/capacidades.js)
+export const ITEM_COCINA = { icon: ChefHat, label: 'Modo cocina', path: '/cocina', badge: 'cocina' };
 
 export const ITEM_ADMIN = { icon: Shield, label: 'Panel Admin', path: '/admin' };
 

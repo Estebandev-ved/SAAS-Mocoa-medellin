@@ -16,7 +16,9 @@ import {
     Building,
     X,
     ChevronsRight,
-    Zap
+    Zap,
+    List,
+    Columns3
 } from 'lucide-react';
 import { api } from '../services/api';
 import Illustration from '../components/Illustration';
@@ -25,7 +27,10 @@ import { usePedidosLive } from '../context/PedidosLiveContext';
 import TipNova from '../components/TipNova';
 import AyudaRapida from '../components/AyudaRapida';
 import { SkeletonList } from '../components/Skeleton';
+import PedidosKanban from '../components/PedidosKanban';
+import { ETIQUETA_RAPIDA } from '../hooks/useAvanzarPedido';
 import { useUndo } from '../context/UndoContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 // Mismas transiciones válidas que valida el backend (api/routes/orders.js) — la etiqueta es lo único
 // que decide esta pantalla; el servidor es quien de verdad permite o no el cambio.
@@ -87,9 +92,18 @@ const PedidosPage = () => {
     const navigate = useNavigate();
     const { celebrar } = useHitos();
     const { conectado, suscribir, refrescarPendientes } = usePedidosLive();
-    const { diferir } = useUndo();
+    const { diferir, avisarError } = useUndo();
+    const confirmar = useConfirm();
     const [params] = useSearchParams();
     const buscarRef = useRef(null);
+    // El dueño elige cómo ver sus pedidos (lista o tablero); se recuerda en este dispositivo.
+    const [vista, setVistaState] = useState(() => {
+        try { return localStorage.getItem('noma_pedidos_vista') === 'tablero' ? 'tablero' : 'lista'; } catch { return 'lista'; }
+    });
+    const setVista = (v) => {
+        setVistaState(v);
+        try { localStorage.setItem('noma_pedidos_vista', v); } catch { /* sin almacenamiento */ }
+    };
     const [avanzando, setAvanzando] = useState(false);
     const [pedidos, setPedidos] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -164,7 +178,7 @@ const PedidosPage = () => {
             await fetchPedidos();
             setPedidoSeleccionado((prev) => (prev ? { ...prev, estado: nuevoEstado } : prev));
         } catch (error) {
-            alert(error.response?.data?.error || 'No se pudo actualizar el pedido');
+            avisarError(error.response?.data?.error || 'No se pudo actualizar el pedido');
         } finally {
             setAvanzando(false);
         }
@@ -310,7 +324,19 @@ const PedidosPage = () => {
                             />
                         </div>
                     </form>
-                    <div className="flex gap-2 md:flex-wrap overflow-x-auto md:overflow-visible -mx-6 px-6 md:mx-0 md:px-0 pb-1">
+                    <div role="group" aria-label="Forma de ver los pedidos" className="flex shrink-0 rounded-xl border border-border overflow-hidden h-12 md:h-11 self-start">
+                        {[{ id: 'lista', label: 'Lista', icon: List }, { id: 'tablero', label: 'Tablero', icon: Columns3 }].map(({ id, label, icon: Icon }) => (
+                            <button
+                                key={id}
+                                onClick={() => setVista(id)}
+                                aria-pressed={vista === id}
+                                className={`px-4 inline-flex items-center gap-2 text-sm font-semibold border-none cursor-pointer ${vista === id ? 'bg-accent text-white' : 'bg-white text-muted hover:text-text'}`}
+                            >
+                                <Icon size={16} /> {label}
+                            </button>
+                        ))}
+                    </div>
+                    <div className={`${vista === 'tablero' ? 'hidden ' : ''}flex gap-2 md:flex-wrap overflow-x-auto md:overflow-visible -mx-6 px-6 md:mx-0 md:px-0 pb-1`}>
                         {['todos', 'pendiente_pago', 'pago_enviado', 'pago_confirmado', 'en_preparacion', 'enviado', 'entregado', 'cancelado'].map(estado => (
                             <button
                                 key={estado}
@@ -340,6 +366,14 @@ const PedidosPage = () => {
                             <button onClick={() => navigate('/productos')} className="h-10 px-4 rounded-xl bg-white border border-[#C9C9C9] text-text text-sm font-semibold cursor-pointer">Revisar mis productos</button>
                         </div>
                     </div>
+                ) : vista === 'tablero' ? (
+                    <PedidosKanban
+                        pedidos={pedidosFiltrados}
+                        formatCurrency={formatCurrency}
+                        onAbrir={setPedidoSeleccionado}
+                        onAvanzar={(p, estado) => avanzarRapido(p, estado)}
+                        onNoPermitido={(p) => avisarError(SIGUIENTE_ESTADO[p.estado] ? `Un pedido solo avanza al paso siguiente: ${SIGUIENTE_ESTADO[p.estado].label.toLowerCase()}.` : 'Este pedido ya no se puede mover.')}
+                    />
                 ) : (
                     <>
                     <div className="md:hidden space-y-3">
@@ -425,7 +459,7 @@ const PedidosPage = () => {
                                                             className="h-9 px-3 rounded-lg bg-accent hover:bg-accent2 text-white text-xs font-semibold border-none cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
                                                         >
                                                             <Zap size={14} />
-                                                            {pedido.estado === 'pago_enviado' ? 'Aprobar pago' : SIGUIENTE_ESTADO[pedido.estado].label.replace('Marcar ', '')}
+                                                            {ETIQUETA_RAPIDA[pedido.estado]}
                                                         </button>
                                                     )}
                                                     <button aria-label="Ver detalle" className="w-9 h-9 flex items-center justify-center bg-transparent border-none cursor-pointer text-accent hover:text-text transition-colors">
@@ -529,7 +563,7 @@ const PedidosPage = () => {
                                             )}
                                             {PUEDE_CANCELAR.includes(pedidoSeleccionado.estado) && (
                                                 <button
-                                                    onClick={() => { if (confirm('¿Cancelar este pedido?')) avanzarEstado('cancelado'); }}
+                                                    onClick={async () => { if (await confirmar({ titulo: 'Cancelar pedido', mensaje: `El pedido #${pedidoSeleccionado.numero_pedido} pasará a cancelado y no se puede reactivar.`, boton: 'Cancelar pedido', cancelar: 'Volver' })) avanzarEstado('cancelado'); }}
                                                     disabled={avanzando}
                                                     className="h-11 px-5 rounded-xl bg-white hover:bg-bg2 text-danger-text text-sm font-semibold border border-danger/40 cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                                                 >

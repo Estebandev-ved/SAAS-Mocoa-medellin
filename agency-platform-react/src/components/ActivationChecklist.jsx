@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, ArrowRight, Package, CreditCard, Smartphone, Tag, Zap, MessageSquare } from 'lucide-react';
 import api from '../services/api';
 import { Character } from './Illustration';
+import { lanzarConfeti } from '../utils/confeti';
 
 // Activación guiada: al registrarse solo se piden los datos mínimos; aquí se completa lo que el bot necesita,
 // paso a paso. La prueba gratuita de 7 días empieza con la primera conexión de WhatsApp.
@@ -11,37 +12,47 @@ export default function ActivationChecklist({ user, onActivando }) {
   const [estado, setEstado] = useState(null); // null = cargando
   const [abierto, setAbierto] = useState(false); // 2.ª etapa (opcional): empieza colapsada para no estorbar
 
-  useEffect(() => {
-    let vivo = true;
-    (async () => {
-      const [prod, perfil, wa, cup, aut, conv] = await Promise.allSettled([
-        api.get('/productos'),
-        api.get('/business/perfil'),
-        api.get('/whatsapp/status'),
-        api.get('/cupones'),
-        api.get('/automations'),
-        api.get('/conversaciones', { params: { limit: 1 } }),
-      ]);
-      if (!vivo) return;
-      const productos = prod.status === 'fulfilled' ? (prod.value.data.productos || prod.value.data.data || []) : [];
-      const negocio = perfil.status === 'fulfilled' ? (perfil.value.data.negocio || perfil.value.data) : {};
-      const metodos = Array.isArray(negocio.metodos_pago_activos) ? negocio.metodos_pago_activos : [];
-      setEstado({
-        catalogo: productos.length > 0,
-        pagos: metodos.length > 0,
-        whatsapp: wa.status === 'fulfilled' && !!wa.value.data.conectado,
-        // Segunda etapa (opcional): sacarle más provecho al bot
-        probado: conv.status === 'fulfilled' && (conv.value.data.conversaciones || []).length > 0,
-        automatizacion:
-          aut.status === 'fulfilled' &&
-          Object.entries(aut.value.data.automations || {}).some(([tipo, a]) => tipo !== 'agentes' && a.activa),
-        cupon: cup.status === 'fulfilled' && (cup.value.data.cupones || []).length > 0,
-      });
-    })();
-    return () => {
-      vivo = false;
+  const previo = useRef(null);
+
+  // Lee el estado real del negocio. Se repite al volver a la pestaña (p. ej. después de cargar un
+  // producto en otra pantalla), así el paso se marca solo y se celebra al completar la etapa.
+  const cargar = useCallback(async () => {
+    const [prod, perfil, wa, cup, aut, conv] = await Promise.allSettled([
+      api.get('/productos'),
+      api.get('/business/perfil'),
+      api.get('/whatsapp/status'),
+      api.get('/cupones'),
+      api.get('/automations'),
+      api.get('/conversaciones', { params: { limit: 1 } }),
+    ]);
+    const productos = prod.status === 'fulfilled' ? (prod.value.data.productos || prod.value.data.data || []) : [];
+    const negocio = perfil.status === 'fulfilled' ? (perfil.value.data.negocio || perfil.value.data) : {};
+    const metodos = Array.isArray(negocio.metodos_pago_activos) ? negocio.metodos_pago_activos : [];
+    const nuevo = {
+      catalogo: productos.length > 0,
+      pagos: metodos.length > 0,
+      whatsapp: wa.status === 'fulfilled' && !!wa.value.data.conectado,
+      // Segunda etapa (opcional): sacarle más provecho al bot
+      probado: conv.status === 'fulfilled' && (conv.value.data.conversaciones || []).length > 0,
+      automatizacion:
+        aut.status === 'fulfilled' &&
+        Object.entries(aut.value.data.automations || {}).some(([tipo, a]) => tipo !== 'agentes' && a.activa),
+      cupon: cup.status === 'fulfilled' && (cup.value.data.cupones || []).length > 0,
     };
+    // Confeti solo si en esta visita se pasó de "incompleto" a "completo" (no al cargar ya completo)
+    const base = (e) => e && e.catalogo && e.pagos && e.whatsapp;
+    const extra = (e) => e && e.probado && e.automatizacion && e.cupon;
+    if (previo.current && ((!base(previo.current) && base(nuevo)) || (!extra(previo.current) && extra(nuevo)))) lanzarConfeti();
+    previo.current = nuevo;
+    setEstado(nuevo);
   }, []);
+
+  useEffect(() => {
+    cargar();
+    const alVolver = () => document.visibilityState === 'visible' && cargar();
+    document.addEventListener('visibilitychange', alVolver);
+    return () => document.removeEventListener('visibilitychange', alVolver);
+  }, [cargar]);
 
   // Avisa al panel si aún hay pasos pendientes (para no repetir a Nova en otras tarjetas)
   useEffect(() => {

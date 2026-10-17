@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { motion, AnimatePresence } from 'framer-motion'
 import { Undo2, AlertCircle } from 'lucide-react'
 
-const UndoContext = createContext({ diferir: () => {}, avisarError: () => {} })
+const UndoContext = createContext({ diferir: () => {}, avisarError: () => {}, avisarOk: () => {} })
 export const useUndo = () => useContext(UndoContext)
 
 // Acciones "optimistas con deshacer": la pantalla cambia al instante y el cambio real
@@ -73,6 +73,16 @@ export function UndoProvider({ children }) {
     [quitar]
   )
 
+  // Aviso informativo corto (sustituye a los alert() del navegador)
+  const avisarOk = useCallback(
+    (mensaje) => {
+      const id = `o-${Date.now()}`
+      setItems((prev) => [...prev, { id, mensaje, ok: true }])
+      setTimeout(() => quitar(id), 3500)
+    },
+    [quitar]
+  )
+
   // Al salir de la página (cierre o recarga) se confirma lo pendiente: lo que la persona
   // vio hecho no puede perderse en silencio.
   useEffect(() => {
@@ -82,7 +92,7 @@ export function UndoProvider({ children }) {
   }, [confirmar])
 
   return (
-    <UndoContext.Provider value={{ diferir, avisarError }}>
+    <UndoContext.Provider value={{ diferir, avisarError, avisarOk }}>
       {children}
       <div
         className="fixed left-1/2 -translate-x-1/2 z-[80] flex flex-col gap-2 items-center w-[min(440px,calc(100vw-32px))] pointer-events-none"
@@ -101,7 +111,7 @@ export function UndoProvider({ children }) {
             >
               {i.error && <AlertCircle size={18} className="text-[#EF5350] shrink-0" />}
               <span className="text-sm flex-1">{i.mensaje}</span>
-              {!i.error && (
+              {!i.error && !i.ok && (
                 <button
                   onClick={() => deshacer(i.id)}
                   className="h-11 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-inverse-text text-sm font-semibold border-none cursor-pointer inline-flex items-center gap-1.5"

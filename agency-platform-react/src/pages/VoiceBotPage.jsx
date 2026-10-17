@@ -26,7 +26,9 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 
+import { useUndo } from '../context/UndoContext';
 const VoiceBotPage = () => {
+  const { avisarOk, avisarError } = useUndo();
     const navigate = useNavigate();
     const [status, setStatus] = useState(null);
     const [config, setConfig] = useState({
@@ -88,9 +90,9 @@ const VoiceBotPage = () => {
         try {
             setSaving(true);
             await api.post('/voice/config', config);
-            alert('Configuración guardada');
+            avisarOk('Configuración guardada');
         } catch (error) {
-            alert('Error guardando configuración');
+            avisarError('No se pudo guardar la configuración');
         } finally {
             setSaving(false);
         }
@@ -109,7 +111,7 @@ const VoiceBotPage = () => {
             });
             setTestAudio(res.data.audio);
         } catch (error) {
-            alert('Error generando audio: ' + error.message);
+            avisarError('No se pudo generar el audio: ' + error.message);
         } finally {
             setGenerating(false);
         }

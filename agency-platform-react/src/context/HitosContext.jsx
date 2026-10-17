@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext';
 import { HITOS } from './hitosConfig';
 import { businessService } from '../services/api';
 import { Character } from '../components/Illustration';
+import { lanzarConfeti } from '../utils/confeti';
 import CheckBadge from '../components/CheckBadge';
 
 // Estado de "ya visto" de los personajes: logros celebrados (ids de HITOS) y consejos de Nova ("tip:<id>").
@@ -138,6 +139,8 @@ export const useHitos = () => useContext(HitosContext);
 
 function HitoCard({ id, onClose }) {
   const hito = HITOS[id];
+  // Cada logro se celebra con confeti (se omite con movimiento reducido)
+  useEffect(() => { lanzarConfeti(); }, []);
   const navigate = useNavigate();
   const reducir = useReducedMotion();
 

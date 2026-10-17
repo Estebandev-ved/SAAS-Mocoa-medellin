@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import TipNova from '../components/TipNova';
+import { useConfirm } from '../context/ConfirmContext';
 import {
   ArrowLeft,
   Plus,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 
 export default function RestaurantesPage() {
+  const confirmar = useConfirm();
   const navigate = useNavigate();
   const [restaurantes, setRestaurantes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +90,7 @@ export default function RestaurantesPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar este restaurante? Sus productos quedarán sin restaurante asignado.')) return;
+    if (!(await confirmar({ titulo: 'Eliminar restaurante', mensaje: 'Sus productos quedarán sin restaurante asignado.', boton: 'Eliminar' }))) return;
     try {
       await api.delete(`/restaurantes/${id}`);
       setToast({ type: 'success', message: 'Restaurante eliminado' });

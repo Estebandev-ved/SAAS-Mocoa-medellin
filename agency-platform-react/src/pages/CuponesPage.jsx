@@ -7,6 +7,7 @@ import FeedbackMessage from '../components/FeedbackMessage';
 import AyudaRapida from '../components/AyudaRapida';
 import EmptyState from '../components/EmptyState';
 import { mensajeError } from '../utils/errores';
+import { useConfirm } from '../context/ConfirmContext';
 import { useHitos } from '../context/HitosContext';
 
 const LABEL = 'block text-sm font-semibold text-text mb-2';
@@ -33,6 +34,7 @@ function estadoCupon(c) {
 
 export default function CuponesPage() {
   const { celebrar } = useHitos();
+  const confirmar = useConfirm();
   const navigate = useNavigate();
   const [cupones, setCupones] = useState([]);
   const [form, setForm] = useState(VACIO);
@@ -82,7 +84,7 @@ export default function CuponesPage() {
   }
 
   async function borrar(id) {
-    if (!window.confirm('¿Eliminar este cupón? Los pedidos que ya lo usaron no se afectan.')) return;
+    if (!(await confirmar({ titulo: 'Eliminar cupón', mensaje: 'Los pedidos que ya lo usaron no se afectan.', boton: 'Eliminar' }))) return;
     try {
       await api.delete(`/cupones/${id}`);
       cargar();
