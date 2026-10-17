@@ -8,6 +8,7 @@ import { usePedidosLive } from '../../context/PedidosLiveContext';
 import api from '../../services/api';
 import Logo from '../Logo';
 import CommandPalette from './CommandPalette';
+import BannersGlobales from '../BannersGlobales';
 import { GRUPOS, ITEM_ADMIN, BARRA_INFERIOR, estaBloqueado, textoBloqueo, planLabel } from './navConfig';
 
 const PlanIcon = ({ plan, size = 16 }) => {
@@ -159,7 +160,7 @@ export default function AppShell() {
       </a>
 
       {/* Escritorio: menú lateral fijo */}
-      <aside className="w-72 shrink-0 bg-inverse text-inverse-text border-r border-white/10 hidden lg:flex flex-col sticky top-0 h-screen">
+      <aside data-tour="menu" className="w-72 shrink-0 bg-inverse text-inverse-text border-r border-white/10 hidden lg:flex flex-col sticky top-0 h-screen">
         <div className="p-6 border-b border-white/10">
           <Logo size={36} tone="light" />
         </div>
@@ -174,6 +175,7 @@ export default function AppShell() {
         </button>
 
         <button
+          data-tour="buscar"
           onClick={() => setPaleta(true)}
           className="mx-4 mt-3 px-3 h-9 rounded-xl bg-transparent border border-white/15 text-[#A0A0A0] hover:text-inverse-text hover:border-white/30 flex items-center gap-2 text-xs cursor-pointer"
         >
@@ -218,6 +220,8 @@ export default function AppShell() {
           </div>
         </header>
 
+        <BannersGlobales />
+
         <main id="contenido" className="flex-1 pb-24 lg:pb-0">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
@@ -234,7 +238,7 @@ export default function AppShell() {
       </div>
 
       {/* Celular: barra inferior */}
-      <nav aria-label="Atajos" className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-inverse border-t border-white/10 pb-safe">
+      <nav aria-label="Atajos" data-tour="menu-movil" className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-inverse border-t border-white/10 pb-safe">
         <ul className="grid grid-cols-5 m-0 p-0 list-none">
           {barra.map((item) => {
             const Icon = item.icon;

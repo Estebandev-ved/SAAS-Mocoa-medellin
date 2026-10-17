@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import {
   LayoutDashboard,
   MessageSquare,
@@ -41,6 +41,17 @@ import OwnerAvatar from '../components/avatar/OwnerAvatar'
 import ActivationChecklist from '../components/ActivationChecklist'
 import InstallPrompt from '../components/InstallPrompt'
 import { SkeletonCards } from '../components/Skeleton'
+import AccionesSugeridas from '../components/AccionesSugeridas'
+import ProductTour, { tourVisto } from '../components/ProductTour'
+
+const PASOS_TOUR = [
+  { selector: '[data-tour="saludo"]', titulo: 'Tu resumen del día', texto: 'Aquí ves cuántos pedidos y cuánto has vendido hoy. Se actualiza solo.' },
+  { selector: '[data-tour="acciones"]', titulo: 'Qué hacer ahora', texto: 'Tus tareas pendientes: comprobantes por revisar, pedidos por preparar y clientes que esperan una persona. Cada una te lleva directo a resolverla.' },
+  { selector: '[data-tour="stats"]', titulo: 'Tus números', texto: 'Ventas, pedidos, mensajes y cuánto trabajo hizo la IA por ti.' },
+  { selector: '[data-tour="menu"]', titulo: 'Tu menú', texto: 'Desde aquí vas a pedidos, conversaciones, productos, automatizaciones y más.' },
+  { selector: '[data-tour="menu-movil"]', titulo: 'Tu menú', texto: 'Abajo tienes lo principal. En “Más” está el resto de pantallas.' },
+  { selector: '[data-tour="buscar"]', titulo: 'Búsqueda rápida', texto: 'Busca cualquier pantalla. En computador también con Ctrl + K.' },
+]
 import { planLabel } from '../components/shell/navConfig'
 import EstadoNegocio from '../components/EstadoNegocio'
 
@@ -86,6 +97,8 @@ export default function Dashboard() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [params, setParams] = useSearchParams()
+  const [tourActivo, setTourActivo] = useState(false)
   const { plan, hasFeature } = usePlan()
   const { celebrar } = useHitos()
   const [stats, setStats] = useState({
@@ -166,6 +179,22 @@ export default function Dashboard() {
     fetchPlan()
   }, [])
 
+  // El tour arranca solo la primera vez (cuando ya cargó la pantalla) o al pedirlo desde la Guía.
+  useEffect(() => {
+    if (loading) return undefined
+    if (params.get('tour') !== '1' && tourVisto()) return undefined
+    const t = setTimeout(() => setTourActivo(true), 600)
+    return () => clearTimeout(t)
+  }, [loading, params])
+
+  const terminarTour = () => {
+    setTourActivo(false)
+    if (params.get('tour')) {
+      params.delete('tour')
+      setParams(params, { replace: true })
+    }
+  }
+
   const hora = new Date().getHours()
   const saludo = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches'
   const resumenHoy =
@@ -180,6 +209,7 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
+            data-tour="saludo"
             className="mb-8 flex items-center gap-5"
           >
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-accent-dim overflow-hidden shrink-0 flex items-end justify-center">
@@ -229,6 +259,8 @@ export default function Dashboard() {
             )
           })()}
 
+          <AccionesSugeridas />
+
           {loading ? (
             <SkeletonCards className="mb-8" />
           ) : (
@@ -236,6 +268,7 @@ export default function Dashboard() {
             variants={containerVariants}
             initial="hidden"
             animate="show"
+            data-tour="stats"
             className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8"
           >
             <StatCard
@@ -470,6 +503,7 @@ export default function Dashboard() {
           </motion.div>
         </div>
       </main>
+      <ProductTour pasos={PASOS_TOUR} activo={tourActivo} onTerminar={terminarTour} />
     </div>
   )
 }

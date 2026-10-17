@@ -20,3 +20,19 @@ export function SkeletonCards({ count = 4, className = '' }) {
 }
 
 export default Skeleton;
+
+export function SkeletonList({ filas = 5 }) {
+  return (
+    <div role="status" aria-label="Cargando" className="bg-bg rounded-2xl border border-border divide-y divide-border">
+      {Array.from({ length: filas }, (_, i) => (
+        <div key={i} className="p-4 flex items-center gap-3">
+          <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+          <div className="flex-1">
+            <Skeleton className="h-3.5 w-1/3 mb-2" />
+            <Skeleton className="h-3 w-2/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

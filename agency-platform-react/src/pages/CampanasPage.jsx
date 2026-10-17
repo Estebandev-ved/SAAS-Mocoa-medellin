@@ -7,6 +7,7 @@ import AyudaRapida from '../components/AyudaRapida';
 import EmptyState from '../components/EmptyState';
 import FeedbackMessage from '../components/FeedbackMessage';
 import { mensajeError } from '../utils/errores';
+import { useUndo } from '../context/UndoContext';
 
 const LABEL = 'block text-sm font-semibold text-text mb-2';
 const CONTROL =
@@ -38,6 +39,7 @@ const EJEMPLOS = {
 
 export default function CampanasPage() {
   const navigate = useNavigate();
+  const { diferir } = useUndo();
   const [plan, setPlan] = useState(null);
   const [lista, setLista] = useState(null);
   const [form, setForm] = useState({ nombre: '', mensaje: '', segmento: 'todos', dias: 30, fecha: '' });
@@ -121,13 +123,20 @@ export default function CampanasPage() {
     }
   }
 
-  async function cancelar(id) {
-    try {
-      await api.post(`/campañas/${id}/cancelar`);
-      cargar();
-    } catch (e) {
-      setMsg({ type: 'error', text: mensajeError(e, 'cancelar la campaña') });
-    }
+  // Cancelar con margen para arrepentirse: la campaña se ve cancelada de inmediato, pero el
+  // servidor recibe la orden pasados unos segundos (y mientras tanto puede seguir saliendo).
+  function cancelar(id) {
+    const antes = (lista || []).find((c) => c.id === id)?.estado;
+    const poner = (estado) => setLista((l) => (l || []).map((c) => (c.id === id ? { ...c, estado } : c)));
+    poner('cancelada');
+    diferir({
+      mensaje: 'Campaña cancelada',
+      onDeshacer: () => poner(antes),
+      onConfirmar: async () => {
+        await api.post(`/campañas/${id}/cancelar`);
+        cargar();
+      },
+    });
   }
 
   return (

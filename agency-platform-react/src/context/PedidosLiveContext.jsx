@@ -9,34 +9,65 @@ import { Character } from '../components/Illustration';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3002';
 
-const PedidosLiveContext = createContext({ conectado: false, eventos: 0 });
+const PedidosLiveContext = createContext({ conectado: false, eventos: 0, pendientes: 0, alertaSuscripcion: null, suscribir: () => () => {}, refrescarPendientes: () => {} });
 export const usePedidosLive = () => useContext(PedidosLiveContext);
 
-// Pitido corto de dos notas, generado con Web Audio (sin archivo de audio que
-// mantener). Solo suena para pedidos con pago ya verificado — el momento real
-// de "tienes que actuar ya", como el aviso de un pedido nuevo en Rappi.
-function reproducirAviso() {
+// Sonidos generados con Web Audio (sin archivos de audio que mantener). Cada tipo de
+// evento suena distinto para que el dueño sepa qué pasó sin mirar la pantalla:
+//  - pago: dos notas ascendentes (hay dinero, prepara el pedido)
+//  - pedido: una nota media (nuevo pedido, aún sin pagar)
+//  - mensaje: golpecito suave
+//  - alerta: tres notas graves (cliente pide asesor / algo requiere atención)
+const SONIDOS = {
+  pago: { notas: [880, 1174.66], paso: 0.14, vol: 0.22, vibra: [180, 80, 180] },
+  pedido: { notas: [660], paso: 0.14, vol: 0.14, vibra: [120] },
+  mensaje: { notas: [988], paso: 0.1, vol: 0.08, vibra: [60] },
+  alerta: { notas: [523.25, 440, 523.25], paso: 0.16, vol: 0.2, vibra: [250, 100, 250, 100, 250] },
+};
+
+const CLAVE_SONIDO = 'noma_sonido_activo';
+export const sonidoActivo = () => {
+  try { return localStorage.getItem(CLAVE_SONIDO) !== '0'; } catch { return true; }
+};
+export const guardarSonidoActivo = (v) => {
+  try { localStorage.setItem(CLAVE_SONIDO, v ? '1' : '0'); } catch { /* sin almacenamiento */ }
+};
+
+export function reproducirAviso(tipo = 'pago') {
+  if (!sonidoActivo()) return;
+  const cfg = SONIDOS[tipo] || SONIDOS.pago;
+  try {
+    if (navigator.vibrate) navigator.vibrate(cfg.vibra);
+  } catch { /* vibración no disponible */ }
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return;
     const ctx = new Ctx();
-    [880, 1174.66].forEach((freq, i) => {
+    cfg.notas.forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
       osc.frequency.value = freq;
-      const start = ctx.currentTime + i * 0.14;
+      const start = ctx.currentTime + i * cfg.paso;
       gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.22, start + 0.02);
+      gain.gain.linearRampToValueAtTime(cfg.vol, start + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
       osc.connect(gain).connect(ctx.destination);
       osc.start(start);
       osc.stop(start + 0.24);
     });
-    setTimeout(() => ctx.close(), 900);
+    setTimeout(() => ctx.close(), 1200);
   } catch {
     /* el navegador puede bloquear audio sin interacción previa: no rompe nada */
   }
+}
+
+// Insignia en el ícono de la app instalada (pedidos que esperan acción del dueño).
+function ponerInsignia(n) {
+  try {
+    if (n > 0 && navigator.setAppBadge) navigator.setAppBadge(n);
+    else if (navigator.clearAppBadge) navigator.clearAppBadge();
+  } catch { /* no soportado */ }
 }
 
 const formatCOP = (n) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -49,6 +80,31 @@ export function PedidosLiveProvider({ children }) {
   const [eventos, setEventos] = useState(0); // sube con cada pedido nuevo/confirmado: el menú lo usa para refrescar su contador
   const [avisos, setAvisos] = useState([]); // pedido_confirmado: acción real
   const [notas, setNotas] = useState([]); // nuevo_pedido: solo informativo
+  const [pendientes, setPendientes] = useState(0); // pedidos que esperan acción del dueño
+  const [alertaSuscripcion, setAlertaSuscripcion] = useState(null);
+  const oyentes = useRef(new Map()); // evento -> Set<fn>: las pantallas se refrescan en vivo
+
+  const emitirLocal = useCallback((evento, data) => {
+    oyentes.current.get(evento)?.forEach((fn) => {
+      try { fn(data); } catch { /* un oyente roto no afecta a los demás */ }
+    });
+  }, []);
+
+  const suscribir = useCallback((evento, fn) => {
+    if (!oyentes.current.has(evento)) oyentes.current.set(evento, new Set());
+    oyentes.current.get(evento).add(fn);
+    return () => oyentes.current.get(evento)?.delete(fn);
+  }, []);
+
+  const refrescarPendientes = useCallback(async () => {
+    try {
+      const r = await api.get('/pedidos');
+      const lista = r.data?.pedidos || [];
+      setPendientes(lista.filter((p) => p.estado === 'pago_enviado' || p.estado === 'pago_confirmado').length);
+    } catch { /* sin conexión: se conserva el último valor */ }
+  }, []);
+
+  useEffect(() => { ponerInsignia(pendientes); }, [pendientes]);
 
   useEffect(() => {
     if (!token || !user) {
@@ -61,25 +117,38 @@ export function PedidosLiveProvider({ children }) {
     const socket = io(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'] });
     socketRef.current = socket;
 
-    socket.on('connect', () => setConectado(true));
+    socket.on('connect', () => { setConectado(true); refrescarPendientes(); });
     socket.on('disconnect', () => setConectado(false));
 
     socket.on('nuevo_pedido', (data) => {
+      reproducirAviso('pedido');
+      emitirLocal('pedidos', data);
+      refrescarPendientes();
       const id = `n-${data.pedido_id}-${Date.now()}`;
       setEventos((n) => n + 1);
       setNotas((prev) => [...prev, { ...data, id }]);
       setTimeout(() => setNotas((prev) => prev.filter((n) => n.id !== id)), 6000);
     });
 
+    socket.on('nuevo_mensaje', (data) => {
+      if (data?.tipo === 'salida') return;
+      if (data?.requiere_humano || data?.atencion_humana) reproducirAviso('alerta');
+      else reproducirAviso('mensaje');
+      emitirLocal('mensajes', data);
+    });
+
+    socket.on('subscription_alert', (data) => setAlertaSuscripcion(data));
+
     socket.on('pedido_confirmado', (data) => {
-      reproducirAviso();
+      reproducirAviso('pago');
       setEventos((n) => n + 1);
-      try { navigator.vibrate?.([120, 60, 120]); } catch { /* sin vibración: no pasa nada */ }
+      emitirLocal('pedidos', data);
+      refrescarPendientes();
       setAvisos((prev) => (prev.some((a) => a.pedido_id === data.pedido_id) ? prev : [...prev, data]));
     });
 
     return () => socket.disconnect();
-  }, [token, user]);
+  }, [token, user, emitirLocal, refrescarPendientes]);
 
   const cerrarAviso = useCallback((pedidoId) => {
     setAvisos((prev) => prev.filter((a) => a.pedido_id !== pedidoId));
@@ -89,6 +158,7 @@ export function PedidosLiveProvider({ children }) {
     async (pedidoId) => {
       try {
         await api.patch(`/pedidos/${pedidoId}/estado`, { estado: 'en_preparacion' });
+        refrescarPendientes();
       } catch (e) {
         // Si ya lo movieron desde otra pestaña o el estado cambió, no bloquea: se cierra igual
       } finally {
@@ -96,11 +166,11 @@ export function PedidosLiveProvider({ children }) {
         navigate('/pedidos');
       }
     },
-    [cerrarAviso, navigate]
+    [cerrarAviso, navigate, refrescarPendientes]
   );
 
   return (
-    <PedidosLiveContext.Provider value={{ conectado, eventos }}>
+    <PedidosLiveContext.Provider value={{ conectado, eventos, pendientes, alertaSuscripcion, suscribir, refrescarPendientes }}>
       {children}
 
       {/* Avisos suaves de "nuevo pedido, esperando pago": informativos, se van solos */}
@@ -126,7 +196,7 @@ export function PedidosLiveProvider({ children }) {
       </div>
 
       {/* Avisos con acción real: pago verificado, hay que preparar el pedido */}
-      <div className="fixed bottom-6 right-6 z-[60] flex flex-col-reverse gap-3">
+      <div className="fixed right-4 sm:right-6 z-[60] flex flex-col-reverse gap-3" style={{ bottom: 'calc(var(--nav-inferior, 0px) + 16px)' }}>
         <AnimatePresence>
           {avisos.map((a, i) => (
             <PedidoConfirmadoCard

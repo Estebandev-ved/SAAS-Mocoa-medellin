@@ -19,11 +19,11 @@
 
 ### 🛠️ Lo hace la IA (siguiente, en este orden)
 - [ ] **Verificar `npx vite build` de `agency-platform-react`** tras `npm install` (a una máquina le faltaba `recharts`), antes de mezclar `caja-emprendedor` a `main`.
-- [ ] **Mostrar `subscription_alert` en el dashboard** ("tu plan vence en N días") y decidir cómo avisar antes de que venza el pago único de Efipay.
+- [x] **Mostrar `subscription_alert` en el dashboard** ("tu plan vence en N días") y decidir cómo avisar antes de que venza el pago único de Efipay.
 - [ ] **Texto `ANTIGRAVITY` suelto**: `Ecosystem.jsx` (dibujo) y el título de `AdminLayout.jsx` siguen en mayúsculas; decidir si pasan a minúsculas como el logo nuevo.
 - [ ] **Pulir el panel admin en celular y escritorio**: solo se revisaron Resumen y Prospectos; faltan Negocios, Suscripciones, Logs, Inteligencia, WhatsApps y Configuración (verificar a 375px, sin scroll horizontal) y llevarlos al estilo del resto del sitio.
 - [ ] **Auditar el uso en celular (375px) de las pantallas del dueño**: Dashboard (menú lateral → cajón/menú inferior), Pedidos, Conversaciones, Productos, Ajustes, Suscripción; botones ≥44px, modales, `safe-area-inset`.
-- [ ] **PWA fase 2/3**: botón "Activar avisos" en Ajustes → Notificaciones (backend de push ya hecho), pantalla "sin conexión", insignia de pedidos pendientes, menú inferior en móvil.
+- [x] **PWA fase 2/3**: botón "Activar avisos" en Ajustes → Notificaciones (backend de push ya hecho), pantalla "sin conexión", insignia de pedidos pendientes, menú inferior en móvil.
 - [ ] **Ramas viejas**: `admin-prospectos-vbsj7w` y `caja-emprendedor` ya están dentro de `main`; `pwa-y-precios`, `redisenio-noma` y `railway/fix-deploy-d4f764` tienen commits que `main` no tiene (revisar antes de borrar). Cerrar los PR #1 y #3 si ya no hacen falta (decisión del socio).
 - [ ] Probar el formulario/`/admin` contra MySQL real cuando haya una base disponible; probar `nginx.conf`/`docker-compose` en un servidor real.
 - [ ] (Decisión del socio, no urgente) **Plan anual con descuento** — `Pricing.jsx` ya tiene el toggle `isAnnual`, hoy sin cobro real.
@@ -38,6 +38,20 @@
 - [x] **Dashboard**: sin menú duplicado, skeletons en las métricas, checklist de 2.ª etapa colapsada, tarjetas con elevación, foco visible global.
 - [x] Avisos de pedido en vivo: vibración en celular y contador en el menú.
 - [ ] Pendiente: wizard de primer uso (un paso por pantalla), sparklines en métricas (el backend no entrega serie diaria), deslizar para aceptar/entregar pedidos, pantalla sin conexión, quitar flechas "atrás" redundantes de cada página, revisar en oscuro las páginas con colores fijos (`#FDECEA`, etc.), definir `VITE_WHATSAPP_VENTAS` en Vercel, probar con datos reales (solo se probó con API simulada).
+
+## ✅ 16 oct — Mejoras interactivas (móvil + tiempo real)
+
+- [x] **Integración con el layout compartido** (`AppShell`, rama `caja-emprendedor`): se descartaron mis duplicados (menú inferior, paleta Ctrl+K, tema) y se usan los del shell. Se añadió insignia de pedidos en el ícono de la PWA, `BottomSheet` reutilizable (el detalle de pedido es hoja inferior en celular) y `alto-pantalla` para el chat.
+- [x] **Tiempo real**: `PedidosLiveContext` con sonidos y vibración distintos por evento (pago / pedido / mensaje / alerta), silenciable, bus de eventos (`suscribir`) para que Pedidos, Conversaciones y "Qué hacer ahora" se refresquen solos, y `subscription_alert` → banner global de renovación (`BannersGlobales`, también avisa "sin conexión").
+- [x] **Avisos push**: botón "Activar avisos" en Ajustes → Notificaciones (`ActivarAvisos`), `sw.js` v2 con `push`/`notificationclick` y respaldo `offline.html`. Bug corregido: la URL del aviso era `/dashboard/pedidos` (no existe) → `/pedidos`. **Sigue apagado hasta poner `PUSH_VAPID_PUBLIC_KEY/PRIVATE_KEY` en Railway.**
+- [x] **Acciones rápidas**: Pedidos con botón "Aprobar pago/Avanzar" por fila, tarjetas con deslizar-para-avanzar en móvil, atajos `/` y `r`, `?q=`/`?estado=` en la URL; Conversaciones con respuestas rápidas (editables, guardadas en el dispositivo).
+- [x] **Optimista + Deshacer** (`UndoContext`): avanzar pedido, encender/apagar automatización y cancelar campaña cambian al instante y el servidor se entera a los 6 s; "Deshacer" evita la llamada; si falla, revierte y avisa.
+- [x] **Probar mi bot** (`BotPreview`): chat con hilo de contexto (el backend `/bot/test` ahora acepta `historial`, saneado a 10 turnos).
+- [x] **Dashboard accionable** (`AccionesSugeridas`): comprobantes por revisar, pagados por preparar, clientes esperando persona, poco stock, clientes inactivos → cada uno lleva a resolverlo. **Tour con foco** (`ProductTour`, 1.ª visita o `/dashboard?tour=1`, botón en la Guía).
+- [x] **Pulido**: skeletons (`Skeleton`), `prefers-reduced-motion`, `:focus-visible`, hitos nuevos (primera automatización, primer cupón).
+- Verificado: `vite build` OK; recorrido con Playwright a 375px y 1280px con la API simulada (undo no llama al servidor, confirmar sí; paleta, tour, tema oscuro, bot de prueba). `test/unit`: mismas 4 fallas que antes (billing, caja, dbLimit, efipay — no tocadas).
+- [ ] **Sin probar con datos reales**: sockets en vivo, push real (faltan claves VAPID), `/bot/test` con Gemini real, sonido en iOS (exige un toque previo).
+- [ ] **Pendiente / no hecho**: seguimiento del domiciliario ya tiene mapa en vivo (`TrackingCliente`) pero falta ETA y aviso por WhatsApp "va en camino"; el tema oscuro remapea `bg-white` y bordes fijos, pero algunas pantallas con colores hex sueltos pueden verse a medias (revisar una a una); auditoría 375px de las pantallas admin; botones ≥44px en las pantallas que no se tocaron.
 
 ---
 

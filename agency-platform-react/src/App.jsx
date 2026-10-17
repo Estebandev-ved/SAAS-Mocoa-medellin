@@ -6,6 +6,7 @@ import { BrandingProvider } from './context/BrandingContext';
 import { AuthProvider } from './context/AuthContext';
 import { HitosProvider } from './context/HitosContext';
 import { PedidosLiveProvider } from './context/PedidosLiveContext';
+import { UndoProvider } from './context/UndoContext';
 
 // Components
 import Navbar from './components/Navbar';
@@ -104,6 +105,7 @@ function App() {
           <BrandingProvider>
             <HitosProvider>
             <PedidosLiveProvider>
+            <UndoProvider>
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
@@ -153,6 +155,7 @@ function App() {
               <Route path="/cookies" element={<LegalPage />} />
             </Routes>
             <CookieBanner />
+            </UndoProvider>
             </PedidosLiveProvider>
             </HitosProvider>
           </BrandingProvider>

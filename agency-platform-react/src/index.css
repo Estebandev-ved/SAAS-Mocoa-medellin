@@ -292,3 +292,33 @@
 @media (prefers-reduced-motion: reduce) {
   .noma-zzz { animation: none; opacity: 1; }
 }
+
+/* ─── Movimiento reducido (todo el panel) ─── */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Alto de la barra inferior del celular (AppShell): los avisos flotantes se apilan por encima */
+:root { --nav-inferior: 0px; }
+@media (max-width: 1023px) {
+  :root { --nav-inferior: calc(64px + env(safe-area-inset-bottom)); }
+  /* Pantallas de alto completo (chat): barra superior 56px + hueco inferior 96px del AppShell */
+  .alto-pantalla { height: calc(100dvh - 56px - 96px - env(safe-area-inset-top)); }
+}
+@media (min-width: 1024px) {
+  .alto-pantalla { height: 100dvh; }
+}
+
+/* Tema oscuro: utilidades fijas que las variables no cubren */
+:root[data-theme='dark'] .border-\[\#C9C9C9\] { border-color: var(--border); }
+:root[data-theme='dark'] .bg-\[\#FDECEA\] { background-color: rgba(239, 83, 80, 0.14); }
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] textarea,
+:root[data-theme='dark'] select { color: var(--text); }
+:root[data-theme='dark'] input::placeholder,
+:root[data-theme='dark'] textarea::placeholder { color: var(--muted); }

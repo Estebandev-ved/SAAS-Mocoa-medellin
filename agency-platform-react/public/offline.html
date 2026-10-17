@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#E53935" />
+  <title>Sin conexión · Antigravity</title>
+  <style>
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#fff;color:#1a1a1a;font-family:Inter,system-ui,sans-serif;text-align:center;padding:24px}
+    main{max-width:360px}
+    .ico{width:72px;height:72px;border-radius:20px;background:#FDECEA;color:#C62828;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 20px}
+    h1{font-size:22px;margin:0 0 8px}
+    p{color:#666;line-height:1.6;margin:0 0 20px}
+    button{height:48px;padding:0 24px;border:0;border-radius:12px;background:#C62828;color:#fff;font-weight:600;font-size:15px;cursor:pointer}
+    @media (prefers-color-scheme:dark){body{background:#0f0f10;color:#f2f2f2}p{color:#a3a3a8}.ico{background:rgba(239,83,80,.16)}}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="ico" aria-hidden="true">📡</div>
+    <h1>Sin conexión</h1>
+    <p>No hay internet en este momento. Tu bot sigue atendiendo en el servidor; aquí verás los pedidos nuevos apenas vuelva la señal.</p>
+    <button onclick="location.reload()">Reintentar</button>
+  </main>
+  <script>addEventListener('online',function(){location.reload()})</script>
+</body>
+</html>

@@ -5,10 +5,10 @@
 //  - Navegaciones: red primero (toma lo recién desplegado), con el index.html cacheado
 //    como respaldo si no hay señal, para que la app abra en vez de mostrar el dinosaurio.
 //  - /assets/* (nombres con hash, inmutables) e íconos: caché primero.
-const VERSION = 'noma-shell-v1';
+const VERSION = 'noma-shell-v2';
 
 self.addEventListener('install', (event) => {
-    event.waitUntil(caches.open(VERSION).then((c) => c.addAll(['/', '/icons/noma-192.png'])).catch(() => {}));
+    event.waitUntil(caches.open(VERSION).then((c) => c.addAll(['/', '/offline.html', '/icons/noma-192.png'])).catch(() => {}));
     self.skipWaiting();
 });
 
@@ -34,7 +34,7 @@ self.addEventListener('fetch', (event) => {
                     caches.open(VERSION).then((c) => c.put('/', copy)).catch(() => {});
                     return res;
                 })
-                .catch(() => caches.match('/'))
+                .catch(() => caches.match('/').then((r) => r || caches.match('/offline.html')))
         );
         return;
     }
@@ -54,4 +54,37 @@ self.addEventListener('fetch', (event) => {
             )
         );
     }
+});
+
+// ── Avisos Web Push (pedidos y pagos) ──
+// El backend manda { title, body, tag, url }. `tag` agrupa avisos del mismo pedido para no apilarlos.
+self.addEventListener('push', (event) => {
+    let data = {};
+    try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data && event.data.text() }; }
+    event.waitUntil(
+        self.registration.showNotification(data.title || 'Antigravity', {
+            body: data.body || '',
+            tag: data.tag,
+            icon: '/icons/noma-192.png',
+            badge: '/icons/noma-192.png',
+            vibrate: [200, 100, 200],
+            data: { url: data.url || '/pedidos' },
+        })
+    );
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = (event.notification.data && event.notification.data.url) || '/pedidos';
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+            for (const w of wins) {
+                if ('focus' in w) {
+                    if ('navigate' in w) w.navigate(url).catch(() => {});
+                    return w.focus();
+                }
+            }
+            return self.clients.openWindow(url);
+        })
+    );
 });

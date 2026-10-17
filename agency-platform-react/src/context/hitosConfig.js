@@ -32,6 +32,18 @@ export const HITOS = {
     mensaje: 'Tu primer pedido ya llegó a la puerta del cliente. Mateo lo tiene bajo control.',
     accion: { label: 'Ver domicilios', to: '/domicilios' },
   },
+  automatizacion: {
+    personaje: 'nova',
+    titulo: '¡Encendiste tu primera automatización!',
+    mensaje: 'Tu bot ahora trabaja también cuando no estás. Revisa el historial para ver qué hizo por ti.',
+    accion: null,
+  },
+  cupon: {
+    personaje: 'sofia',
+    titulo: '¡Creaste tu primer cupón!',
+    mensaje: 'Compártelo en una campaña o en tus redes: el cliente solo escribe el código al pedir.',
+    accion: { label: 'Crear una campaña', to: '/campanas' },
+  },
   cien_mensajes: {
     personaje: 'lucia',
     titulo: '¡100 mensajes atendidos!',

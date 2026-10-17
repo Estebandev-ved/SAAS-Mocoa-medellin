@@ -231,6 +231,12 @@ router.put('/config/agentes', async (req, res) => {
 router.post('/test', async (req, res) => {
     try {
         const { mensaje } = req.body;
+        // Historial opcional de la vista previa (chat de prueba): solo roles conocidos, texto corto
+        // y los últimos 10 turnos, para que el bot responda con el hilo de la conversación.
+        const historial = (Array.isArray(req.body.historial) ? req.body.historial : [])
+            .filter((m) => m && (m.rol === 'cliente' || m.rol === 'bot') && typeof m.contenido === 'string' && m.contenido.trim())
+            .slice(-10)
+            .map((m) => ({ rol: m.rol, contenido: m.contenido.slice(0, 500) }));
 
         if (!mensaje || mensaje.trim().length === 0) {
             return res.status(400).json({ error: 'Mensaje es requerido' });
@@ -242,7 +248,7 @@ router.post('/test', async (req, res) => {
 
         // Use Gemini directly (same as messageHandler)
         const gemini = require('../../instance-manager/agents/gemini');
-        const resultado = await gemini.procesarMensaje(mensaje, req.negocioId, 0, []);
+        const resultado = await gemini.procesarMensaje(mensaje, req.negocioId, 0, historial);
 
         res.json({
             mensaje_enviado: mensaje,

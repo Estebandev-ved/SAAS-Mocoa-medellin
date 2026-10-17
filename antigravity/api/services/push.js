@@ -24,14 +24,14 @@ function construirPayload(evento, data = {}) {
             title: '💰 Pago confirmado',
             body: [`${cliente} pagó`, total, num].filter(Boolean).join(' · ') + '. A prepararlo.',
             tag: `pedido-${data.pedido_id || data.numero_pedido || 'x'}`,
-            url: '/dashboard/pedidos',
+            url: '/pedidos',
         };
     }
     return {
         title: '🛎️ Nuevo pedido',
         body: [`${cliente}`, total, num].filter(Boolean).join(' · '),
         tag: `pedido-${data.pedido_id || data.numero_pedido || 'x'}`,
-        url: '/dashboard/pedidos',
+        url: '/pedidos',
     };
 }
 
