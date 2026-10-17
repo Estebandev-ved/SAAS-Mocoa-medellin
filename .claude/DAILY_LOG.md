@@ -30,6 +30,17 @@
 
 ---
 
+## ✅ 16 oct — Mejoras visuales y de experiencia
+
+- [x] **Layout compartido `AppShell`** (`components/shell/`): todas las pantallas del dueño estaban sin menú salvo el Dashboard (y en celular ninguna). Ahora hay menú lateral **agrupado y colapsable** (Operación / Clientes / Tu bot / Cuenta, configurado en `navConfig.js`), **barra inferior + cajón "Más"** en celular, contador de pedidos por atender, **paleta Ctrl+K**, transición entre pantallas, enlace "saltar al contenido" y redirección a `/login` sin sesión.
+- [x] **Tema oscuro** (`ThemeContext`, claro/oscuro/sistema, sin parpadeo por el script de `index.html`); `BrandingContext` ahora obedece a ese tema. Personajes con fondo suave en oscuro (`.noma-char`).
+- [x] **Landing**: hero nuevo con título de beneficio ("Tu WhatsApp vende solo, las 24 horas"), **mockup animado de chat** (`ChatMockup`), una CTA primaria, quitada la pantalla de carga falsa de 2 s, barra fija "Probar gratis" en celular y botón flotante de WhatsApp (solo aparece si se define `VITE_WHATSAPP_VENTAS`, p. ej. `573001234567`).
+- [x] **Dashboard**: sin menú duplicado, skeletons en las métricas, checklist de 2.ª etapa colapsada, tarjetas con elevación, foco visible global.
+- [x] Avisos de pedido en vivo: vibración en celular y contador en el menú.
+- [ ] Pendiente: wizard de primer uso (un paso por pantalla), sparklines en métricas (el backend no entrega serie diaria), deslizar para aceptar/entregar pedidos, pantalla sin conexión, quitar flechas "atrás" redundantes de cada página, revisar en oscuro las páginas con colores fijos (`#FDECEA`, etc.), definir `VITE_WHATSAPP_VENTAS` en Vercel, probar con datos reales (solo se probó con API simulada).
+
+---
+
 ## ✅ 11 oct — Auditoría de Automatizaciones
 
 - [x] La página solo tenía personalidad + agentes; **las 5 automatizaciones reales** (recordatorio de pago, reseña, stock bajo, reenganche, reporte semanal) existían en el backend sin pantalla. Nueva sección en `AutomatizacionesPage` (activar, configurar, bloqueo por plan; todas arrancan apagadas). El Dashboard mostraba 4 automatizaciones inexistentes y los agentes siempre "Inactivo" (leía campos que el backend no manda): corregido.

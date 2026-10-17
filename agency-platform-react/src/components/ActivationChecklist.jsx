@@ -9,6 +9,7 @@ import { Character } from './Illustration';
 export default function ActivationChecklist({ user, onActivando }) {
   const navigate = useNavigate();
   const [estado, setEstado] = useState(null); // null = cargando
+  const [abierto, setAbierto] = useState(false); // 2.ª etapa (opcional): empieza colapsada para no estorbar
 
   useEffect(() => {
     let vivo = true;
@@ -117,10 +118,26 @@ export default function ActivationChecklist({ user, onActivando }) {
   const pct = Math.round((completados / lista.length) * 100);
   const trialSinIniciar = !baseCompleta && !estado.whatsapp && !user?.trial_hasta;
 
+  // Base lista: barra compacta (un clic la despliega). Lo urgente deja de ocupar media pantalla.
+  if (baseCompleta && !abierto) {
+    return (
+      <section aria-label="Saca más provecho a tu bot" className="bg-bg border border-border rounded-2xl px-5 py-3 mb-6 flex items-center gap-4 flex-wrap">
+        <span className="w-9 h-9 rounded-full bg-success text-white flex items-center justify-center shrink-0"><Check size={18} /></span>
+        <div className="flex-1 min-w-[200px]">
+          <p className="text-sm font-semibold text-text">¡Tu bot ya está activo!</p>
+          <p className="text-xs text-muted">Siguiente paso opcional: {siguiente?.titulo.toLowerCase()} ({completados} de {lista.length} listos)</p>
+        </div>
+        <button onClick={() => setAbierto(true)} className="h-10 px-4 rounded-xl bg-bg hover:bg-bg2 text-text text-sm font-semibold border border-border cursor-pointer">
+          Ver pasos
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section
       aria-label="Activa tu bot"
-      className="bg-white border border-border rounded-2xl p-6 mb-8 flex flex-col md:flex-row gap-6 items-center md:items-stretch"
+      className="bg-bg border border-border rounded-2xl p-6 mb-8 flex flex-col md:flex-row gap-6 items-center md:items-stretch"
     >
       <div className="hidden md:flex items-end shrink-0 -mb-6 -ml-2">
         <Character name="nova" height={190} alt="Nova te guía para activar tu bot" />
@@ -140,7 +157,7 @@ export default function ActivationChecklist({ user, onActivando }) {
         </p>
 
         <div
-          className="h-2 rounded-full bg-[#F0F0F0] overflow-hidden mb-5"
+          className="h-2 rounded-full bg-bg3 overflow-hidden mb-5"
           role="progressbar"
           aria-valuenow={pct}
           aria-valuemin={0}
@@ -156,8 +173,8 @@ export default function ActivationChecklist({ user, onActivando }) {
             return (
               <li
                 key={p.id}
-                className={`flex items-center gap-4 p-3 rounded-xl border ${
-                  esSiguiente ? 'border-accent/40 bg-[#FDECEA]' : 'border-border bg-white'
+                className={`flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-3 p-3 rounded-xl border ${
+                  esSiguiente ? 'border-accent/40 bg-accent-dim' : 'border-border bg-bg'
                 }`}
               >
                 <span
@@ -174,7 +191,7 @@ export default function ActivationChecklist({ user, onActivando }) {
                 {esSiguiente && (
                   <button
                     onClick={() => navigate(p.to)}
-                    className="h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold inline-flex items-center gap-2 border-none cursor-pointer transition-colors shrink-0"
+                    className="h-10 px-4 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 border-none cursor-pointer transition-colors shrink-0 w-full sm:w-auto"
                   >
                     {p.cta} <ArrowRight size={16} />
                   </button>
@@ -182,7 +199,7 @@ export default function ActivationChecklist({ user, onActivando }) {
                 {!p.hecho && !esSiguiente && (
                   <button
                     onClick={() => navigate(p.to)}
-                    className="h-10 px-4 rounded-xl bg-white hover:bg-bg2 text-text text-sm font-semibold border border-[#C9C9C9] cursor-pointer transition-colors shrink-0"
+                    className="h-10 px-4 rounded-xl bg-bg hover:bg-bg2 text-text text-sm font-semibold border border-border cursor-pointer transition-colors shrink-0 w-full sm:w-auto"
                   >
                     {p.cta}
                   </button>

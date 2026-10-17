@@ -1,6 +1,7 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ThemeProvider } from './context/ThemeContext';
+import AppShell from './components/shell/AppShell';
 import { BrandingProvider } from './context/BrandingContext';
 import { AuthProvider } from './context/AuthContext';
 import { HitosProvider } from './context/HitosContext';
@@ -44,7 +45,7 @@ import MultiChannelPage from './pages/MultiChannelPage';
 import VoiceBotPage from './pages/VoiceBotPage';
 import CajaPage from './pages/CajaPage';
 import ErrorBoundary from './components/ErrorBoundary';
-import Illustration from './components/Illustration';
+import FloatingActions from './components/FloatingActions';
 import LegalPage from './pages/LegalPage';
 import CookieBanner from './components/CookieBanner';
 
@@ -73,68 +74,31 @@ const Lazy = ({ children }) => (
   <Suspense fallback={<Cargando />}><LegacyScope>{children}</LegacyScope></Suspense>
 );
 
-const LoadingScreen = () => (
-  <motion.div 
-    exit={{ opacity: 0 }}
-    className="fixed inset-0 z-[1000] bg-bg flex items-center justify-center flex-col gap-6"
-  >
-    <Illustration name="carga" size={160} alt="Cargando" />
-    <div className="flex flex-col items-center gap-2">
-      <div className="font-mono text-[10px] tracking-[0.4em] text-accent uppercase">Iniciando Motor IA</div>
-      <div className="w-48 h-1 bg-border rounded-full overflow-hidden">
-        <motion.div 
-          initial={{ x: '-100%' }}
-          animate={{ x: '100%' }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          className="w-full h-full bg-accent"
-        />
-      </div>
-    </div>
-  </motion.div>
+const HomePage = () => (
+  <div className="min-h-screen bg-bg selection:bg-accent selection:text-bg">
+    <Navbar />
+    <main>
+      <Hero />
+      <Ticker />
+      <Features />
+      <Ecosystem />
+      <InteractiveDemo />
+      <ROISimulator />
+      <Cases />
+      <Process />
+      <Personajes />
+      <Pricing />
+      <Contact />
+    </main>
+    <Footer />
+    <FloatingActions />
+  </div>
 );
-
-const HomePage = () => {
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 2000);
-        return () => clearTimeout(timer);
-    }, []);
-
-    return (
-        <AnimatePresence>
-            {loading ? (
-                <LoadingScreen key="loader" />
-            ) : (
-                <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="min-h-screen bg-bg selection:bg-accent selection:text-bg"
-                >
-                    <Navbar />
-                    <main>
-                        <Hero />
-                        <Ticker />
-                        <Features />
-                        <Ecosystem />
-                        <InteractiveDemo />
-                        <ROISimulator />
-                        <Cases />
-                        <Process />
-                        <Personajes />
-                        <Pricing />
-                        <Contact />
-                    </main>
-                    <Footer />
-                </motion.div>
-            )}
-        </AnimatePresence>
-    );
-};
 
 function App() {
   return (
     <ErrorBoundary>
+      <ThemeProvider>
       <BrowserRouter>
         <AuthProvider>
           <BrandingProvider>
@@ -163,25 +127,27 @@ function App() {
               <Route path="/delivery/portal" element={<Lazy><PortalDomiciliario /></Lazy>} />
               <Route path="/delivery/terminos" element={<Lazy><TerminosDomiciliarioPage /></Lazy>} />
               <Route path="/delivery/track/:token" element={<Lazy><TrackingCliente /></Lazy>} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/conversaciones" element={<ConversacionesPage />} />
-              <Route path="/pedidos" element={<PedidosPage />} />
-              <Route path="/clientes" element={<ClientesPage />} />
-              <Route path="/automatizaciones" element={<AutomatizacionesPage />} />
-              <Route path="/guia" element={<GuiaPage />} />
-              <Route path="/cupones" element={<CuponesPage />} />
-              <Route path="/campanas" element={<CampanasPage />} />
-              <Route path="/suscripcion" element={<SuscripcionPage />} />
-              <Route path="/caja" element={<CajaPage />} />
-              <Route path="/domicilios" element={<DomiciliosPage />} />
-              <Route path="/productos" element={<ProductosPage />} />
-              <Route path="/restaurantes" element={<RestaurantesPage />} />
-              <Route path="/monitoreo" element={<MonitoreoPage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/multichannel" element={<MultiChannelPage />} />
-              <Route path="/voice" element={<VoiceBotPage />} />
-              <Route path="/whatsapp" element={<WhatsAppConnectionPage />} />
-              <Route path="/ajustes" element={<AjustesPage />} />
+              <Route element={<AppShell />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/conversaciones" element={<ConversacionesPage />} />
+                <Route path="/pedidos" element={<PedidosPage />} />
+                <Route path="/clientes" element={<ClientesPage />} />
+                <Route path="/automatizaciones" element={<AutomatizacionesPage />} />
+                <Route path="/guia" element={<GuiaPage />} />
+                <Route path="/cupones" element={<CuponesPage />} />
+                <Route path="/campanas" element={<CampanasPage />} />
+                <Route path="/suscripcion" element={<SuscripcionPage />} />
+                <Route path="/caja" element={<CajaPage />} />
+                <Route path="/domicilios" element={<DomiciliosPage />} />
+                <Route path="/productos" element={<ProductosPage />} />
+                <Route path="/restaurantes" element={<RestaurantesPage />} />
+                <Route path="/monitoreo" element={<MonitoreoPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/multichannel" element={<MultiChannelPage />} />
+                <Route path="/voice" element={<VoiceBotPage />} />
+                <Route path="/whatsapp" element={<WhatsAppConnectionPage />} />
+                <Route path="/ajustes" element={<AjustesPage />} />
+              </Route>
               <Route path="/terminos" element={<LegalPage />} />
               <Route path="/privacidad" element={<LegalPage />} />
               <Route path="/cookies" element={<LegalPage />} />
@@ -192,6 +158,7 @@ function App() {
           </BrandingProvider>
         </AuthProvider>
       </BrowserRouter>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
