@@ -1,9 +1,13 @@
+import { familiaDe } from './tiposNegocio';
+
 // Qué herramientas ve cada tipo de negocio. Una sola tabla: para dar o quitar una herramienta a un
 // tipo se edita aquí y el menú, las rutas y los atajos se ajustan solos.
 //
 // Regla: el núcleo (pedidos, conversaciones, productos, clientes, campañas, automatizaciones,
 // suscripción) lo ven TODOS. Aquí solo van las herramientas que tienen sentido para un giro concreto.
-// Los tipos son los del registro (ENUM tipo_negocio). Un tipo desconocido o vacío recibe el núcleo.
+// Las capacidades se definen por FAMILIA (restaurante, retail, servicios…): cualquier tipo del
+// catálogo (granizados, pizzería, ropa…) hereda las de su familia (ver utils/tiposNegocio.js).
+// Un tipo desconocido o vacío recibe solo el núcleo.
 export const TIPOS_CON_DOMICILIO = ['restaurante', 'retail'];
 
 export const CAPACIDADES = {
@@ -13,14 +17,6 @@ export const CAPACIDADES = {
   domicilios: TIPOS_CON_DOMICILIO,
 };
 
-export const puede = (capacidad, tipoNegocio) => (CAPACIDADES[capacidad] || []).includes(tipoNegocio);
+export const puede = (capacidad, tipoNegocio) => (CAPACIDADES[capacidad] || []).includes(familiaDe(tipoNegocio));
 
-export const ETIQUETA_TIPO = {
-  restaurante: 'Restaurante',
-  retail: 'Tienda',
-  servicios: 'Servicios',
-  salud: 'Salud',
-  inmobiliaria: 'Inmobiliaria',
-  educacion: 'Educación',
-  otro: 'Otro',
-};
+export { ETIQUETA_TIPO } from './tiposNegocio';

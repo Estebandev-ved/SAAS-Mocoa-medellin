@@ -29,9 +29,10 @@ test('las columnas de respuesta no incluyen secretos', () => {
     assert.ok(!/password|secret|token|totp/i.test(COLUMNAS_PERFIL));
 });
 
-test('tipo_negocio es un ENUM: vacío pasa a null y valores desconocidos se rechazan', () => {
+test('tipo_negocio: vacío pasa a null, el catálogo se acepta y lo desconocido se rechaza', () => {
     assert.strictEqual(sanearPerfil({ tipo_negocio: '' }).valores.tipo_negocio, null);
     assert.strictEqual(sanearPerfil({ tipo_negocio: '  ' }).valores.tipo_negocio, null);
     assert.strictEqual(sanearPerfil({ tipo_negocio: 'restaurante' }).valores.tipo_negocio, 'restaurante');
-    assert.ok(sanearPerfil({ tipo_negocio: 'panaderia' }).error);
+    assert.strictEqual(sanearPerfil({ tipo_negocio: 'granizados' }).valores.tipo_negocio, 'granizados');
+    assert.ok(sanearPerfil({ tipo_negocio: 'vendo-cosas-raras' }).error);
 });

@@ -7,8 +7,7 @@ const LIMITES = {
     tipo_negocio: 80, ciudad: 80, departamento: 80, direccion: 200, telefono: 30,
     sitio_web: 300, descripcion_negocio: 1000, numero_nequi: 30, numero_bancolombia: 40,
 };
-// Mismos valores que el ENUM negocios.tipo_negocio (db/schema.sql).
-const TIPOS_NEGOCIO = ['restaurante', 'retail', 'servicios', 'salud', 'inmobiliaria', 'educacion', 'otro'];
+const { esTipoValido } = require('./tiposNegocio');
 const NUMERICOS =['numero_empleados', 'volumen_pedidos_dia'];
 const CAMPOS_PERMITIDOS = [...Object.keys(LIMITES), ...NUMERICOS, 'metodos_pago_activos'];
 
@@ -42,9 +41,9 @@ function sanearPerfil(body) {
             if (texto !== null && texto.length > LIMITES[key]) return { error: `El campo ${key} es demasiado largo (máx. ${LIMITES[key]})` };
             if (key === 'sitio_web' && texto && !/^https?:\/\//i.test(texto)) return { error: 'El sitio web debe empezar por http:// o https://' };
             if (key === 'tipo_negocio') {
-                // La columna es un ENUM: '' o un valor desconocido hace fallar el UPDATE con "Data truncated".
+                // Solo tipos del catálogo (api/services/tiposNegocio.js); vacío = sin elegir.
                 if (!texto) { valores[key] = null; continue; }
-                if (!TIPOS_NEGOCIO.includes(texto)) return { error: 'Tipo de negocio no válido' };
+                if (!esTipoValido(texto)) return { error: 'Tipo de negocio no válido' };
             }
             valores[key] = texto;
         }

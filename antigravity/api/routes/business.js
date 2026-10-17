@@ -8,6 +8,7 @@ const { checkPlan } = require('../middleware/tenant');
 const { sanitizeAvatar, parseAvatar } = require('../services/avatar');
 const { sanitizeVistos, parseVistos } = require('../services/uiEstado');
 const { sanearPerfil, COLUMNAS_PERFIL } = require('../services/perfilNegocio');
+const { esTipoValido, familiaDe } = require('../services/tiposNegocio');
 const { getPlan, getPlanFeatures, checkLimit, getNextPlan, getPlanPrice, getIncludedFeatureLabels, getUpgradeBenefits, getAllPlans } = require('../../config/planConfig');
 
 // Router canónico para /api/business (antes montado en /api/negocio, que
@@ -379,7 +380,7 @@ router.put('/onboarding/:paso', async (req, res) => {
                 updatesNegocios.push('nit = ?');
                 valuesNegocios.push(datosPaso.nit);
             }
-            if (datosPaso.tipo_negocio) {
+            if (esTipoValido(datosPaso.tipo_negocio)) {
                 updatesNegocios.push('tipo_negocio = ?');
                 valuesNegocios.push(datosPaso.tipo_negocio);
             }
@@ -676,6 +677,15 @@ router.post('/plan/upgrade', (req, res) => {
 // sesión. Solo agrega productos si el negocio todavía no tiene ninguno
 // (para no duplicar catálogo si se llama más de una vez).
 const PLANTILLAS_VERTICAL = {
+    granizados: {
+        bot_bienvenida: '¡Hola! 👋 Bienvenido a {nombre}. Dime qué sabor se te antoja y te armo tu pedido bien frío 🍧',
+        mensaje_fuera_horario: 'Gracias por escribir. Ahora estamos cerrados, pero apenas abramos te preparamos tu granizado.',
+        productos: [
+            { nombre: 'Granizado de limón', descripcion: 'Elige tu tamaño y toppings', precio: 7000, stock: 100 },
+            { nombre: 'Granizado de maracuyá', descripcion: '', precio: 7000, stock: 100 },
+            { nombre: 'Granizado de fresa con leche', descripcion: 'Con crema opcional', precio: 9000, stock: 100 }
+        ]
+    },
     restaurante: {
         bot_bienvenida: '¡Hola! 👋 Bienvenido a {nombre}. Escríbeme lo que se te antoje y te ayudo a hacer tu pedido.',
         mensaje_fuera_horario: 'Gracias por escribir. En este momento estamos cerrados, pero apenas abramos te respondemos.',
@@ -706,7 +716,8 @@ const PLANTILLAS_VERTICAL = {
 router.post('/plantilla', async (req, res) => {
     try {
         const negocioId = req.negocio.id;
-        const plantilla = PLANTILLAS_VERTICAL[req.body.tipo_negocio];
+        const tipoElegido = req.body.tipo_negocio;
+        const plantilla = PLANTILLAS_VERTICAL[tipoElegido] || PLANTILLAS_VERTICAL[familiaDe(tipoElegido)];
 
         if (!plantilla) {
             // No hay plantilla específica (ej. salud, inmobiliaria, educacion,

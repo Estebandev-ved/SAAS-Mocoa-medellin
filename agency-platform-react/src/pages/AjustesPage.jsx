@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import QRCode from 'qrcode';
 import ActivarAvisos from '../components/ActivarAvisos';
-import { ETIQUETA_TIPO } from '../utils/capacidades';
+import SelectorTipoNegocio from '../components/SelectorTipoNegocio';
 import { olvidarNegocio } from '../hooks/useNegocio';
 import { useTheme } from '../context/ThemeContext';
 import { sonidoActivo, guardarSonidoActivo, reproducirAviso } from '../context/PedidosLiveContext';
@@ -353,11 +353,10 @@ function NegocioTab() {
               />
             </FormField>
             <FormField label="Tipo de Negocio" icon={Info}>
-              <SelectField
-                name="tipo_negocio"
+              <SelectorTipoNegocio
                 value={form.tipo_negocio || ''}
                 onChange={handleChange}
-                options={[{ value: '', label: 'Elige el tipo…' }, ...Object.entries(ETIQUETA_TIPO).map(([value, label]) => ({ value, label }))]}
+                className={`${CONTROL} appearance-none`}
               />
               <p className="text-xs text-muted mt-1.5">Define qué herramientas ves en el menú (por ejemplo, el modo cocina es para restaurantes).</p>
             </FormField>

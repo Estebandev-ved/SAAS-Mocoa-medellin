@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Check, Loader2, Store, Package, CreditCard, Smar
 import api from '../services/api';
 import { Character } from '../components/Illustration';
 import { mensajeError } from '../utils/errores';
+import SelectorTipoNegocio from '../components/SelectorTipoNegocio';
 
 // Asistente de primer uso: un paso por pantalla. Cada paso guarda con los mismos endpoints que usan
 // Ajustes y Productos; si ya hay datos, el paso se marca como hecho y se puede saltar.
@@ -61,7 +62,7 @@ export default function BienvenidaPage() {
     setGuardando(true);
     try {
       if (actual.id === 'negocio') {
-        if (!negocio.tipo_negocio.trim() || !negocio.descripcion_negocio.trim()) throw new Error('Cuéntanos qué vendes y a qué te dedicas.');
+        if (!negocio.tipo_negocio.trim() || !negocio.descripcion_negocio.trim()) throw new Error('Elige qué vendes y cuéntanos a qué te dedicas.');
         await api.put('/business/perfil', negocio);
       } else if (actual.id === 'producto') {
         const precio = parseFloat(producto.precio);
@@ -119,7 +120,7 @@ export default function BienvenidaPage() {
             <div className="space-y-4">
               <p className="text-sm text-muted">Con esto tu bot sabrá cómo presentarse a tus clientes.</p>
               <label className="block text-sm font-semibold text-text">¿Qué vendes?
-                <input className={`${campo} mt-1.5 font-normal`} value={negocio.tipo_negocio} placeholder="Ej: restaurante, floristería, ropa…" onChange={(e) => setNegocio({ ...negocio, tipo_negocio: e.target.value })} />
+                <SelectorTipoNegocio className={`${campo} mt-1.5 font-normal`} value={negocio.tipo_negocio} onChange={(e) => setNegocio({ ...negocio, tipo_negocio: e.target.value })} />
               </label>
               <label className="block text-sm font-semibold text-text">Ciudad
                 <input className={`${campo} mt-1.5 font-normal`} value={negocio.ciudad} placeholder="Ej: Medellín" onChange={(e) => setNegocio({ ...negocio, ciudad: e.target.value })} />
