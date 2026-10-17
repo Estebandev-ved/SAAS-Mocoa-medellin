@@ -251,4 +251,15 @@ Los fixes están disponibles en `api/middleware/security.js` para integración i
 - Política de contraseñas única (`api/services/passwordPolicy.js`): 8–72 caracteres, letras y números, sin claves comunes ni igual al correo. Aplica en registro, recuperación y cambio desde Ajustes.
 - Cambiar o recuperar la contraseña **cierra todas las sesiones anteriores** (el JWT lleva una huella `pv` del hash; `verificarAuth` la compara). Tokens emitidos antes de este cambio siguen valiendo hasta su vencimiento (máx. 7 días).
 - Avisos por correo: cuenta bloqueada y contraseña cambiada.
-- Pendiente recomendado: verificación en dos pasos (2FA) para el dueño y blacklist de tokens en Redis (hoy es en memoria).
+- Pendiente recomendado: blacklist de tokens en Redis (hoy es en memoria).
+
+## Actualización: verificación en dos pasos (2FA)
+
+- TOTP estándar (RFC 6238; Google Authenticator, Authy, Microsoft Authenticator). Se activa en **Ajustes → Seguridad**: se escanea un QR y solo queda activa al confirmar un código real.
+- Con 2FA activa, la contraseña sola no abre sesión: `/api/auth/login` devuelve un token intermedio de 5 min (firmado con otra llave, inservible como sesión) y `/api/auth/login/2fa` lo canjea por la sesión con el código.
+- Un código TOTP sirve **una sola vez** (se guarda el último paso usado); 8 códigos de respaldo de un solo uso, guardados como hash SHA-256 y mostrados una única vez.
+- El secreto TOTP se guarda cifrado (AES-256-GCM). Definir `TOTP_ENC_KEY` en producción; si no existe se usa `JWT_SECRET` (rotarlo dejaría inservibles los 2FA ya configurados).
+- Fallos de código cuentan para el bloqueo de 5 intentos y tienen límite de 10 por 15 min por IP.
+- Desactivar o regenerar códigos exige contraseña + código; ambos envían aviso por correo.
+- Recuperar la contraseña **no** desactiva el 2FA. Si el dueño pierde el celular y los códigos, un administrador debe limpiar `totp_*` de la fila en `negocios` tras verificar su identidad.
+- Migración: `db/migrate_2fa.js` (corre sola al arrancar la API y está en `migrate_all.js`).

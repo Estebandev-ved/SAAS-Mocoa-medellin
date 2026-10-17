@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import QRCode from 'qrcode';
 import {
   Loader2,
   Store,
@@ -24,6 +25,7 @@ import {
   CheckCircle2,
   AlertCircle,
   QrCode,
+  ShieldCheck,
   Wifi,
   WifiOff,
   Building2,
@@ -1147,6 +1149,161 @@ function NotificacionesTab() {
   );
 }
 
+function DosFactoresCard() {
+  const { updateUser } = useAuth();
+  const [estado, setEstado] = useState(null); // { activo, codigos_respaldo_restantes }
+  const [fase, setFase] = useState('inicio'); // inicio | escanear | codigos | desactivar | regenerar
+  const [qr, setQr] = useState('');
+  const [secreto, setSecreto] = useState('');
+  const [codigo, setCodigo] = useState('');
+  const [password, setPassword] = useState('');
+  const [codigosRespaldo, setCodigosRespaldo] = useState([]);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState('');
+
+  const cargar = useCallback(async () => {
+    try {
+      const { data } = await api.get('/auth/2fa/estado');
+      setEstado(data);
+    } catch {
+      setEstado({ activo: false, codigos_respaldo_restantes: 0 });
+    }
+  }, []);
+  useEffect(() => {
+    api.get('/auth/2fa/estado')
+      .then(({ data }) => setEstado(data))
+      .catch(() => setEstado({ activo: false, codigos_respaldo_restantes: 0 }));
+  }, []);
+
+  const reiniciar = () => { setFase('inicio'); setCodigo(''); setPassword(''); setError(''); };
+  const ejecutar = async (accion) => {
+    setCargando(true); setError('');
+    try { await accion(); } catch (err) {
+      setError(err.response?.data?.error || 'No pudimos completar la acción. Intenta de nuevo.');
+    }
+    setCargando(false);
+  };
+
+  const iniciar = () => ejecutar(async () => {
+    const { data } = await api.post('/auth/2fa/setup');
+    setSecreto(data.secreto);
+    setQr(await QRCode.toDataURL(data.otpauth_url, { width: 200, margin: 1 }));
+    setFase('escanear');
+  });
+  const activar = (e) => { e.preventDefault(); ejecutar(async () => {
+    const { data } = await api.post('/auth/2fa/activar', { codigo });
+    setCodigosRespaldo(data.codigos_respaldo);
+    setFase('codigos'); setCodigo(''); setQr(''); setSecreto('');
+    updateUser?.({ dos_factores: true });
+    cargar();
+  }); };
+  const desactivar = (e) => { e.preventDefault(); ejecutar(async () => {
+    await api.post('/auth/2fa/desactivar', { password, codigo });
+    updateUser?.({ dos_factores: false });
+    reiniciar(); cargar();
+  }); };
+  const regenerar = (e) => { e.preventDefault(); ejecutar(async () => {
+    const { data } = await api.post('/auth/2fa/codigos-respaldo', { password, codigo });
+    setCodigosRespaldo(data.codigos_respaldo);
+    setFase('codigos'); setCodigo(''); setPassword(''); cargar();
+  }); };
+
+  const descargarCodigos = () => {
+    const blob = new Blob([`Códigos de respaldo Antigravity\nCada código sirve una sola vez.\n\n${codigosRespaldo.join('\n')}\n`], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'antigravity-codigos-respaldo.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const boton = 'flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 disabled:opacity-50 text-text font-head font-semibold rounded-xl transition-colors';
+  const botonSecundario = 'px-6 py-3 border border-border text-text font-head font-semibold rounded-xl hover:bg-black/5 transition-colors';
+
+  return (
+    <GlassCard>
+      <h3 className="font-head text-xl text-text mb-2 flex items-center gap-3">
+        <ShieldCheck className="w-5 h-5 text-accent" />
+        Verificación en dos pasos
+      </h3>
+      <p className="text-sm font-body text-muted mb-6">
+        Además de tu contraseña, te pedimos un código de tu celular al iniciar sesión. Protege tu negocio aunque alguien descubra tu contraseña.
+      </p>
+
+      {error && <p className="text-sm text-danger-text mb-4" role="alert">{error}</p>}
+      {!estado && <Loader2 className="w-5 h-5 animate-spin text-muted" />}
+
+      {estado && fase === 'inicio' && (
+        estado.activo ? (
+          <div className="space-y-4">
+            <p className="flex items-center gap-2 text-sm font-semibold text-text">
+              <CheckCircle2 className="w-4 h-4 text-accent" /> Activada
+              <span className="font-normal text-muted">· te quedan {estado.codigos_respaldo_restantes} códigos de respaldo</span>
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button className={botonSecundario} onClick={() => { setError(''); setFase('regenerar'); }}>Generar códigos de respaldo nuevos</button>
+              <button className={botonSecundario} onClick={() => { setError(''); setFase('desactivar'); }}>Desactivar</button>
+            </div>
+          </div>
+        ) : (
+          <button className={boton} onClick={iniciar} disabled={cargando}>
+            {cargando ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+            Activar verificación en dos pasos
+          </button>
+        )
+      )}
+
+      {fase === 'escanear' && (
+        <form onSubmit={activar} className="space-y-5 max-w-md">
+          <ol className="list-decimal pl-5 text-sm text-text space-y-1">
+            <li>Instala Google Authenticator, Authy o Microsoft Authenticator en tu celular.</li>
+            <li>Escanea este código QR (o escribe la clave a mano).</li>
+            <li>Escribe el código de 6 dígitos que te muestra la app.</li>
+          </ol>
+          {qr && <img src={qr} alt="Código QR para tu app autenticadora" width={200} height={200} className="rounded-lg border border-border" />}
+          <p className="text-xs text-muted break-all">Clave manual: <span className="font-mono text-text select-all">{secreto}</span></p>
+          <InputField value={codigo} onChange={(e) => setCodigo(e.target.value)} inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="123456" required />
+          <div className="flex gap-3">
+            <button type="submit" className={boton} disabled={cargando}>
+              {cargando && <Loader2 className="w-4 h-4 animate-spin" />} Confirmar y activar
+            </button>
+            <button type="button" className={botonSecundario} onClick={reiniciar}>Cancelar</button>
+          </div>
+        </form>
+      )}
+
+      {fase === 'codigos' && (
+        <div className="space-y-4 max-w-md">
+          <p className="text-sm font-semibold text-text">Guarda estos códigos de respaldo en un lugar seguro.</p>
+          <p className="text-sm text-muted">Si pierdes tu celular, cada código te deja entrar una sola vez. No los volveremos a mostrar.</p>
+          <div className="grid grid-cols-2 gap-2 font-mono text-sm bg-black/5 rounded-xl p-4 select-all">
+            {codigosRespaldo.map((c) => <span key={c}>{c}</span>)}
+          </div>
+          <div className="flex gap-3">
+            <button className={botonSecundario} onClick={descargarCodigos}>Descargar .txt</button>
+            <button className={boton} onClick={reiniciar}>Ya los guardé</button>
+          </div>
+        </div>
+      )}
+
+      {(fase === 'desactivar' || fase === 'regenerar') && (
+        <form onSubmit={fase === 'desactivar' ? desactivar : regenerar} className="space-y-4 max-w-md">
+          <p className="text-sm text-muted">Por seguridad, confirma con tu contraseña y un código de tu app (o uno de respaldo).</p>
+          <InputField type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Tu contraseña" autoComplete="current-password" required />
+          <InputField value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Código de 6 dígitos o de respaldo" autoComplete="one-time-code" maxLength={12} required />
+          <div className="flex gap-3">
+            <button type="submit" className={boton} disabled={cargando}>
+              {cargando && <Loader2 className="w-4 h-4 animate-spin" />}
+              {fase === 'desactivar' ? 'Desactivar' : 'Generar códigos nuevos'}
+            </button>
+            <button type="button" className={botonSecundario} onClick={reiniciar}>Cancelar</button>
+          </div>
+        </form>
+      )}
+    </GlassCard>
+  );
+}
+
 function SeguridadTab() {
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -1300,6 +1457,8 @@ function SeguridadTab() {
           </div>
         </form>
       </GlassCard>
+
+      <DosFactoresCard />
 
       <GlassCard className="border-danger/20">
         <h3 className="font-head text-xl text-text mb-4 flex items-center gap-3">

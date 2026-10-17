@@ -60,6 +60,16 @@ const passwordResetRateLimit = rateLimit({
     legacyHeaders: false
 });
 
+// Segundo factor: un código de 6 dígitos son 1.000.000 de combinaciones; se limita por IP
+// (y además cada fallo cuenta para el bloqueo de la cuenta en routes/auth.js).
+const twoFactorRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { error: 'Demasiados intentos con el código. Espera 15 minutos.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
 // Rate limiting para el login del domiciliario: el PIN es de solo 4 dígitos
 // (10.000 combinaciones) y esta ruta no tenía NINGÚN límite propio — solo caía
 // en el límite genérico de la API (300 req/min por IP), suficiente para probar
@@ -226,6 +236,7 @@ module.exports = {
     apiRateLimit,
     loginRateLimit,
     passwordResetRateLimit,
+    twoFactorRateLimit,
     driverLoginRateLimit,
     botRateLimit,
     whatsappRateLimit,

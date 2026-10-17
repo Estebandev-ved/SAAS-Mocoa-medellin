@@ -38,6 +38,10 @@ export const authService = {
         });
         return response.data;
     },
+    login2fa: async (token2fa, codigo) => {
+        const response = await api.post('/auth/login/2fa', { token_2fa: token2fa, codigo });
+        return response.data;
+    },
     forgotPassword: async (email) => {
         const response = await api.post('/auth/forgot-password', { email });
         return response.data;

@@ -16,22 +16,44 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, [token]);
 
+  const guardarSesion = (response) => {
+    setToken(response.token);
+    setUser(response.negocio);
+    localStorage.setItem('antigravity_token', response.token);
+    localStorage.setItem('antigravity_user', JSON.stringify(response.negocio));
+  };
+
+  const mensajeError = (error) =>
+    error.response?.data?.error || error.response?.data?.errors?.[0]?.msg || 'Error de conexión con el servidor';
+
+  // Si la cuenta tiene verificación en dos pasos, devuelve { requiere2fa, token2fa } y la
+  // pantalla debe pedir el código y llamar a login2fa.
   const login = async (email, password) => {
     try {
       const response = await authService.login(email, password);
+      if (response.requiere_2fa) {
+        return { success: false, requiere2fa: true, token2fa: response.token_2fa };
+      }
       if (response.token) {
-        setToken(response.token);
-        setUser(response.negocio);
-        localStorage.setItem('antigravity_token', response.token);
-        localStorage.setItem('antigravity_user', JSON.stringify(response.negocio));
+        guardarSesion(response);
         return { success: true, negocio: response.negocio };
       }
       return { success: false, error: response.error };
     } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.error || error.response?.data?.errors?.[0]?.msg || 'Error de conexión con el servidor'
-      };
+      return { success: false, error: mensajeError(error) };
+    }
+  };
+
+  const login2fa = async (token2fa, codigo) => {
+    try {
+      const response = await authService.login2fa(token2fa, codigo);
+      if (response.token) {
+        guardarSesion(response);
+        return { success: true, negocio: response.negocio };
+      }
+      return { success: false, error: response.error };
+    } catch (error) {
+      return { success: false, error: mensajeError(error), expirado: error.response?.data?.codigo === 'TOKEN_2FA_EXPIRADO' };
     }
   };
 
@@ -70,7 +92,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, register, updateUser, loading, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ user, token, login, login2fa, logout, register, updateUser, loading, isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
   );

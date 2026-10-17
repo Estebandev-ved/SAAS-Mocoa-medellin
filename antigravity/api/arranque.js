@@ -29,6 +29,16 @@ function asegurarEsquemaV3() {
     });
 }
 
+// Columnas de la verificación en dos pasos. Idempotente y rápida: corre en cada arranque
+// para que el código nuevo no dependa de que alguien active RUN_MIGRATIONS_ON_START.
+function asegurarEsquema2FA() {
+    return new Promise((resolve) => {
+        const hijo = spawn(process.execPath, [path.join(__dirname, '../db/migrate_2fa.js')], { stdio: 'inherit', env: process.env });
+        hijo.on('error', () => resolve(false));
+        hijo.on('exit', (code) => resolve(code === 0));
+    });
+}
+
 async function promoverAdmin(email) {
     try {
         const [r] = await db.execute("UPDATE negocios SET rol = 'admin' WHERE email_dueno = ? AND rol NOT IN ('admin', 'superadmin')", [email]);
@@ -61,6 +71,7 @@ async function diagnosticarEfipay() {
 async function tareasDeArranque() {
     if (String(process.env.RUN_MIGRATIONS_ON_START).toLowerCase() === 'true') await correrMigraciones();
     await asegurarEsquemaV3();
+    await asegurarEsquema2FA();
     const email = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
     if (email) await promoverAdmin(email);
     await diagnosticarEfipay();

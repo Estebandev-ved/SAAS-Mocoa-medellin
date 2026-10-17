@@ -42,6 +42,7 @@ const MIGRACIONES = [
     'migrate_ui_estado.js',
     'migrate_push.js',
     'migrate_prospectos.js',
+    'migrate_2fa.js',
     'migrate_v3_funciones.js',
 ];
 
@@ -124,6 +125,7 @@ const VERIFICACIONES = [
     { archivo: 'migrate_ui_estado.js', tabla: 'negocios', columna: 'ui_estado' },
     { archivo: 'migrate_push.js', tabla: 'push_subscriptions' },
     { archivo: 'migrate_prospectos.js', tabla: 'prospectos' },
+    { archivo: 'migrate_2fa.js', tabla: 'negocios', columna: 'totp_ultimo_paso' },
 ];
 
 async function existe(con, { tabla, columna }) {

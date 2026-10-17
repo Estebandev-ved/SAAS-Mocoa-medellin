@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Lock, Mail, ArrowRight, Loader2, AlertCircle, Layers } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Loader2, AlertCircle, Layers, ShieldCheck } from 'lucide-react';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('');
@@ -10,7 +10,10 @@ const LoginPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     
-    const { login } = useAuth();
+    const [token2fa, setToken2fa] = useState(null);
+    const [codigo, setCodigo] = useState('');
+
+    const { login, login2fa } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -18,7 +21,13 @@ const LoginPage = () => {
         setIsLoading(true);
         setError('');
 
-        const result = await login(email, password);
+        const result = token2fa ? await login2fa(token2fa, codigo) : await login(email, password);
+
+        if (result.requiere2fa) {
+            setToken2fa(result.token2fa);
+            setIsLoading(false);
+            return;
+        }
 
         if (result.success) {
             const rol = result.negocio?.rol;
@@ -29,6 +38,7 @@ const LoginPage = () => {
             navigate('/dashboard');
         } else {
             setError(result.error);
+            if (result.expirado) { setToken2fa(null); setCodigo(''); setPassword(''); }
         }
         setIsLoading(false);
     };
@@ -71,6 +81,28 @@ const LoginPage = () => {
                         </motion.div>
                     )}
 
+                    {token2fa ? (
+                    <div className="space-y-2">
+                        <label className="text-xs font-mono uppercase tracking-wider text-muted px-1">Código de verificación</label>
+                        <div className="relative">
+                            <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" size={18} />
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="one-time-code"
+                                autoFocus
+                                required
+                                maxLength={12}
+                                value={codigo}
+                                onChange={(e) => setCodigo(e.target.value)}
+                                className="w-full bg-white border border-border rounded-xl py-3.5 pl-12 pr-4 text-white tracking-widest focus:outline-none focus:border-accent transition-all duration-300"
+                                placeholder="123456"
+                            />
+                        </div>
+                        <p className="text-muted text-xs px-1">Abre tu app autenticadora e ingresa el código de 6 dígitos. ¿Perdiste tu celular? Usa un código de respaldo.</p>
+                    </div>
+                    ) : (
+                    <>
                     <div className="space-y-2">
                         <label className="text-xs font-mono uppercase tracking-wider text-muted px-1">Email del Dueño</label>
                         <div className="relative">
@@ -106,6 +138,9 @@ const LoginPage = () => {
                             ¿Olvidaste tu contraseña?
                         </Link>
                     </div>
+
+                    </>
+                    )}
 
                     <button 
                         type="submit"

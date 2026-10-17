@@ -125,6 +125,20 @@ function getEmailContent(tipo, data) {
         <p style="color: #8B949E; margin: 20px 0;">Por seguridad cerramos las sesiones abiertas. Si no fuiste tú, recupera tu cuenta de inmediato desde "Olvidé mi contraseña" y escríbenos.</p>
       `
     },
+    dos_factores_activado: {
+      titulo: 'Verificación en dos pasos activada',
+      contenido: `
+        <p style="color: #FFFFFF; font-size: 18px;">Tu cuenta ahora está más protegida</p>
+        <p style="color: #8B949E; margin: 20px 0;">Desde ahora, al iniciar sesión te pediremos también un código de tu app autenticadora. Si no fuiste tú, cambia tu contraseña de inmediato.</p>
+      `
+    },
+    dos_factores_desactivado: {
+      titulo: 'Verificación en dos pasos desactivada',
+      contenido: `
+        <p style="color: #FF6B6B; font-size: 18px;">Desactivaron la verificación en dos pasos</p>
+        <p style="color: #8B949E; margin: 20px 0;">Si no fuiste tú, recupera tu cuenta desde "Olvidé mi contraseña" y vuelve a activarla.</p>
+      `
+    },
     cuenta_bloqueada: {
       titulo: 'Alerta de Cuenta',
       contenido: `
