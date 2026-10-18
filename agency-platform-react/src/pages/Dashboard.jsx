@@ -56,6 +56,8 @@ const PASOS_TOUR = [
 ]
 import { planLabel } from '../components/shell/navConfig'
 import EstadoNegocio from '../components/EstadoNegocio'
+import usePreferencias from '../hooks/usePreferencias'
+import { formatearMoneda } from '../utils/preferencias'
 
 const StatCard = ({ title, value, trend, sub, spark, icon: Icon, variants, inverse = false }) => (
   <motion.div
@@ -100,6 +102,7 @@ const itemVariants = {
 }
 
 export default function Dashboard() {
+  const prefs = usePreferencias()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -212,7 +215,7 @@ export default function Dashboard() {
   const saludo = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches'
   const resumenHoy =
     stats.pedidosHoy > 0
-      ? `Hoy llevas ${stats.pedidosHoy} ${stats.pedidosHoy === 1 ? 'pedido' : 'pedidos'} y $${stats.ventasHoy.toLocaleString()} en ventas.`
+      ? `Hoy llevas ${stats.pedidosHoy} ${stats.pedidosHoy === 1 ? 'pedido' : 'pedidos'} y ${formatearMoneda(stats.ventasHoy, prefs)} en ventas.`
       : 'Aún no hay pedidos hoy.'
 
   return (
@@ -291,8 +294,8 @@ export default function Dashboard() {
           >
             <StatCard
               title="Ventas Hoy"
-              value={`$${stats.ventasHoy.toLocaleString()}`}
-              sub={`Ayer: $${stats.ayerVentas.toLocaleString()}`}
+              value={formatearMoneda(stats.ventasHoy, prefs)}
+              sub={`Ayer: ${formatearMoneda(stats.ayerVentas, prefs)}`}
               spark={serie.ventas}
               trend={stats.cambioVentas !== 0 ? `${stats.cambioVentas > 0 ? '+' : ''}${stats.cambioVentas}% vs ayer` : null}
               icon={TrendingUp}

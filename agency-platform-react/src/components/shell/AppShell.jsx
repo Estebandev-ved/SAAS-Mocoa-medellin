@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { sincronizarPreferencias } from '../../utils/preferencias';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ChevronDown, LogOut, Moon, MoreHorizontal, Search, Sun, X, Crown, Star, Shield, Store, Lock } from 'lucide-react';
@@ -115,6 +116,11 @@ export default function AppShell() {
     return g;
   }, [user?.rol, conCocina]);
   const todos = useMemo(() => grupos.flatMap((g) => g.items.map((i) => ({ ...i, grupo: g.label, bloqueado: estaBloqueado(i, plan) }))), [grupos, plan]);
+
+  // Preferencias de la cuenta (zona horaria, moneda, fecha): se traen del servidor al entrar.
+  useEffect(() => {
+    if (isAuthenticated) sincronizarPreferencias();
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

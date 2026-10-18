@@ -30,6 +30,8 @@ import PedidosKanban from '../components/PedidosKanban';
 import { ETIQUETA_RAPIDA } from '../hooks/useAvanzarPedido';
 import { useUndo } from '../context/UndoContext';
 import { useConfirm } from '../context/ConfirmContext';
+import usePreferencias from '../hooks/usePreferencias';
+import { formatearFecha, formatearMoneda } from '../utils/preferencias';
 
 // Mismas transiciones válidas que valida el backend (api/routes/orders.js) — la etiqueta es lo único
 // que decide esta pantalla; el servidor es quien de verdad permite o no el cambio.
@@ -44,6 +46,7 @@ const PUEDE_CANCELAR = ['pendiente_pago', 'pago_enviado', 'pago_confirmado', 'en
 const ESTADOS_PAGADOS = ['pago_confirmado', 'en_preparacion', 'enviado', 'entregado'];
 
 const PedidosPage = () => {
+    const prefs = usePreferencias();
     const navigate = useNavigate();
     const { celebrar } = useHitos();
     const { conectado, suscribir, refrescarPendientes } = usePedidosLive();
@@ -174,17 +177,11 @@ const PedidosPage = () => {
 
     const formatFecha = (dateStr) => {
         if (!dateStr) return '';
-        return new Date(dateStr).toLocaleDateString('es-CO', { 
-            day: '2-digit', 
-            month: 'short', 
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        return formatearFecha(dateStr, { hora: true }, prefs);
     };
 
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(amount);
+        return formatearMoneda(amount, prefs);
     };
 
     const pedidosFiltrados = pedidos.filter(p => {

@@ -8,6 +8,7 @@ const { checkPlan } = require('../middleware/tenant');
 const { sanitizeAvatar, parseAvatar } = require('../services/avatar');
 const { sanitizeVistos, parseVistos } = require('../services/uiEstado');
 const { sanearPerfil, COLUMNAS_PERFIL } = require('../services/perfilNegocio');
+const prefs = require('../services/preferencias');
 const { esTipoValido, familiaDe } = require('../services/tiposNegocio');
 const { getPlan, getPlanFeatures, checkLimit, getNextPlan, getPlanPrice, getIncludedFeatureLabels, getUpgradeBenefits, getAllPlans } = require('../../config/planConfig');
 
@@ -59,11 +60,39 @@ router.put('/ui-estado', async (req, res) => {
         const nuevos = sanitizeVistos(req.body && req.body.vistos);
         const [rows] = await db.execute('SELECT ui_estado FROM negocios WHERE id = ?', [req.negocio.id]);
         const vistos = sanitizeVistos([...parseVistos(rows[0] && rows[0].ui_estado), ...nuevos]);
-        await db.execute('UPDATE negocios SET ui_estado = ? WHERE id = ?', [JSON.stringify({ vistos }), req.negocio.id]);
+        // Se conservan las demás claves (p. ej. preferencias): ui_estado es compartido.
+        const actual = prefs.parseUiEstado(rows[0] && rows[0].ui_estado);
+        await db.execute('UPDATE negocios SET ui_estado = ? WHERE id = ?', [JSON.stringify({ ...actual, vistos }), req.negocio.id]);
         res.json({ vistos });
     } catch (error) {
         console.error('[Business] Error saving ui-estado:', error);
         res.status(500).json({ error: 'Error al guardar el estado de la interfaz' });
+    }
+});
+
+// Preferencias de visualización (zona horaria, moneda, formato de fecha).
+router.get('/preferencias', async (req, res) => {
+    try {
+        const [rows] = await db.execute('SELECT ui_estado FROM negocios WHERE id = ?', [req.negocio.id]);
+        res.json({ preferencias: prefs.leerPreferencias(rows[0] && rows[0].ui_estado) });
+    } catch (error) {
+        console.error('[Business] Error getting preferencias:', error);
+        res.status(500).json({ error: 'Error al obtener las preferencias' });
+    }
+});
+
+router.put('/preferencias', async (req, res) => {
+    try {
+        const { valores, error } = prefs.sanearPreferencias(req.body);
+        if (error) return res.status(400).json({ error });
+        const [rows] = await db.execute('SELECT ui_estado FROM negocios WHERE id = ?', [req.negocio.id]);
+        const actual = prefs.parseUiEstado(rows[0] && rows[0].ui_estado);
+        const nuevas = { ...prefs.leerPreferencias(rows[0] && rows[0].ui_estado), ...valores };
+        await db.execute('UPDATE negocios SET ui_estado = ? WHERE id = ?', [JSON.stringify({ ...actual, preferencias: nuevas }), req.negocio.id]);
+        res.json({ preferencias: nuevas });
+    } catch (error) {
+        console.error('[Business] Error saving preferencias:', error);
+        res.status(500).json({ error: 'Error al guardar las preferencias' });
     }
 });
 

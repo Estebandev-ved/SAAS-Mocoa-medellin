@@ -13,6 +13,7 @@ import QRCode from 'qrcode';
 import ActivarAvisos from '../components/ActivarAvisos';
 import SelectorTipoNegocio from '../components/SelectorTipoNegocio';
 import { olvidarNegocio } from '../hooks/useNegocio';
+import { leerPreferencias, sincronizarPreferencias, guardarPreferencias } from '../utils/preferencias';
 import { useTheme } from '../context/ThemeContext';
 import { sonidoActivo, guardarSonidoActivo, reproducirAviso } from '../context/PedidosLiveContext';
 import {
@@ -70,26 +71,21 @@ const TABS = [
   { id: 'seguridad', label: 'Seguridad', icon: Shield },
 ];
 
-const PREFS_KEY = 'noma_preferencias';
-const PREFS_DEFAULT = { zona_horaria: 'America/Bogota', moneda: 'COP', formato_fecha: 'dd/mm/yyyy' };
-
-// Preferencias de la cuenta que otras pantallas podrán leer (formato de fechas, moneda, zona horaria).
-// Por ahora viven en el navegador; cuando haya endpoint se mueven al backend sin tocar quien las lee.
-export function leerPreferencias() {
-  try {
-    return { ...PREFS_DEFAULT, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') };
-  } catch {
-    return { ...PREFS_DEFAULT };
-  }
-}
+export { leerPreferencias };
 
 function PreferenciasTab() {
   const [prefs, setPrefs] = useState(leerPreferencias);
   const [toast, setToast] = useState(null);
 
-  const handleSave = () => {
+  useEffect(() => {
+    let vivo = true;
+    sincronizarPreferencias().then((p) => { if (vivo) setPrefs((prev) => ({ ...prev, ...p })); });
+    return () => { vivo = false; };
+  }, []);
+
+  const handleSave = async () => {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+      await guardarPreferencias(prefs);
       setToast({ type: 'success', message: 'Preferencias guardadas' });
     } catch {
       setToast({ type: 'error', message: 'No se pudieron guardar las preferencias' });
@@ -107,7 +103,7 @@ function PreferenciasTab() {
           Preferencias
         </h3>
         <p className="text-muted text-sm mb-6 max-w-xl">
-          Cómo quieres ver fechas y montos en tu panel. Se guardan en este navegador.
+          Cómo quieres ver fechas y montos en tu panel. Se guardan en tu cuenta y valen en todos tus dispositivos. La moneda solo cambia el símbolo y el formato: los montos no se convierten.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <FormField label="Zona horaria" icon={Clock}>
