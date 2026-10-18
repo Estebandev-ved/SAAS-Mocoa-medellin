@@ -139,7 +139,9 @@ app.use(cors({
     origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
     credentials: true
 }));
-app.use(express.json({ limit: '50mb' }));
+// Límite global bajo; solo la subida de foto de carta (base64) admite cuerpos grandes.
+const jsonGrande = express.json({ limit: '15mb' });
+app.use((req, res, next) => (req.path === '/api/productos/importar-foto' ? jsonGrande : express.json({ limit: '1mb' }))(req, res, next));
 
 // OCR Test Endpoint - PUBLIC for testing (before auth routes)
 const multer = require('multer');

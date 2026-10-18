@@ -326,6 +326,8 @@ INSERT INTO negocios (id, nombre, color_principal, whatsapp, email_dueno, passwo
 (1, 'Tienda Ejemplo Colombia', '#00D9FF', '+573001234567', 'demo@antigravity.co', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.VTtYGCpFdC0FUm', 'professional', true, true, 'Tienda Ejemplo Colombia SAS', '900123456-7', 'retail', 'Bogotá', 'Cundinamarca', 'Calle 123 #45-67, Bogotá', 'Tienda de ejemplo para pruebas', '2-5', '11-50', '["nequi","bancolombia","efectivo"]', true, true, 'Asistente NOMA', 'amigable', true, 'negocio', DATE_ADD(NOW(), INTERVAL 30 DAY));
 
 -- Usuario ADMIN para pruebas
+-- !! SOLO DESARROLLO: superadmin con contraseña conocida. NO cargar este bloque en producción;
+-- allí el admin se crea con `node db/create-admin.js --password ...` o con ADMIN_EMAIL.
 -- Password: Admin2024#
 INSERT INTO negocios (nombre, color_principal, whatsapp, email_dueno, password, plan, activo, onboarding_completado, razon_social, nit, tipo_negocio, ciudad, departamento, direccion, descripcion_negocio, numero_empleados, volumen_pedidos_dia, metodos_pago_activos, terminos_aceptados, suscripcion_activa, bot_nombre, bot_tono, whatsapp_conectado, rol) VALUES
 ('Administrador Antigravity', '#FFB840', '+573000000000', 'admin@antigravity.co', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.VTtYGCpFdC0FUm', 'enterprise', true, true, 'Antigravity SAS', '900000000-0', 'servicios', 'Bogotá', 'Cundinamarca', 'Calle Principal #123', 'Panel de administración del sistema', '21-50', '200+', '["nequi","bancolombia"]', true, true, 'Admin Bot', 'profesional', true, 'superadmin');

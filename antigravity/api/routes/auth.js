@@ -28,6 +28,9 @@ async function avisarPorCorreo(tipo, email, data) {
     }
 }
 
+// Columnas que el login necesita (nunca SELECT *: lo que se lee aquí no debe poder filtrarse por error).
+const COLS_LOGIN = 'id, nombre, email_dueno, password, plan, rol, color_principal, logo_url, onboarding_completado, trial_hasta, suscripcion_activa, avatar_config, totp_secret, totp_activo, totp_backup_codes, totp_ultimo_paso, intentos_login_fallidos, cuenta_bloqueada';
+
 function firmarToken(negocio, extra = {}) {
     return jwt.sign(
         { negocio_id: negocio.id, email: negocio.email_dueno, plan: negocio.plan, nombre: negocio.nombre, pv: huellaPassword(negocio.password), ...extra },
@@ -202,7 +205,7 @@ router.post('/login', [
         const { email, password } = req.body;
 
         const [negocios] = await pool.query(
-            'SELECT * FROM negocios WHERE email_dueno = ?',
+            `SELECT ${COLS_LOGIN} FROM negocios WHERE email_dueno = ?`,
             [email]
         );
 
@@ -259,7 +262,7 @@ router.post('/login/2fa', [
         }
         if (decoded.proposito !== '2fa') return res.status(401).json({ error: 'Token inválido' });
 
-        const [negocios] = await pool.query('SELECT * FROM negocios WHERE id = ?', [decoded.negocio_id]);
+        const [negocios] = await pool.query(`SELECT ${COLS_LOGIN} FROM negocios WHERE id = ?`, [decoded.negocio_id]);
         const negocio = negocios[0];
         if (!negocio || !negocio.totp_activo) return res.status(401).json({ error: 'Token inválido' });
         if (negocio.cuenta_bloqueada) return res.status(403).json(RESPUESTA_BLOQUEADA);
