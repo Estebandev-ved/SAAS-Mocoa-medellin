@@ -72,14 +72,7 @@ router.get('/perfil', async (req, res) => {
         const negocioId = req.negocio.id;
 
         const [negocios] = await db.execute(
-            `SELECT id, nombre, color_principal, logo_url, whatsapp, email_dueno, 
-                    nit, razon_social, tipo_negocio, ciudad, departamento, direccion, 
-                    telefono, sitio_web, descripcion_negocio, numero_empleados, 
-                    volumen_pedidos_dia, metodos_pago_activos, numero_nequi, 
-                    numero_bancolombia, plan, onboarding_completado, onboarding_paso,
-                    trial_hasta, suscripcion_activa, suscripcion_inicio, suscripcion_fin,
-                    ultimo_login, created_at
-             FROM negocios WHERE id = ?`,
+            `SELECT ${COLUMNAS_PERFIL} FROM negocios WHERE id = ?`,
             [negocioId]
         );
 

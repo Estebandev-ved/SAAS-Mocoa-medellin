@@ -36,3 +36,9 @@ test('tipo_negocio: vacío pasa a null, el catálogo se acepta y lo desconocido 
     assert.strictEqual(sanearPerfil({ tipo_negocio: 'granizados' }).valores.tipo_negocio, 'granizados');
     assert.ok(sanearPerfil({ tipo_negocio: 'vendo-cosas-raras' }).error);
 });
+
+test('redes del negocio: exigen http(s) y se recortan', () => {
+    assert.strictEqual(sanearPerfil({ instagram_url: ' https://instagram.com/mi_negocio ' }).valores.instagram_url, 'https://instagram.com/mi_negocio');
+    assert.ok(sanearPerfil({ tiktok_url: 'javascript:alert(1)' }).error);
+    assert.ok(sanearPerfil({ facebook_url: 'x'.repeat(301) }).error);
+});

@@ -5,16 +5,17 @@
 const LIMITES = {
     nombre: 120, color_principal: 20, logo_url: 500, whatsapp: 30, nit: 30, razon_social: 160,
     tipo_negocio: 80, ciudad: 80, departamento: 80, direccion: 200, telefono: 30,
-    sitio_web: 300, descripcion_negocio: 1000, numero_nequi: 30, numero_bancolombia: 40,
+    sitio_web: 300, instagram_url: 300, facebook_url: 300, tiktok_url: 300, descripcion_negocio: 1000, numero_nequi: 30, numero_bancolombia: 40,
 };
 const { esTipoValido } = require('./tiposNegocio');
+const REDES = ['instagram_url', 'facebook_url', 'tiktok_url'];
 const NUMERICOS =['numero_empleados', 'volumen_pedidos_dia'];
 const CAMPOS_PERMITIDOS = [...Object.keys(LIMITES), ...NUMERICOS, 'metodos_pago_activos'];
 
 // Columnas que sí puede ver el dueño (mismas de GET /perfil).
 const COLUMNAS_PERFIL = `id, nombre, color_principal, logo_url, whatsapp, email_dueno,
     nit, razon_social, tipo_negocio, ciudad, departamento, direccion,
-    telefono, sitio_web, descripcion_negocio, numero_empleados,
+    telefono, sitio_web, instagram_url, facebook_url, tiktok_url, descripcion_negocio, numero_empleados,
     volumen_pedidos_dia, metodos_pago_activos, numero_nequi,
     numero_bancolombia, plan, onboarding_completado, onboarding_paso,
     trial_hasta, suscripcion_activa, suscripcion_inicio, suscripcion_fin,
@@ -40,6 +41,7 @@ function sanearPerfil(body) {
             const texto = raw === null ? null : raw.trim();
             if (texto !== null && texto.length > LIMITES[key]) return { error: `El campo ${key} es demasiado largo (máx. ${LIMITES[key]})` };
             if (key === 'sitio_web' && texto && !/^https?:\/\//i.test(texto)) return { error: 'El sitio web debe empezar por http:// o https://' };
+            if (REDES.includes(key) && texto && !/^https?:\/\//i.test(texto)) return { error: `El enlace de ${key.replace('_url', '')} debe empezar por http:// o https://` };
             if (key === 'tipo_negocio') {
                 // Solo tipos del catálogo (api/services/tiposNegocio.js); vacío = sin elegir.
                 if (!texto) { valores[key] = null; continue; }

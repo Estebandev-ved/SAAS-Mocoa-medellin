@@ -36,7 +36,8 @@ async function obtenerConfigNegocio(negocioId) {
         const [negocios] = await db.execute(
             `SELECT nombre, bot_nombre, bot_tono, bot_bienvenida,
                     numero_nequi, numero_bancolombia,
-                    descripcion_negocio, productos_servicios, info_pagos, politicas
+                    descripcion_negocio, productos_servicios, info_pagos, politicas,
+                    sitio_web, instagram_url, facebook_url, tiktok_url
              FROM negocios WHERE id = ?`,
             [negocioId]
         );
@@ -231,6 +232,16 @@ function construirSystemPrompt(config, contexto) {
     }
     if (config.negocio.politicas) {
         prompt += `\n\nPolíticas: ${config.negocio.politicas}`;
+    }
+    const redes = [['Sitio web', config.negocio.sitio_web], ['Instagram', config.negocio.instagram_url],
+        ['Facebook', config.negocio.facebook_url], ['TikTok', config.negocio.tiktok_url]].filter(([, v]) => v);
+    if (redes.length > 0) {
+        prompt += `
+
+=== REDES DEL NEGOCIO ===
+Si el cliente pregunta por redes sociales, página o dónde seguirnos, comparte SOLO estos enlaces (no inventes otros):`;
+        redes.forEach(([n, v]) => { prompt += `
+- ${n}: ${v}`; });
     }
 
     if (config.moduloDomicilios?.activo) {

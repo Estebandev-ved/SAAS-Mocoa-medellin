@@ -264,6 +264,9 @@ function NegocioTab() {
     direccion: '',
     telefono: '',
     sitio_web: '',
+    instagram_url: '',
+    facebook_url: '',
+    tiktok_url: '',
     descripcion_negocio: '',
     numero_empleados: '',
   });
@@ -401,6 +404,31 @@ function NegocioTab() {
                 onChange={handleChange}
                 placeholder="https://minegocio.com"
               />
+            </FormField>
+            <FormField label="Instagram del negocio" icon={Globe}>
+              <InputField
+                name="instagram_url"
+                value={form.instagram_url}
+                onChange={handleChange}
+                placeholder="https://instagram.com/minegocio"
+              />
+            </FormField>
+            <FormField label="Facebook del negocio" icon={Globe}>
+              <InputField
+                name="facebook_url"
+                value={form.facebook_url}
+                onChange={handleChange}
+                placeholder="https://facebook.com/minegocio"
+              />
+            </FormField>
+            <FormField label="TikTok del negocio" icon={Globe}>
+              <InputField
+                name="tiktok_url"
+                value={form.tiktok_url}
+                onChange={handleChange}
+                placeholder="https://tiktok.com/@minegocio"
+              />
+              <p className="text-xs text-muted mt-1.5">Tu bot comparte estos enlaces cuando un cliente pregunta por tus redes.</p>
             </FormField>
             <FormField label="Número de Empleados" icon={Users}>
               <InputField

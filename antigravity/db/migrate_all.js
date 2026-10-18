@@ -45,6 +45,7 @@ const MIGRACIONES = [
     'migrate_2fa.js',
     'migrate_v3_funciones.js',
     'migrate_tipo_negocio.js',
+    'migrate_redes_negocio.js',
 ];
 
 const BASE = process.env.MYSQL_DATABASE || 'antigravity';
