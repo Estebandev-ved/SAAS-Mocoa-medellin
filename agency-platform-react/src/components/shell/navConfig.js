@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, MessageSquare, ShoppingCart, Package, Activity, Users, Zap, Settings, TrendingUp,
-  CreditCard, Truck, Smartphone, Phone, UtensilsCrossed, Store, BookOpen, Tag, Send, Layers, Shield, ChefHat,
+  CreditCard, Truck, Smartphone, Phone, UtensilsCrossed, Store, BookOpen, Tag, Send, Layers, Shield, ChefHat, Workflow,
 } from 'lucide-react';
 
 // Fuente única de la navegación del panel del dueño: la usan el menú lateral, la barra inferior,
@@ -34,6 +34,7 @@ export const GRUPOS = [
     items: [
       { icon: Smartphone, label: 'WhatsApp', path: '/whatsapp' },
       { icon: Zap, label: 'Automatizaciones', path: '/automatizaciones' },
+      { icon: Workflow, label: 'Flujos (prototipo)', path: '/flujos' },
       { icon: Phone, label: 'Bot Llamadas', path: '/voice' },
       { icon: Layers, label: 'Multi-Canal', path: '/multichannel' },
       { icon: Activity, label: 'Monitoreo', path: '/monitoreo' },

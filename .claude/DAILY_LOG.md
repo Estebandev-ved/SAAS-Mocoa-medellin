@@ -8,22 +8,22 @@
 
 ### 🔐 Seguridad
 - [ ] Rate limit con almacén compartido (Redis) y revisar CORS/helmet/CSP antes de escalar a más de una instancia.
-- [ ] Revisar IDOR en el resto de rutas (`/pedidos`, `/productos`, `/restaurantes`, `/domicilios`): las de cupones, campañas, clientes y bot-config ya filtran por `negocio_id`. Revisar también `bot-config.js` `/whitelist` y `PUT /clientes/:id`.
 - [ ] Quitar de `schema.sql` el superadmin de prueba (`admin@antigravity.co`, contraseña conocida) o separarlo en `seed.sql`; confirmar que producción nunca lo cargó.
 
 ### 🧑‍💼 Cliente
-- [ ] **Mover Preferencias (zona horaria/moneda/fecha) al backend** y usarlas en Pedidos, Pagos y Dashboard (hoy `localStorage`).
 - [ ] ETA y aviso por WhatsApp "va en camino" en el seguimiento del domiciliario.
 - [ ] Videos cortos de 30-60 s por sección en `AyudaRapida` (material del socio).
-- [ ] Probar con datos reales: sockets en vivo, push (faltan claves VAPID), `/bot/test` con Gemini real, y que el bot comparta las redes al preguntarlas.
+- [ ] Probar con datos reales: sockets en vivo, push (faltan claves VAPID), `/bot/test` con Gemini real, que el bot comparta las redes al preguntarlas y que Preferencias se guarden entre dispositivos.
+- [ ] Aplicar las Preferencias (fecha/zona) también en Conversaciones, Clientes, Caja y Analytics (hoy solo Pedidos y Dashboard).
 
 ### ✨ Visual e interactivo
-- [ ] Tema oscuro: revisar pantallas con colores hex sueltos. Auditoría a 375px del admin y botones ≥44px.
+- [ ] Tema oscuro: revisar pantallas con colores hex sueltos (el prototipo de Flujos usa `bg-white` y bordes fijos). Auditoría a 375px del admin y botones ≥44px.
 - [ ] Micro-interacciones y `Skeleton` en las pantallas que faltan.
 
-### 🧩 Constructor de flujos tipo ManyChat
-- [ ] **Prototipo visual del editor** (lienzo de nodos arrastrables, conexiones, panel de propiedades), solo front con datos locales. Diseño en `docs/constructor-de-flujos.md`.
-- [ ] Decisiones del socio sobre el diseño (sección 8 del documento: límites por plan, plantillas).
+### 🧩 Constructor de flujos
+- [ ] Decisiones del socio sobre el diseño (sección 8 de `docs/constructor-de-flujos.md`: límites por plan, plantillas).
+- [ ] Probar el prototipo `/flujos` en celular (arrastre táctil y conectar) y añadir deshacer/zoom.
+- [ ] Fase 2: tablas (`flujos`, `flujo_nodos`, `flujo_conexiones`, `flujo_ejecuciones`, `etiquetas_cliente`) + CRUD validado + motor mínimo (disparador, mensaje, espera, etiqueta, IA).
 
 ---
 
@@ -35,7 +35,11 @@
 - [x] **`vite build`** de `agency-platform-react` pasa (recharts ya instalado). 103 tests unitarios pasan.
 - [x] **Texto `ANTIGRAVITY`** en `Ecosystem.jsx` y `AdminLayout.jsx` pasó a minúsculas como el logo.
 - [x] **Documento de diseño** `docs/constructor-de-flujos.md` (qué toma de ManyChat, qué lo hace nuestro, modelo de datos, reutilización de `automationsService`/`campaignSender`, fases).
-- [ ] Sin probar con MySQL real: la migración nueva y la lectura de redes en el prompt del bot.
+- [x] **Adelantado del plan del 19 oct (mismo día):**
+  - **IDOR**: revisadas `/pedidos`, `/productos`, `/restaurantes`, `/domicilios`, automatizaciones y `/whitelist`; todas las consultas por id filtran por `negocio_id` (o validan antes). Sin hallazgos.
+  - **Preferencias al backend**: `GET/PUT /business/preferencias` (guardadas dentro de `negocios.ui_estado`, sin columna nueva; `PUT /ui-estado` ya no pisa otras claves), `services/preferencias.js` con catálogo cerrado, `utils/preferencias.js` (`formatearFecha`, `formatearMoneda`, sincronización al entrar, copia en localStorage) y hook `usePreferencias`. Se aplican en Pedidos y Dashboard. **La moneda solo cambia símbolo/formato, no convierte montos** (se aclara en Ajustes). Planes y facturas de Suscripción siguen en COP a propósito. 4 tests nuevos (107 en total).
+  - **Prototipo visual del editor de flujos** en `/flujos` (menú "Flujos (prototipo)"): lienzo con nodos arrastrables, conexiones, panel de propiedades, 9 tipos de paso (`components/flujos/catalogo.js`), guardado en localStorage, flujo de ejemplo. No ejecuta nada en el bot. Verificado en el navegador con la API apagada (render, agregar paso, quitar conexión); sin probar con táctil.
+- [ ] Sin probar con MySQL real: la migración nueva, la lectura de redes en el prompt del bot y `/business/preferencias`.
 
 ---
 

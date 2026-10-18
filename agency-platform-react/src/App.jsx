@@ -35,6 +35,7 @@ import AutomatizacionesPage from './pages/AutomatizacionesPage';
 import GuiaPage from './pages/GuiaPage';
 import CuponesPage from './pages/CuponesPage';
 import CampanasPage from './pages/CampanasPage';
+import FlujosPage from './pages/FlujosPage';
 import SuscripcionPage from './pages/SuscripcionPage';
 import AjustesPage from './pages/AjustesPage';
 import DomiciliosPage from './pages/DomiciliosPage';
@@ -144,6 +145,7 @@ function App() {
                 <Route path="/guia" element={<GuiaPage />} />
                 <Route path="/cupones" element={<CuponesPage />} />
                 <Route path="/campanas" element={<CampanasPage />} />
+                <Route path="/flujos" element={<FlujosPage />} />
                 <Route path="/suscripcion" element={<SuscripcionPage />} />
                 <Route path="/caja" element={<CajaPage />} />
                 <Route path="/cocina" element={<CocinaPage />} />
