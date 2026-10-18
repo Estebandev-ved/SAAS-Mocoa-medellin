@@ -352,7 +352,7 @@ const Universe = ({ activeId, onSelect }) => {
           <circle cx="458" cy="268" r="5" fill="#C62828" opacity="0.4" />
         </g>
         <text x={CX} y={CY - 2} textAnchor="middle" fill="#fff" fontSize="12" fontFamily="var(--font-head)" fontWeight="800" letterSpacing="3">CORE</text>
-        <text x={CX} y={CY + 12} textAnchor="middle" fill="#fff" fontSize="7" fontFamily="var(--font-mono)" opacity="0.75" letterSpacing="1.5">ANTIGRAVITY</text>
+        <text x={CX} y={CY + 12} textAnchor="middle" fill="#fff" fontSize="7" fontFamily="var(--font-mono)" opacity="0.75" letterSpacing="0.5">antigravity</text>
 
         {planets.filter((p) => p.depth >= 0).map((p) => (
           <Planet key={p.m.id} p={p} time={time} activeId={activeId} onSelect={onSelect} onHover={setPaused} />

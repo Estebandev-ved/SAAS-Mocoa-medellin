@@ -46,7 +46,7 @@ export default function AdminLayout() {
         <button className="admin-menu-btn" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
-        <span className="admin-topbar-title">ANTIGRAVITY · ADMIN</span>
+        <span className="admin-topbar-title">antigravity · admin</span>
       </header>
       {menuAbierto && <div className="admin-overlay" onClick={() => setMenuAbierto(false)} />}
       <aside className={`admin-sidebar ${sidebarExpanded ? 'expanded' : 'collapsed'} ${menuAbierto ? 'open' : ''}`}>

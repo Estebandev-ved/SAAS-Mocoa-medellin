@@ -2,31 +2,40 @@
 
 ---
 
-## 📅 Plan para Hoy: 2026-10-18
+## 📅 Plan para Hoy: 2026-10-19
 
-**Rama de trabajo: `caja-emprendedor` (todo va ahí, no a `main`).** Idea grande para diseñar: un **constructor de flujos tipo ManyChat con la esencia de Antigravity** (flujos visuales, disparadores, IA en español colombiano, pedidos/pagos/domicilios integrados).
+**Rama de trabajo: `caja-emprendedor` (todo va ahí, no a `main`).** Antes de nada: correr `node db/migrate_redes_negocio.js` (o dejar que lo haga `migrate_all` al arrancar) — sin las columnas nuevas, `GET /business/perfil` y la config del bot fallan.
 
-### 🔐 Seguridad (2FA, recuperación de contraseña y política de contraseñas ya están hechos)
-- [ ] Seguir la auditoría de rutas: revisar IDOR por `negocio_id` en `/cupones`, `/api/campanas`, `/bot/config`, `/clientes`; el `express.json({ limit: '50mb' })` global es excesivo (bajarlo y subir solo en las rutas de imágenes).
-- [ ] Revisar `SELECT *` restantes en `auth.js` (líneas ~205 y ~262) para que no viajen al cliente.
-- [ ] CORS/helmet/CSP y rate limit con almacén compartido (Redis) antes de escalar a más de una instancia.
-- [ ] Secretos: confirmar que no quedan claves en el repo; rotar si hace falta.
+### 🔐 Seguridad
+- [ ] Rate limit con almacén compartido (Redis) y revisar CORS/helmet/CSP antes de escalar a más de una instancia.
+- [ ] Revisar IDOR en el resto de rutas (`/pedidos`, `/productos`, `/restaurantes`, `/domicilios`): las de cupones, campañas, clientes y bot-config ya filtran por `negocio_id`. Revisar también `bot-config.js` `/whitelist` y `PUT /clientes/:id`.
+- [ ] Quitar de `schema.sql` el superadmin de prueba (`admin@antigravity.co`, contraseña conocida) o separarlo en `seed.sql`; confirmar que producción nunca lo cargó.
 
 ### 🧑‍💼 Cliente
-- [ ] **Redes del negocio del cliente** (Instagram/Facebook/TikTok) en Ajustes → Negocio, para que el bot las comparta (necesita columna nueva en `negocios`).
 - [ ] **Mover Preferencias (zona horaria/moneda/fecha) al backend** y usarlas en Pedidos, Pagos y Dashboard (hoy `localStorage`).
 - [ ] ETA y aviso por WhatsApp "va en camino" en el seguimiento del domiciliario.
 - [ ] Videos cortos de 30-60 s por sección en `AyudaRapida` (material del socio).
-- [ ] Probar con datos reales: sockets en vivo, push (faltan claves VAPID), `/bot/test` con Gemini real.
+- [ ] Probar con datos reales: sockets en vivo, push (faltan claves VAPID), `/bot/test` con Gemini real, y que el bot comparta las redes al preguntarlas.
 
 ### ✨ Visual e interactivo
 - [ ] Tema oscuro: revisar pantallas con colores hex sueltos. Auditoría a 375px del admin y botones ≥44px.
-- [ ] Micro-interacciones y `Skeleton` en las pantallas que faltan. Texto `ANTIGRAVITY` suelto en `Ecosystem.jsx` y `AdminLayout.jsx`.
+- [ ] Micro-interacciones y `Skeleton` en las pantallas que faltan.
 
-### 🧩 Constructor de flujos tipo ManyChat (fase de diseño)
-- [ ] Documento en `docs/`: qué toma de ManyChat (disparadores por palabra clave, pasos, botones, etiquetas, difusiones, captura de datos) y qué lo hace nuestro (IA con contexto del negocio, pedidos/pagos/domicilios/cupones integrados, planes de $25.000-$449.000).
-- [ ] Modelo de datos (`flujos`, `flujo_nodos`, `flujo_ejecuciones`, `etiquetas_cliente`) y qué reutiliza de `automationsService` y `campaignSender`.
-- [ ] Prototipo visual del editor (lienzo de nodos), solo front con datos locales.
+### 🧩 Constructor de flujos tipo ManyChat
+- [ ] **Prototipo visual del editor** (lienzo de nodos arrastrables, conexiones, panel de propiedades), solo front con datos locales. Diseño en `docs/constructor-de-flujos.md`.
+- [ ] Decisiones del socio sobre el diseño (sección 8 del documento: límites por plan, plantillas).
+
+---
+
+## ✅ 18 oct — Seguridad, redes del negocio y diseño del constructor de flujos
+
+- [x] **Seguridad**: `express.json` global bajó de 50 MB a 1 MB; solo `/api/productos/importar-foto` (foto de la carta en base64) admite 15 MB. Login y login 2FA ya no usan `SELECT *` (lista explícita `COLS_LOGIN` en `auth.js`; antes el objeto solo se usaba en el servidor, pero así no puede filtrarse por error). Aviso en `schema.sql` sobre el superadmin de prueba.
+- [x] **Auditoría de rutas**: `/cupones`, `/api/campanas`, `/clientes` y `bot-config` filtran por `negocio_id` en todas las consultas por id (sin IDOR en lo revisado). **Secretos**: no hay claves en el repo (el `.env.production` solo trae valores públicos de Vite); la contraseña `Admin2024#` solo queda en un comentario del seed.
+- [x] **Redes del negocio** (Instagram/Facebook/TikTok): migración `db/migrate_redes_negocio.js` (en `migrate_all`), validación http(s) en `perfilNegocio.js`, campos en Ajustes → Negocio, y el bot las comparte (junto al sitio web) cuando el cliente las pide. `GET /business/perfil` ahora usa la misma lista de columnas que el `PUT`. Test nuevo.
+- [x] **`vite build`** de `agency-platform-react` pasa (recharts ya instalado). 103 tests unitarios pasan.
+- [x] **Texto `ANTIGRAVITY`** en `Ecosystem.jsx` y `AdminLayout.jsx` pasó a minúsculas como el logo.
+- [x] **Documento de diseño** `docs/constructor-de-flujos.md` (qué toma de ManyChat, qué lo hace nuestro, modelo de datos, reutilización de `automationsService`/`campaignSender`, fases).
+- [ ] Sin probar con MySQL real: la migración nueva y la lectura de redes en el prompt del bot.
 
 ---
 
