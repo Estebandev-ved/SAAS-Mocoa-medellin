@@ -27,6 +27,12 @@ const {
 } = require('./middleware/security');
 
 const app = express();
+
+// Detrás del proxy de Railway/Vercel la IP real viene en X-Forwarded-For. Sin esto, req.ip es la del
+// proxy y TODOS los usuarios comparten el mismo cupo de rate limit por IP (p. ej. 5 logins por 15 min en total).
+// TRUST_PROXY_HOPS = cuántos proxies hay delante (1 en Railway). En desarrollo no se confía en nadie.
+const saltosProxy = Number.parseInt(process.env.TRUST_PROXY_HOPS, 10);
+app.set('trust proxy', Number.isInteger(saltosProxy) ? saltosProxy : (process.env.NODE_ENV === 'production' ? 1 : false));
 const server = http.createServer(app);
 
 const io = new Server(server, {

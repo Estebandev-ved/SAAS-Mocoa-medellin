@@ -2,6 +2,13 @@ const helmet = require('helmet');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const compression = require('compression');
 const jwt = require('jsonwebtoken');
+const { crearStore } = require('../services/rateLimitStore');
+
+// Con REDIS_URL los contadores se comparten entre instancias; sin ella, memoria local.
+const storeCompartido = (prefijo) => {
+    const store = crearStore(prefijo);
+    return store ? { store } : {};
+};
 
 // Helmet config (seguridad HTTP)
 const helmetConfig = helmet({
@@ -34,6 +41,7 @@ function keyPorNegocioOIp(req) {
 
 // Rate limiting global: 300 requests por minuto, por negocio autenticado (o por IP si no hay token)
 const apiRateLimit = rateLimit({
+    ...storeCompartido('api'),
     windowMs: 60 * 1000,
     max: 300,
     keyGenerator: keyPorNegocioOIp,
@@ -44,6 +52,7 @@ const apiRateLimit = rateLimit({
 
 // Rate limiting para login: 5 intentos por 15 minutos
 const loginRateLimit = rateLimit({
+    ...storeCompartido('login'),
     windowMs: 15 * 60 * 1000,
     max: 5,
     message: { error: 'Demasiados intentos de login. Espera 15 minutos.' },
@@ -53,6 +62,7 @@ const loginRateLimit = rateLimit({
 
 // Recuperación de contraseña: evita spam de correos a un tercero y adivinar el token.
 const passwordResetRateLimit = rateLimit({
+    ...storeCompartido('reset'),
     windowMs: 60 * 60 * 1000,
     max: 10,
     message: { error: 'Demasiados intentos de recuperación. Intenta de nuevo en una hora.' },
@@ -63,6 +73,7 @@ const passwordResetRateLimit = rateLimit({
 // Segundo factor: un código de 6 dígitos son 1.000.000 de combinaciones; se limita por IP
 // (y además cada fallo cuenta para el bloqueo de la cuenta en routes/auth.js).
 const twoFactorRateLimit = rateLimit({
+    ...storeCompartido('2fa'),
     windowMs: 15 * 60 * 1000,
     max: 10,
     message: { error: 'Demasiados intentos con el código. Espera 15 minutos.' },
@@ -78,6 +89,7 @@ const twoFactorRateLimit = rateLimit({
 // sesión desde la misma red (bodega, wifi compartido) mientras alguien insiste
 // con el número de otro.
 const driverLoginRateLimit = rateLimit({
+    ...storeCompartido('driver'),
     windowMs: 15 * 60 * 1000,
     max: 8,
     keyGenerator: (req) => `${ipKeyGenerator(req.ip)}:${(req.body?.telefono || '').toString().slice(0, 20)}`,
@@ -88,6 +100,7 @@ const driverLoginRateLimit = rateLimit({
 
 // Rate limiting para bot: 30 mensajes por minuto por negocio
 const botRateLimit = rateLimit({
+    ...storeCompartido('bot'),
     windowMs: 60 * 1000,
     max: 30,
     message: { error: 'Límite de mensajes alcanzado.' }
@@ -95,6 +108,7 @@ const botRateLimit = rateLimit({
 
 // Rate limiting para WhatsApp
 const whatsappRateLimit = rateLimit({
+    ...storeCompartido('wa'),
     windowMs: 60 * 1000,
     max: 20,
     message: { error: 'Límite de mensajes WhatsApp alcanzado.' }

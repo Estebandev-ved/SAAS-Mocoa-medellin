@@ -7,8 +7,10 @@
 **Rama de trabajo: `caja-emprendedor` (todo va ahí, no a `main`).** Antes de nada: correr `node db/migrate_redes_negocio.js` (o dejar que lo haga `migrate_all` al arrancar) — sin las columnas nuevas, `GET /business/perfil` y la config del bot fallan.
 
 ### 🔐 Seguridad
-- [ ] Rate limit con almacén compartido (Redis) y revisar CORS/helmet/CSP antes de escalar a más de una instancia.
-- [ ] Quitar de `schema.sql` el superadmin de prueba (`admin@antigravity.co`, contraseña conocida) o separarlo en `seed.sql`; confirmar que producción nunca lo cargó.
+- [x] (21 oct) **Rate limit**: almacén Redis opcional (`api/services/rateLimitStore.js`, se activa con `REDIS_URL`; si Redis falla deja pasar y avisa en el log) + `trust proxy` (`TRUST_PROXY_HOPS`, 1 en producción): sin esto, detrás de Railway todos los usuarios compartían el mismo cupo por IP (p. ej. 5 logins/15 min en total). 4 tests nuevos. **Sin probar con Redis real.** Poner `REDIS_URL` solo si se escala a más de una instancia.
+- [x] (21 oct) **Superadmin de prueba**: ya no llega a producción — `migrate_all.js` corta `schema.sql` desde el encabezado `-- DATOS DE PRUEBA` (ahora con aviso de no renombrarlo). Falta confirmar que la base de producción no lo tenga de antes: `SELECT id,email_dueno,rol FROM negocios WHERE email_dueno IN ('admin@antigravity.co','demo@antigravity.co')`.
+- [x] CORS ya es lista cerrada (antigravity.co, app, `FRONTEND_URL`); helmet sin CSP es aceptable para una API JSON (la CSP del sitio va en Vercel).
+- [ ] Lista negra de tokens (`tokenBlacklist`) es en memoria: con varias instancias un logout no vale en todas. Pasarla a Redis junto con el escalado.
 
 ### 🧑‍💼 Cliente
 - [ ] ETA y aviso por WhatsApp "va en camino" en el seguimiento del domiciliario.

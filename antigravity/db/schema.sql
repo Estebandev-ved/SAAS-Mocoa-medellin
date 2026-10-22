@@ -318,6 +318,7 @@ CREATE TABLE IF NOT EXISTS notificaciones (
 
 -- ============================================
 -- DATOS DE PRUEBA PARA negocio_id = 1
+-- (NO RENOMBRAR este encabezado: db/migrate_all.js corta el archivo aquí para que nada de abajo llegue a producción)
 -- ============================================
 
 -- Insertar negocio de prueba (CON password hasheado de 'Demo2024#')
