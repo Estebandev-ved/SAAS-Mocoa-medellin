@@ -13,7 +13,7 @@
 - [ ] Lista negra de tokens (`tokenBlacklist`) es en memoria: con varias instancias un logout no vale en todas. Pasarla a Redis junto con el escalado.
 
 ### 🧑‍💼 Cliente
-- [ ] ETA y aviso por WhatsApp "va en camino" en el seguimiento del domiciliario.
+- [x] (21 oct) ETA en el aviso "va en camino" (`api/services/eta.js`: desde la posición del domiciliario, el negocio o `tiempo_minutos`) + aviso "ya casi llega" a menos de 250 m (una vez por domicilio, vía `notificaciones`) + `eta_minutos` en el evento de socket. 5 tests. **Sin probar con un domiciliario real** (GPS y WhatsApp).
 - [ ] Videos cortos de 30-60 s por sección en `AyudaRapida` (material del socio).
 - [ ] Probar con datos reales: sockets en vivo, push (faltan claves VAPID), `/bot/test` con Gemini real, que el bot comparta las redes al preguntarlas y que Preferencias se guarden entre dispositivos.
 - [x] (21 oct) Preferencias aplicadas también en Conversaciones (hora y montos), Clientes y Analytics (montos). Caja no formatea montos propios (abre Mercado/Efipay externo).
@@ -23,7 +23,8 @@
 - [ ] Micro-interacciones y `Skeleton` en las pantallas que faltan.
 
 ### 🧩 Constructor de flujos
-- [ ] Decisiones del socio sobre el diseño (sección 8 de `docs/constructor-de-flujos.md`: límites por plan, plantillas).
+- [ ] Decisiones del socio (final de `docs/constructor-de-flujos.md`, "Plan de implementación": límites por plan, desde qué plan, si se oculta el menú).
+- [ ] **Etapa 1 del plan**: migración `flujos`/`flujo_nodos`/`flujo_conexiones`/`etiquetas`, validación del grafo con tests, rutas `/api/flujos` y que `FlujosPage` guarde en la API.
 - [ ] Probar el prototipo `/flujos` en celular (arrastre táctil y conectar) y añadir deshacer/zoom.
 - [ ] Fase 2: tablas (`flujos`, `flujo_nodos`, `flujo_conexiones`, `flujo_ejecuciones`, `etiquetas_cliente`) + CRUD validado + motor mínimo (disparador, mensaje, espera, etiqueta, IA).
 
