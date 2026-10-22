@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Trash2, Plus, Link2, X, Save, Power, Loader2, FilePlus2 } from 'lucide-react';
+import { Trash2, Plus, Link2, X, Save, Power, Loader2, FilePlus2, Undo2, Copy } from 'lucide-react';
 import api from '../services/api';
 import Toast from '../components/Toast';
 import SimuladorFlujo from '../components/flujos/SimuladorFlujo';
@@ -41,6 +41,18 @@ export default function FlujosPage() {
   const [sel, setSel] = useState(null);
   const [origen, setOrigen] = useState(null); // { id, salida } esperando un destino
   const arrastre = useRef(null);
+  // Deshacer: pila de estados anteriores del lienzo (se guarda antes de cada cambio; al escribir en un campo, una vez por ráfaga).
+  const pasado = useRef([]);
+  const ultimoGuardadoMs = useRef(0);
+  const [puedeDeshacer, setPuedeDeshacer] = useState(false);
+  const guardarPaso = useCallback((actual, soloSiPasoTiempo = false) => {
+    const ahora = Date.now();
+    if (soloSiPasoTiempo && ahora - ultimoGuardadoMs.current < 1500) { ultimoGuardadoMs.current = ahora; return; }
+    ultimoGuardadoMs.current = ahora;
+    pasado.current = [...pasado.current.slice(-49), actual];
+    setPuedeDeshacer(true);
+  }, []);
+  const limpiarHistorial = () => { pasado.current = []; setPuedeDeshacer(false); };
 
   const foto = (n, f) => JSON.stringify({ n, f });
   const sucio = foto(nombre, flujo) !== base;
@@ -48,6 +60,7 @@ export default function FlujosPage() {
   const abrir = useCallback((f) => {
     setId(f.id); setNombre(f.nombre); setActivo(f.activo); setFlujo(f.definicion);
     setBase(foto(f.nombre, f.definicion)); setSel(null); setOrigen(null);
+    pasado.current = []; setPuedeDeshacer(false);
   }, []);
 
   const cargarLista = useCallback(async (abrirId) => {
@@ -128,6 +141,14 @@ export default function FlujosPage() {
     }
     setId(null); setActivo(false); setNombre(conEjemplo ? 'Promo por WhatsApp' : 'Flujo nuevo');
     setFlujo(conEjemplo ? flujoEjemplo() : flujoVacio()); setBase(''); setSel(null); setOrigen(null);
+    limpiarHistorial();
+  };
+
+  // Copia el flujo que ves (con sus cambios) como uno nuevo sin guardar: sirve para probar variantes.
+  const duplicar = () => {
+    setId(null); setActivo(false); setNombre(`${nombre} (copia)`.slice(0, 100)); setBase(''); setSel(null); setOrigen(null);
+    limpiarHistorial();
+    setAviso({ type: 'success', message: 'Copia lista: ajústala y pulsa Guardar' });
   };
 
   const cambiarDeFlujo = async (nuevoId) => {
@@ -148,7 +169,7 @@ export default function FlujosPage() {
   const empezarArrastre = (e, nodo) => {
     if (e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    arrastre.current = { id: nodo.id, dx: e.clientX - nodo.x, dy: e.clientY - nodo.y };
+    arrastre.current = { id: nodo.id, dx: e.clientX - nodo.x, dy: e.clientY - nodo.y, antes: flujo };
     setSel(nodo.id);
   };
   const moverArrastre = (e) => {
@@ -156,15 +177,43 @@ export default function FlujosPage() {
     if (!a) return;
     actualizarNodo(a.id, { x: Math.max(0, Math.round(e.clientX - a.dx)), y: Math.max(0, Math.round(e.clientY - a.dy)) });
   };
-  const soltar = () => { arrastre.current = null; };
+  const soltar = () => {
+    const a = arrastre.current;
+    arrastre.current = null;
+    // Solo cuenta como cambio si el paso realmente se movió.
+    if (a && JSON.stringify(a.antes.nodos) !== JSON.stringify(flujo.nodos)) guardarPaso(a.antes);
+  };
+
+  const deshacer = useCallback(() => {
+    const anterior = pasado.current[pasado.current.length - 1];
+    if (!anterior) return;
+    pasado.current = pasado.current.slice(0, -1);
+    setPuedeDeshacer(pasado.current.length > 0);
+    setFlujo(anterior); setSel(null); setOrigen(null);
+  }, []);
+
+  // Ctrl/Cmd+Z deshace, salvo que se esté escribiendo en un campo (ahí deshace el texto del propio campo)
+  useEffect(() => {
+    const alTeclear = (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || e.shiftKey) return;
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      e.preventDefault();
+      deshacer();
+    };
+    window.addEventListener('keydown', alTeclear);
+    return () => window.removeEventListener('keydown', alTeclear);
+  }, [deshacer]);
 
   const agregar = (tipo) => {
+    guardarPaso(flujo);
     const n = nuevoNodo(tipo, 60 + (flujo.nodos.length % 5) * 30, 360 + (flujo.nodos.length % 4) * 30);
     setFlujo((f) => ({ ...f, nodos: [...f.nodos, n] }));
     setSel(n.id);
   };
 
   const quitar = (id) => {
+    guardarPaso(flujo);
     setFlujo((f) => ({
       ...f,
       nodos: f.nodos.filter((n) => n.id !== id),
@@ -180,6 +229,7 @@ export default function FlujosPage() {
   const elegirEntrada = (e, nodo) => {
     e.stopPropagation();
     if (!origen || origen.id === nodo.id) return;
+    guardarPaso(flujo);
     setFlujo((f) => ({
       ...f,
       // una salida lleva a un solo destino: conectar de nuevo reemplaza
@@ -187,7 +237,7 @@ export default function FlujosPage() {
     }));
     setOrigen(null);
   };
-  const quitarConexion = (c) => setFlujo((f) => ({ ...f, conexiones: f.conexiones.filter((x) => x !== c) }));
+  const quitarConexion = (c) => { guardarPaso(flujo); setFlujo((f) => ({ ...f, conexiones: f.conexiones.filter((x) => x !== c) })); };
 
   const seleccionado = sel ? nodoPorId(sel) : null;
   const ancho = Math.max(1300, ...flujo.nodos.map((n) => n.x + NODO_ANCHO + 80));
@@ -226,6 +276,14 @@ export default function FlujosPage() {
         <button type="button" onClick={() => nuevoFlujo(true)} disabled={ocupado || (limite !== null && lista.length >= limite)}
           className="h-11 px-4 rounded-xl border border-[#C9C9C9] bg-white text-sm text-text cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
           Partir del ejemplo
+        </button>
+        <button type="button" onClick={deshacer} disabled={!puedeDeshacer} aria-label="Deshacer el último cambio" title="Deshacer (Ctrl+Z)"
+          className="h-11 w-11 rounded-xl border border-[#C9C9C9] bg-white text-text inline-flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+          <Undo2 className="w-4 h-4" />
+        </button>
+        <button type="button" onClick={duplicar} disabled={ocupado || (limite !== null && lista.length >= limite)} aria-label="Duplicar flujo" title="Duplicar como flujo nuevo"
+          className="h-11 w-11 rounded-xl border border-[#C9C9C9] bg-white text-text inline-flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+          <Copy className="w-4 h-4" />
         </button>
         <button type="button" onClick={() => guardar()} disabled={ocupado || !nombre.trim() || (!sucio && id !== null)}
           className="h-11 px-5 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold inline-flex items-center gap-2 border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
@@ -315,7 +373,7 @@ export default function FlujosPage() {
           {!seleccionado ? (
             <p className="text-sm text-muted">Toca un paso para editarlo. Arrástralo para moverlo. Para conectar: toca un círculo de salida y luego el de entrada del siguiente paso. Toca una línea para quitarla.</p>
           ) : (
-            <Propiedades nodo={seleccionado} onCambio={(config) => actualizarNodo(seleccionado.id, { config })} onQuitar={() => quitar(seleccionado.id)} onCerrar={() => setSel(null)} />
+            <Propiedades nodo={seleccionado} onCambio={(config) => { guardarPaso(flujo, true); actualizarNodo(seleccionado.id, { config }); }} onQuitar={() => quitar(seleccionado.id)} onCerrar={() => setSel(null)} />
           )}
         </aside>
       </div>
