@@ -42,8 +42,8 @@ async function obtenerConfigNegocio(negocioId) {
             [negocioId]
         );
         const [productos] = await db.execute(
-            `SELECT id, nombre, precio, descripcion, stock, categoria, restaurante_id
-             FROM productos WHERE negocio_id = ? AND activo = 1`,
+            // SELECT *: así sigue funcionando aunque la migración de inventario (controla_stock) aún no haya corrido.
+            `SELECT * FROM productos WHERE negocio_id = ? AND activo = 1`,
             [negocioId]
         );
         const moduloDomicilios = await obtenerModuloDomicilios(negocioId);
@@ -227,7 +227,14 @@ function construirSystemPrompt(config, contexto) {
     if (config.productos.length > 0) {
         prompt += `\n\n=== PRODUCTOS DISPONIBLES ===`;
         config.productos.forEach(p => {
-            prompt += `\n- ${p.nombre}: $${p.precio} COP (${p.descripcion || 'Sin descripción'})`;
+            // Inventario: solo se limita lo que el dueño marcó "controlar inventario".
+            let disponibilidad = '';
+            if (p.controla_stock) {
+                const quedan = Number(p.stock) || 0;
+                disponibilidad = quedan <= 0 ? ' — AGOTADO: no lo ofrezcas ni lo agregues a pedidos, sugiere una alternativa'
+                    : quedan <= (p.stock_minimo ?? 5) ? ` — quedan solo ${quedan} unidades` : '';
+            }
+            prompt += `\n- ${p.nombre}: $${p.precio} COP (${p.descripcion || 'Sin descripción'})${disponibilidad}`;
         });
     }
     if (config.negocio.politicas) {

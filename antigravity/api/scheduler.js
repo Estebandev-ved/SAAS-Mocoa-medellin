@@ -56,14 +56,14 @@ async function revisarRecordatoriosPago() {
 async function revisarStockBajo() {
     try {
         const [productos] = await db.execute(
-            `SELECT id, negocio_id, nombre, stock FROM productos WHERE activo = 1`
+            `SELECT * FROM productos WHERE activo = 1`
         );
 
         for (const producto of productos) {
             const { activa, config } = await isAutomationActive(producto.negocio_id, 'stock_bajo');
             if (!activa) continue;
 
-            const umbral = config.umbral ?? 5;
+            const umbral = producto.stock_minimo ?? config.umbral ?? 5;
             if (producto.stock > umbral) continue;
 
             // No repetir la misma alerta del mismo producto más de una vez al día.

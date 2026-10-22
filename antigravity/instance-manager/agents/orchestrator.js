@@ -6,6 +6,7 @@ const { geocodificarDireccion } = require('../services/geocoding');
 const { calcularCondicionesDomicilio } = require('../services/domicilioTarifa');
 const { calcularEstado } = require('../../api/services/billing');
 const cupones = require('../../api/services/cupones');
+const inventario = require('../../api/services/inventario');
 
 const LIMITES_POR_PLAN = {
     starter: { mensajes_por_minuto: 10, mensajes_por_hora: 100, tokens_por_dia: 50000 },
@@ -88,6 +89,11 @@ async function procesarMensaje(mensaje, negocioId, clienteId, contexto = [], con
                 resultado.datos_accion.cupon = await cupones.buscarEnTextos(negocioId, textosCliente);
             }
             pedidoCreado = await ejecutarAccion(resultado.datos_accion, negocioId, clienteId);
+            // Sin stock: no se creó el pedido. Se reemplaza lo que dijo la IA (que pudo prometerlo) por la verdad.
+            if (pedidoCreado && pedidoCreado.sin_stock) {
+                resultado.respuesta = inventario.mensajeSinStock(pedidoCreado.sin_stock);
+                pedidoCreado = null;
+            }
         }
 
         await guardarLogAgente(negocioId, clienteId, resultado.intencion, resultado.agente_usado, mensaje, resultado.respuesta, resultado.tokens_usados || 0);
@@ -365,6 +371,10 @@ async function crearPedido(negocioId, clienteId, datos) {
 
         if (items.length === 0) return null;
 
+        // Inventario: solo los productos con "controlar inventario" activo. Se avisa antes de crear nada.
+        const disponibilidad = await inventario.verificarDisponibilidad(db, negocioId, items.map(i => ({ producto_id: i.producto_id, cantidad: i.cantidad })));
+        if (!disponibilidad.ok) return { sin_stock: disponibilidad.faltantes };
+
         // Descuento por cupón (opcional). El uso se reclama antes de insertar y
         // se libera si la creación del pedido falla.
         const subtotalPedido = total;
@@ -395,6 +405,18 @@ async function crearPedido(negocioId, clienteId, datos) {
                  VALUES (?, ?, ?, ?, ?)`,
                 [result.insertId, item.producto_id, item.cantidad, item.precio, item.subtotal]
             );
+        }
+
+        // Se reserva el stock al crear el pedido (así dos clientes no compran la misma última unidad).
+        // Si justo se agotó entre la comprobación y aquí, el pedido se cancela y se libera el cupón.
+        const descuentoStock = await inventario.descontarPedido(db, {
+            negocioId, pedidoId: result.insertId, numeroPedido,
+            items: items.map(i => ({ producto_id: i.producto_id, cantidad: i.cantidad })),
+        });
+        if (!descuentoStock.ok) {
+            await db.execute("UPDATE pedidos SET estado = 'cancelado' WHERE id = ?", [result.insertId]);
+            if (cuponAplicado) { await cupones.liberarUso(cuponAplicado.id); cuponAplicado = null; }
+            return { sin_stock: descuentoStock.faltantes };
         }
 
         await db.execute(
@@ -546,11 +568,19 @@ async function cancelarPedido(negocioId, datos) {
     if (!datos.numero_pedido) return;
 
     try {
+        const [pedido] = await db.execute(
+            `SELECT id FROM pedidos WHERE numero_pedido = ? AND negocio_id = ? AND estado NOT IN ('entregado', 'cancelado')`,
+            [datos.numero_pedido, negocioId]
+        );
         await db.execute(
             `UPDATE pedidos SET estado = 'cancelado' 
              WHERE numero_pedido = ? AND negocio_id = ? AND estado NOT IN ('entregado', 'cancelado')`,
             [datos.numero_pedido, negocioId]
         );
+        if (pedido.length > 0) {
+            await inventario.devolverPedido(db, { negocioId, pedidoId: pedido[0].id, numeroPedido: datos.numero_pedido })
+                .catch((e) => console.error('[Orchestrator] No se pudo devolver el stock del pedido cancelado:', e.message));
+        }
 
         console.log(`[Orchestrator] Pedido ${datos.numero_pedido} cancelado`);
     } catch (error) {

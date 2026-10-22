@@ -47,6 +47,7 @@ const MIGRACIONES = [
     'migrate_tipo_negocio.js',
     'migrate_redes_negocio.js',
     'migrate_flujos.js',
+    'migrate_inventario.js',
 ];
 
 const BASE = process.env.MYSQL_DATABASE || 'antigravity';
@@ -131,6 +132,7 @@ const VERIFICACIONES = [
     { archivo: 'migrate_2fa.js', tabla: 'negocios', columna: 'totp_ultimo_paso' },
     { archivo: 'migrate_redes_negocio.js', tabla: 'negocios', columna: 'instagram_url' },
     { archivo: 'migrate_flujos.js', tabla: 'flujo_ejecuciones' },
+    { archivo: 'migrate_inventario.js', tabla: 'inventario_movimientos' },
 ];
 
 async function existe(con, { tabla, columna }) {

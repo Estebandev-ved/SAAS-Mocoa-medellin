@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const inventario = require('../services/inventario');
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
 const { isAutomationActive, yaSeNotifico, registrarNotificacion, enviarWhatsApp, enviarEncuestaSiCorresponde } = require('../services/automationsService');
@@ -234,6 +235,15 @@ router.patch('/:id/estado', async (req, res) => {
             'UPDATE pedidos SET estado = ?, updated_at = NOW() WHERE id = ? AND negocio_id = ?',
             [nuevoEstado, id, req.negocioId]
         );
+
+        // Cancelar un pedido devuelve al inventario lo que se había reservado (idempotente).
+        if (nuevoEstado === 'cancelado' && estadoActual !== 'cancelado') {
+            try {
+                await inventario.devolverPedido(db, { negocioId: req.negocioId, pedidoId: id });
+            } catch (e) {
+                console.error('[Pedidos] No se pudo devolver el stock del pedido cancelado:', e.message);
+            }
+        }
 
         if (nuevoEstado === 'entregado') {
             pedirResenaSiCorresponde(req.negocioId, id);

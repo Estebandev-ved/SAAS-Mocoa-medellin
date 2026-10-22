@@ -49,6 +49,17 @@ function asegurarTipoNegocio() {
     });
 }
 
+// Migraciones recientes de las que depende código que corre en cada petición (redes del negocio, flujos,
+// inventario). Idempotentes y rápidas: así el código nuevo no se rompe si nadie activó RUN_MIGRATIONS_ON_START.
+function asegurarEsquemaReciente() {
+    const archivos = ['migrate_redes_negocio.js', 'migrate_flujos.js', 'migrate_inventario.js'];
+    return archivos.reduce((cadena, archivo) => cadena.then(() => new Promise((resolve) => {
+        const hijo = spawn(process.execPath, [path.join(__dirname, '../db', archivo)], { stdio: 'inherit', env: process.env });
+        hijo.on('error', () => resolve(false));
+        hijo.on('exit', (code) => resolve(code === 0));
+    })), Promise.resolve());
+}
+
 async function promoverAdmin(email) {
     try {
         const [r] = await db.execute("UPDATE negocios SET rol = 'admin' WHERE email_dueno = ? AND rol NOT IN ('admin', 'superadmin')", [email]);
@@ -83,6 +94,7 @@ async function tareasDeArranque() {
     await asegurarEsquemaV3();
     await asegurarEsquema2FA();
     await asegurarTipoNegocio();
+    await asegurarEsquemaReciente();
     const email = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
     if (email) await promoverAdmin(email);
     await diagnosticarEfipay();
