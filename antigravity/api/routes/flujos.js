@@ -3,6 +3,8 @@ const router = express.Router();
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
 const F = require('../services/flujos');
+const { HORAS_VIGENCIA_RESPUESTA } = require('../services/flujosEjecucion');
+const { simular } = require('../services/flujosSimulador');
 
 // Constructor de flujos (docs/constructor-de-flujos.md). Todo filtrado por negocio_id.
 // Guardar siempre valida la estructura; encender (activo = true) además exige que el flujo esté completo.
@@ -49,6 +51,33 @@ function leerCuerpo(req, res) {
     return { nombre, definicion, activo };
 }
 
+// Etiquetas que los flujos han puesto a los clientes del negocio, con cuántos clientes tiene cada una.
+router.get('/etiquetas', async (req, res) => {
+    try {
+        const [filas] = await db.execute(
+            'SELECT etiqueta, COUNT(*) AS total FROM etiquetas_cliente WHERE negocio_id = ? GROUP BY etiqueta ORDER BY total DESC, etiqueta LIMIT 200',
+            [req.negocioId]
+        );
+        res.json({ etiquetas: filas.map((f) => ({ etiqueta: f.etiqueta, total: Number(f.total) })) });
+    } catch (error) {
+        console.error('[Flujos] Error listando etiquetas:', error.message);
+        res.status(500).json({ error: 'Error al obtener las etiquetas' });
+    }
+});
+
+// "Probar flujo": corre el motor en memoria con la definición que se está editando (aunque no esté guardada).
+// No toca la base de datos ni envía nada por WhatsApp.
+router.post('/simular', (req, res) => {
+    try {
+        const r = simular({ ...req.body, nombre: req.body?.nombre || 'Cliente de prueba' });
+        if (r.error) return res.status(400).json({ error: r.error });
+        res.json(r);
+    } catch (error) {
+        console.error('[Flujos] Error simulando:', error.message);
+        res.status(500).json({ error: 'No se pudo probar el flujo' });
+    }
+});
+
 router.post('/', async (req, res) => {
     try {
         const datos = leerCuerpo(req, res);
@@ -84,6 +113,32 @@ router.put('/:id', async (req, res) => {
     } catch (error) {
         console.error('[Flujos] Error guardando:', error.message);
         res.status(500).json({ error: 'Error al guardar el flujo' });
+    }
+});
+
+// Métricas del flujo (últimos 30 días): cuántos clientes entraron, cuántos terminaron y en qué paso se quedan.
+// "Se quedaron" = esperaban una respuesta hace más de HORAS_VIGENCIA_RESPUESTA (ya no la van a dar).
+router.get('/:id/metricas', async (req, res) => {
+    try {
+        const [dueno] = await db.execute('SELECT id FROM flujos WHERE id = ? AND negocio_id = ?', [req.params.id, req.negocioId]);
+        if (dueno.length === 0) return res.status(404).json({ error: 'Flujo no encontrado' });
+
+        const [porEstado] = await db.execute(
+            `SELECT estado, COUNT(*) AS total FROM flujo_ejecuciones
+             WHERE flujo_id = ? AND negocio_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) GROUP BY estado`,
+            [req.params.id, req.negocioId]
+        );
+        const [abandonos] = await db.execute(
+            `SELECT nodo_actual, COUNT(*) AS total FROM flujo_ejecuciones
+             WHERE flujo_id = ? AND negocio_id = ? AND estado = 'esperando_respuesta'
+               AND updated_at < DATE_SUB(NOW(), INTERVAL ? HOUR) AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+             GROUP BY nodo_actual ORDER BY total DESC LIMIT 10`,
+            [req.params.id, req.negocioId, HORAS_VIGENCIA_RESPUESTA]
+        );
+        res.json(F.resumirMetricas(porEstado, abandonos));
+    } catch (error) {
+        console.error('[Flujos] Error en métricas:', error.message);
+        res.status(500).json({ error: 'Error al obtener las métricas' });
     }
 });
 

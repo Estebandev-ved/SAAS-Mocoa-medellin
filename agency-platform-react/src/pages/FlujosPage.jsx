@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Trash2, Plus, Link2, X, Save, Power, Loader2, FilePlus2 } from 'lucide-react';
 import api from '../services/api';
 import Toast from '../components/Toast';
+import SimuladorFlujo from '../components/flujos/SimuladorFlujo';
+import MetricasFlujo from '../components/flujos/MetricasFlujo';
 import { useConfirm } from '../context/ConfirmContext';
 import { mensajeError } from '../utils/errores';
 import { TIPOS, NODO_ANCHO, NODO_ALTO, nuevoNodo, flujoEjemplo } from '../components/flujos/catalogo';
@@ -316,6 +318,10 @@ export default function FlujosPage() {
             <Propiedades nodo={seleccionado} onCambio={(config) => actualizarNodo(seleccionado.id, { config })} onQuitar={() => quitar(seleccionado.id)} onCerrar={() => setSel(null)} />
           )}
         </aside>
+      </div>
+      <div className="mt-4 grid lg:grid-cols-2 gap-4 items-start">
+        <SimuladorFlujo definicion={flujo} />
+        <MetricasFlujo flujoId={id} nodos={flujo.nodos} />
       </div>
       </>)}
     </div>

@@ -65,6 +65,10 @@ const EJEMPLOS = {
     nombre: 'Te extrañamos',
     mensaje: '¡Hola! Hace tiempo no sabemos de ti y te extrañamos 💛. Vuelve esta semana y te tenemos una sorpresa. Escríbenos y pide lo que quieras.',
   },
+  etiqueta: {
+    nombre: 'Mensaje a un grupo de clientes',
+    mensaje: '¡Hola! 👋 Te escribimos porque te interesó nuestra promo. Esta semana sigue disponible, escríbenos y te ayudamos con tu pedido.',
+  },
   nuevos: {
     nombre: 'Bienvenida a clientes nuevos',
     mensaje: '¡Hola! Gracias por escribirnos por primera vez 🙌. Si repites tu pedido esta semana, te tenemos un detalle. ¡Escríbenos!',
@@ -78,6 +82,7 @@ export default function CampanasPage() {
   const [lista, setLista] = useState(null);
   const [form, setForm] = useState({ nombre: '', mensaje: '', segmento: 'todos', dias: 30, fecha: '' });
   const [alcance, setAlcance] = useState(null);
+  const [etiquetas, setEtiquetas] = useState([]);
   const [maximo, setMaximo] = useState(200);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -104,6 +109,12 @@ export default function CampanasPage() {
     if (disponible) cargar();
   }, [disponible]);
 
+  // Etiquetas que han puesto tus flujos: sirven para escribirle solo a quien las tiene.
+  useEffect(() => {
+    if (!disponible) return;
+    api.get('/flujos/etiquetas').then((r) => setEtiquetas(r.data.etiquetas || [])).catch(() => setEtiquetas([]));
+  }, [disponible]);
+
   // Hay campañas en curso: refresca el avance cada 10 s.
   useEffect(() => {
     if (!lista?.some((c) => ['programada', 'enviando'].includes(c.estado))) return undefined;
@@ -114,13 +125,13 @@ export default function CampanasPage() {
   useEffect(() => {
     if (!disponible) return;
     api
-      .get('/campañas-destinatarios', { params: { segmento: form.segmento, dias: form.dias } })
+      .get('/campañas-destinatarios', { params: { segmento: form.segmento, dias: form.dias, etiqueta: form.segmento === 'etiqueta' ? form.etiqueta : undefined } })
       .then((r) => {
         setAlcance(r.data.total);
         if (r.data.maximo) setMaximo(r.data.maximo);
       })
       .catch(() => setAlcance(null));
-  }, [disponible, form.segmento, form.dias]);
+  }, [disponible, form.segmento, form.dias, form.etiqueta]);
 
   function usarEjemplo() {
     const e = EJEMPLOS[form.segmento];
@@ -139,7 +150,7 @@ export default function CampanasPage() {
         nombre: form.nombre,
         mensaje: form.mensaje,
         segmento: form.segmento,
-        segmento_config: ['inactivos', 'nuevos'].includes(form.segmento) ? { dias: Number(form.dias) } : {},
+        segmento_config: ['inactivos', 'nuevos'].includes(form.segmento) ? { dias: Number(form.dias) } : form.segmento === 'etiqueta' ? { etiqueta: form.etiqueta } : {},
         fecha_envio: form.fecha ? new Date(form.fecha).toISOString().slice(0, 19).replace('T', ' ') : null,
       });
       setForm({ nombre: '', mensaje: '', segmento: 'todos', dias: 30, fecha: '' });
@@ -245,8 +256,18 @@ export default function CampanasPage() {
                   <option value="todos">Todos mis clientes</option>
                   <option value="inactivos">Clientes que no compran hace tiempo</option>
                   <option value="nuevos">Clientes nuevos</option>
+                  {etiquetas.length > 0 && <option value="etiqueta">Clientes con una etiqueta (de tus flujos)</option>}
                 </select>
               </div>
+              {form.segmento === 'etiqueta' && (
+                <div>
+                  <label className={LABEL}>Etiqueta</label>
+                  <select value={form.etiqueta || ''} onChange={(e) => setForm((p) => ({ ...p, etiqueta: e.target.value }))} className={CONTROL}>
+                    <option value="">Elige una etiqueta…</option>
+                    {etiquetas.map((t) => <option key={t.etiqueta} value={t.etiqueta}>{t.etiqueta} ({t.total})</option>)}
+                  </select>
+                </div>
+              )}
               {['inactivos', 'nuevos'].includes(form.segmento) && (
                 <div>
                   <label className={LABEL}>{form.segmento === 'inactivos' ? 'Sin comprar hace más de (días)' : 'Que llegaron en los últimos (días)'}</label>

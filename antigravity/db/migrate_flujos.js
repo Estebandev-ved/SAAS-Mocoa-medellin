@@ -60,6 +60,17 @@ async function run() {
         `);
         console.log('[OK] tabla etiquetas_cliente');
 
+        // Las campañas pueden dirigirse a una etiqueta: se agrega el valor al ENUM de segmento (conserva los datos).
+        const [col] = await db.execute(
+            "SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'campañas' AND COLUMN_NAME = 'segmento'"
+        );
+        if (col.length && /^enum/i.test(col[0].COLUMN_TYPE) && !/'etiqueta'/.test(col[0].COLUMN_TYPE)) {
+            await db.execute("ALTER TABLE `campañas` MODIFY COLUMN segmento ENUM('todos','compraron_x','inactivos','nuevos','etiqueta') DEFAULT 'todos'");
+            console.log("[OK] campañas.segmento acepta 'etiqueta'");
+        } else {
+            console.log('[SKIP] campañas.segmento ya acepta etiqueta (o no es ENUM)');
+        }
+
         console.log('\n✅ Migración flujos completada');
         process.exit(0);
     } catch (error) {

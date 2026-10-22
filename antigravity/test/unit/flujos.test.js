@@ -191,3 +191,12 @@ test('un bucle sin pausa se corta con error en vez de colgar', () => {
     assert.strictEqual(r.ejec.estado, 'error');
     assert.ok(r.acciones.length <= M.MAX_PASOS);
 });
+
+test('métricas: junta estados y descuenta los que ya abandonaron de "en curso"', () => {
+    const r = F.resumirMetricas(
+        [{ estado: 'terminada', total: 6 }, { estado: 'esperando_respuesta', total: 5 }, { estado: 'esperando_tiempo', total: 1 }, { estado: 'error', total: 1 }],
+        [{ nodo_actual: 'c', total: 3 }, { nodo_actual: 'b', total: 1 }]
+    );
+    assert.deepStrictEqual(r, { entraron: 13, terminaron: 6, en_curso: 2, con_error: 1, abandonaron: 4, abandonos: [{ nodo: 'c', total: 3 }, { nodo: 'b', total: 1 }] });
+    assert.strictEqual(F.resumirMetricas([], []).entraron, 0);
+});

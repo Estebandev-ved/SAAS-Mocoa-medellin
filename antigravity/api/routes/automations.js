@@ -366,6 +366,7 @@ router.get('/campañas-destinatarios', async (req, res) => {
   try {
     const { contarDestinatarios } = require('../services/campaignSender');
     const cfg = req.query.dias ? { dias: Number(req.query.dias) } : {};
+    if (req.query.etiqueta) cfg.etiqueta = String(req.query.etiqueta);
     const { MAX_DESTINATARIOS } = require('../services/campaignSender');
     res.json({ total: await contarDestinatarios(req.negocioId, req.query.segmento || 'todos', cfg), maximo: MAX_DESTINATARIOS });
   } catch (error) {

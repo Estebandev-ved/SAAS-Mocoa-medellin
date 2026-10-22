@@ -165,11 +165,25 @@ function validarParaActivar(definicion) {
     return null;
 }
 
+/** Junta los conteos de la BD en { entraron, terminaron, en_curso, con_error, abandonos: [{nodo, total}] }. */
+function resumirMetricas(porEstado, abandonos) {
+    const n = (estado) => Number((porEstado.find((f) => f.estado === estado) || {}).total) || 0;
+    const abandonaron = abandonos.reduce((s, a) => s + Number(a.total), 0);
+    return {
+        entraron: porEstado.reduce((s, f) => s + Number(f.total), 0),
+        terminaron: n('terminada'),
+        en_curso: n('esperando_respuesta') - abandonaron + n('esperando_tiempo'),
+        con_error: n('error'),
+        abandonaron,
+        abandonos: abandonos.map((a) => ({ nodo: a.nodo_actual, total: Number(a.total) })),
+    };
+}
+
 function limiteDeFlujos(plan) {
     return LIMITE_FLUJOS_POR_PLAN[plan] ?? LIMITE_FLUJOS_POR_PLAN.emprendedor;
 }
 
 module.exports = {
     TIPOS, MAX_NODOS, validarDefinicion, validarParaActivar, siguiente, datosDisparador,
-    normalizarTexto, normalizarEtiqueta, limiteDeFlujos, hayBucleSinEspera,
+    normalizarTexto, normalizarEtiqueta, limiteDeFlujos, hayBucleSinEspera, resumirMetricas,
 };

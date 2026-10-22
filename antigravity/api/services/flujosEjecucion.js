@@ -13,6 +13,18 @@ const { normalizarEtiqueta } = require('./flujos');
 // el chat al cliente que escribe otra cosa al día siguiente.
 const HORAS_VIGENCIA_RESPUESTA = 24;
 const PAUSA_ENTRE_ENVIOS_MS = 2000;
+// Tope de mensajes que los flujos escriben por su cuenta (sin que el cliente haya escrito justo antes) por negocio y día:
+// con WhatsApp por QR, las ráfagas a gente que no escribió primero son la causa típica de bloqueo del número.
+const MAX_PROACTIVOS_DIA = Number.parseInt(process.env.FLUJOS_MAX_PROACTIVOS_DIA, 10) > 0 ? Number.parseInt(process.env.FLUJOS_MAX_PROACTIVOS_DIA, 10) : 100;
+const AGENTE_PROACTIVO = 'flujo_proactivo';
+
+async function enviadosHoy(negocioId) {
+    const [r] = await db.execute(
+        "SELECT COUNT(*) AS total FROM mensajes WHERE negocio_id = ? AND agente_proceso = ? AND created_at >= CURDATE()",
+        [negocioId, AGENTE_PROACTIVO]
+    );
+    return Number(r[0].total) || 0;
+}
 
 const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
 const parsear = (v) => (typeof v === 'string' ? JSON.parse(v) : v);
@@ -127,7 +139,14 @@ async function procesarEsperas(enviarA) {
          WHERE e.estado = 'esperando_tiempo' AND e.reanudar_en <= NOW()
          ORDER BY e.reanudar_en LIMIT 20`
     );
+    const topeAlcanzado = new Set(); // negocios que ya llegaron al tope en esta pasada
     for (const e of vencidas) {
+        if (topeAlcanzado.has(e.negocio_id) || (await enviadosHoy(e.negocio_id)) >= MAX_PROACTIVOS_DIA) {
+            // Se posterga a mañana: no se pierde ni se reintenta cada 30 s.
+            topeAlcanzado.add(e.negocio_id);
+            await db.execute("UPDATE flujo_ejecuciones SET reanudar_en = DATE_ADD(CURDATE(), INTERVAL 1 DAY) WHERE id = ? AND estado = 'esperando_tiempo'", [e.id]);
+            continue;
+        }
         // Reclamo atómico: si otra pasada ya la tomó, no se repite.
         const [claim] = await db.execute("UPDATE flujo_ejecuciones SET estado = 'terminada' WHERE id = ? AND estado = 'esperando_tiempo'", [e.id]);
         if (claim.affectedRows === 0) continue;
@@ -137,7 +156,14 @@ async function procesarEsperas(enviarA) {
             const etiquetas = await etiquetasDe(e.negocio_id, e.cliente_id);
             const resultado = Motor.reanudar(parsear(e.definicion), { nodo_actual: e.nodo_actual, contexto: parsear(e.contexto) || {} }, { nombre: e.nombre, etiquetas });
             await guardarEjecucion(e.id, e.flujo_id, e.negocio_id, e.cliente_id, resultado.ejec);
-            const enviar = async (t) => { await enviarA(e.negocio_id, e.whatsapp, t); await pausa(PAUSA_ENTRE_ENVIOS_MS); };
+            const enviar = async (t) => {
+                await enviarA(e.negocio_id, e.whatsapp, t);
+                await db.execute(
+                    "INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido, agente_proceso, intencion_detectada) VALUES (?, ?, 'salida', ?, ?, 'flujo')",
+                    [e.negocio_id, e.whatsapp, t, AGENTE_PROACTIVO]
+                );
+                await pausa(PAUSA_ENTRE_ENVIOS_MS);
+            };
             // Desde un proceso en segundo plano no hay IA ni asesor a quien derivar: solo mensajes y etiquetas.
             await aplicar(resultado, { negocioId: e.negocio_id, clienteId: e.cliente_id, enviar });
         } catch (err) {
@@ -148,4 +174,4 @@ async function procesarEsperas(enviarA) {
     return vencidas.length;
 }
 
-module.exports = { manejarMensaje, procesarEsperas, HORAS_VIGENCIA_RESPUESTA };
+module.exports = { manejarMensaje, procesarEsperas, HORAS_VIGENCIA_RESPUESTA, MAX_PROACTIVOS_DIA };

@@ -1,5 +1,6 @@
 const db = require('../../db/config');
 const { enviarWhatsApp } = require('./automationsService');
+const { normalizarEtiqueta } = require('./flujos');
 
 // Envío de campañas masivas sin Redis ni worker aparte: la tabla `campañas`
 // es la cola. Cada ciclo toma las campañas 'programada' cuya fecha ya llegó
@@ -44,6 +45,12 @@ async function destinatarios(negocioId, segmento, segmentoConfig) {
     } else if (segmento === 'nuevos') {
         query += ' AND c.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)';
         params.push(Number(cfg.dias) || 30);
+    } else if (segmento === 'etiqueta') {
+        // Etiquetas puestas por los flujos (tabla etiquetas_cliente).
+        const etiqueta = normalizarEtiqueta(cfg.etiqueta);
+        if (!etiqueta) return [];
+        query += ' AND c.id IN (SELECT cliente_id FROM etiquetas_cliente WHERE negocio_id = ? AND etiqueta = ?)';
+        params.push(negocioId, etiqueta);
     } else if (segmento === 'compraron_x') {
         if (!cfg.producto_id) return [];
         query += ` AND c.id IN (SELECT p.cliente_id FROM pedidos p
