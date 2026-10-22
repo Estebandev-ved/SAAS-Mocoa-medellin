@@ -22,6 +22,11 @@
 - [ ] Tema oscuro: revisar pantallas con colores hex sueltos (el prototipo de Flujos usa `bg-white` y bordes fijos). Auditoría a 375px del admin y botones ≥44px.
 - [ ] Micro-interacciones y `Skeleton` en las pantallas que faltan.
 
+### 📦 Ecosistema: inventario, ventas y facturación (diseño, `docs/ecosistema-inventario-facturacion.md`)
+- [ ] **Hallazgo**: ninguna venta descuenta el stock y el bot no comprueba disponibilidad (puede vender algo agotado). La Fase 1 del documento lo arregla (movimientos de inventario + descuento al pagar + el bot respeta el stock + CSV).
+- [ ] Decisiones del socio (sección 9 del documento): inventario nuevo vs "caja" aparte, proveedor de facturación, variantes vs código de barras primero, stock negativo sí/no, factura electrónica vs recibo interno.
+- [ ] Fase 1 de inventario cuando el socio confirme (≈1 semana).
+
 ### 🧩 Constructor de flujos
 - [ ] Decisiones del socio (final de `docs/constructor-de-flujos.md`, "Plan de implementación": límites por plan, desde qué plan, si se oculta el menú).
 - [x] (21 oct) **Etapas 1 y 2 y parte de la 3 del plan de flujos** (con los límites propuestos: Emprendedor 3 · Starter 5 · Professional 20 · Enterprise ilimitado, a confirmar por el socio): migración `db/migrate_flujos.js` (el grafo vive en `flujos.definicion` JSON, más `flujo_ejecuciones` y `etiquetas_cliente`; ya en `migrate_all` y sus verificaciones), validación y límites (`api/services/flujos.js`), motor puro (`flujosMotor.js`), adaptador con BD (`flujosEjecucion.js`), rutas `/api/flujos` (CRUD + `PATCH /:id/activo`), gancho en `messageHandler.js` (después de la atención humana, antes de la IA; un fallo del motor nunca deja al cliente sin respuesta), esperas reanudadas por el scheduler cada 30 s (solo a quien aceptó marketing) y `FlujosPage` guardando en la API. 28 tests nuevos. Verificado en el navegador contra un servidor de prueba con la validación real; **sin probar con MySQL ni WhatsApp reales**.
