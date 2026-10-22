@@ -5,6 +5,7 @@ const orchestrator = require('../agents/orchestrator');
 const { pideHumano, estaEnHumano, derivarAHumano } = require('./atencionHumana');
 const { registrarRespuesta: registrarEncuesta } = require('./encuesta');
 const { enviarFotosProductos } = require('./fotos');
+const flujos = require('../../api/services/flujosEjecucion');
 
 async function handleMessage(sock, msg, negocioId) {
     try {
@@ -442,6 +443,38 @@ Tus datos no serán usados para marketing. ¿En qué puedo ayudarte?`;
             }
         }
 
+        // Constructor de flujos: un flujo en curso (o uno cuya palabra clave coincide) responde en lugar de la IA.
+        // Si el flujo termina pidiendo a la IA, `instruccionFlujo` se le pasa junto al mensaje.
+        let instruccionFlujo = null;
+        if (tipo === 'text') {
+            try {
+                const resultadoFlujo = await flujos.manejarMensaje({
+                    negocioId, cliente, texto, esNuevo,
+                    enviar: async (t) => {
+                        await sock.sendMessage(msg.key.remoteJid, { text: t });
+                        await db.execute(
+                            `INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido, agente_proceso, intencion_detectada)
+                             VALUES (?, ?, 'salida', ?, 'flujo', 'flujo')`,
+                            [negocioId, `+${numero}`, t]
+                        );
+                    },
+                });
+                if (resultadoFlujo.asesor !== null) {
+                    await derivarAHumano({ sock, jid: msg.key.remoteJid, negocioId, cliente, numero, motivo: 'lo pasó un flujo', avisoCliente: resultadoFlujo.asesor || undefined });
+                    emitNewMessage(negocioId, { cliente, conversacion_id: conversacion.id, mensaje: texto, tipo });
+                    return;
+                }
+                if (resultadoFlujo.manejado) {
+                    emitNewMessage(negocioId, { cliente, conversacion_id: conversacion.id, mensaje: texto, tipo });
+                    return;
+                }
+                instruccionFlujo = resultadoFlujo.ia;
+            } catch (e) {
+                // Un flujo roto nunca debe dejar al cliente sin respuesta: se sigue con la IA.
+                console.error('[Handler] Error en el motor de flujos (se responde con la IA):', e.message);
+            }
+        }
+
         // Obtener contexto de la conversacion
         const [contextoRows] = await db.execute(
             `SELECT tipo, contenido, agente_proceso FROM mensajes 
@@ -461,7 +494,9 @@ Tus datos no serán usados para marketing. ¿En qué puedo ayudarte?`;
 
         // Procesar con IA
         console.log(`[Handler] Llamando orchestrator para negocio ${negocioId}...`);
-        const respuesta = await orchestrator.procesarMensaje(texto, negocioId, cliente.id, contexto, conversacion.id);
+        const respuesta = await orchestrator.procesarMensaje(instruccionFlujo ? `${texto}
+
+[Instrucción del flujo del negocio: ${instruccionFlujo}]` : texto, negocioId, cliente.id, contexto, conversacion.id);
         console.log(`[Handler] Respuesta IA: ${respuesta.intencion} | agente: ${respuesta.agente_usado} | tokens: ${respuesta.tokens_usados}`);
         console.log(`[Handler] Texto: ${respuesta.respuesta?.substring(0, 80)}`);
 

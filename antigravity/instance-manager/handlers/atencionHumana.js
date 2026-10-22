@@ -29,7 +29,7 @@ async function estaEnHumano(cliente) {
     return true;
 }
 
-async function derivarAHumano({ sock, jid, negocioId, cliente, numero, motivo }) {
+async function derivarAHumano({ sock, jid, negocioId, cliente, numero, motivo, avisoCliente }) {
     try {
         await db.execute('UPDATE clientes SET atencion_humana = 1, humano_desde = NOW() WHERE id = ?', [cliente.id]);
     } catch (e) {
@@ -38,7 +38,7 @@ async function derivarAHumano({ sock, jid, negocioId, cliente, numero, motivo })
         return false;
     }
 
-    const aviso = 'Entendido 🙌 Ya le avisé a una persona del equipo para que te atienda directamente. Te escribirá en cuanto pueda; mientras tanto no te enviaré más mensajes automáticos.';
+    const aviso = avisoCliente || 'Entendido 🙌 Ya le avisé a una persona del equipo para que te atienda directamente. Te escribirá en cuanto pueda; mientras tanto no te enviaré más mensajes automáticos.';
     await sock.sendMessage(jid, { text: aviso });
     await db.execute(
         `INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido, agente_proceso, intencion_detectada)
