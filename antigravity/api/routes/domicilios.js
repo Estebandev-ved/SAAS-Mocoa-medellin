@@ -9,6 +9,11 @@ const { verificarAuth } = require('../middleware/auth');
 const { isAutomationActive, yaSeNotifico, registrarNotificacion, enviarEncuestaSiCorresponde } = require('../services/automationsService');
 const { calcularCondicionesDomicilio } = require('../../instance-manager/services/domicilioTarifa');
 const { driverLoginRateLimit } = require('../middleware/security');
+const eta = require('../services/eta');
+
+// Domicilios a los que ya se les avisó "ya casi llega" en este proceso (evita avisos dobles por pings simultáneos;
+// la tabla `notificaciones` cubre los reinicios).
+const avisadosCerca = new Set();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const TRACKING_BASE_URL = process.env.TRACKING_BASE_URL || 'http://localhost:5177/delivery/track';
@@ -817,17 +822,28 @@ router.post('/driver/update-status', verificarAuthDomiciliario, async (req, res)
 
         if (estado === 'en_ruta') {
             const [domData] = await db.execute(
-                `SELECT dom.tracking_token, p.cliente_id, c.whatsapp as cliente_whatsapp
+                `SELECT dom.tracking_token, dom.tiempo_minutos, p.cliente_id, p.direccion_lat, p.direccion_lng,
+                        c.whatsapp as cliente_whatsapp, n.lat as negocio_lat, n.lng as negocio_lng,
+                        d.latitud as driver_lat, d.longitud as driver_lng
                  FROM domicilios dom
                  JOIN pedidos p ON dom.pedido_id = p.id
                  JOIN clientes c ON p.cliente_id = c.id
+                 JOIN negocios n ON dom.negocio_id = n.id
+                 LEFT JOIN domiciliarios d ON dom.domiciliario_id = d.id
                  WHERE dom.id = ?`,
                 [domicilio_id]
             );
+            const minutosEta = eta.calcularEta({
+                domiciliario: { lat: domData[0].driver_lat, lng: domData[0].driver_lng },
+                negocio: { lat: domData[0].negocio_lat, lng: domData[0].negocio_lng },
+                destino: { lat: domData[0].direccion_lat, lng: domData[0].direccion_lng },
+                tiempoMinutosGuardado: domData[0].tiempo_minutos,
+            });
 
             if (io) {
                 io.to(`tracking_${domData[0].tracking_token}`).emit('domicilio_actualizado', {
                     estado: 'en_ruta',
+                    eta_minutos: minutosEta,
                     domiciliario: { nombre: req.domiciliario.nombre }
                 });
                 io.to(`negocio_${req.domiciliario.negocio_id}`).emit('domicilio_en_ruta', { domicilio_id });
@@ -837,7 +853,7 @@ router.post('/driver/update-status', verificarAuthDomiciliario, async (req, res)
                 enviarNotificacionWhatsApp(
                     req.domiciliario.negocio_id,
                     domData[0].cliente_whatsapp,
-                    `🛵 ¡Buenas noticias! Tu pedido ya está en camino a cargo de ${req.domiciliario.nombre}.\n\nSíguelo en tiempo real aquí:\n${TRACKING_BASE_URL}/${domData[0].tracking_token}`
+                    `🛵 ¡Buenas noticias! Tu pedido ya está en camino a cargo de ${req.domiciliario.nombre}.${minutosEta ? `\n⏱️ ${eta.textoEta(minutosEta)}.` : ''}\n\nSíguelo en tiempo real aquí:\n${TRACKING_BASE_URL}/${domData[0].tracking_token}`
                 );
             }
         }
@@ -893,10 +909,29 @@ router.post('/driver/location', verificarAuthDomiciliario, async (req, res) => {
         );
 
         const [entregasActivas] = await db.execute(
-            `SELECT tracking_token FROM domicilios
-             WHERE domiciliario_id = ? AND estado IN ('aceptado', 'en_ruta')`,
+            `SELECT dom.id, dom.estado, dom.tracking_token, p.direccion_lat, p.direccion_lng, c.whatsapp as cliente_whatsapp
+             FROM domicilios dom
+             JOIN pedidos p ON dom.pedido_id = p.id
+             JOIN clientes c ON p.cliente_id = c.id
+             WHERE dom.domiciliario_id = ? AND dom.estado IN ('aceptado', 'en_ruta')`,
             [req.domiciliario.id]
         );
+
+        // "Ya casi llega": una sola vez por domicilio, cuando está en ruta y a menos de 250 m del destino.
+        for (const entrega of entregasActivas) {
+            if (entrega.estado !== 'en_ruta' || avisadosCerca.has(entrega.id)) continue;
+            if (!eta.estaCerca({ lat: latitud, lng: longitud }, { lat: entrega.direccion_lat, lng: entrega.direccion_lng })) continue;
+            avisadosCerca.add(entrega.id);
+            (async () => {
+                if (await yaSeNotifico(req.domiciliario.negocio_id, 'domicilio_cerca', entrega.id)) return;
+                await registrarNotificacion(req.domiciliario.negocio_id, 'domicilio_cerca', 'Domiciliario cerca',
+                    `${req.domiciliario.nombre} está llegando al destino`, entrega.id);
+                if (entrega.cliente_whatsapp) {
+                    enviarNotificacionWhatsApp(req.domiciliario.negocio_id, entrega.cliente_whatsapp,
+                        `📍 ¡Ya casi llega! ${req.domiciliario.nombre} está a pocos metros. Ten a la mano tu código de entrega.`);
+                }
+            })().catch((e) => console.error('[Domicilios] Error aviso "cerca":', e.message));
+        }
 
         try {
             const { io } = require('../index');
