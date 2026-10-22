@@ -74,3 +74,58 @@ Reglas:
 - ¿Límites de flujos por plan? (propuesta arriba).
 - ¿Se ofrece a todos los tipos de negocio o solo desde Professional?
 - ¿Biblioteca de plantillas hechas por nosotros (promo, menú, reserva, reseña)?
+
+---
+
+# Plan de implementación (21 oct 2026)
+
+Meta: que un dueño sin conocimientos técnicos arme flujos como en ManyChat y que los flujos **vendan** (pedido, cobro, domicilio), cosa que ManyChat no hace. Orden pensado para que cada etapa se pueda mostrar y usar sola.
+
+## Etapa 0 — Hecho
+- Diseño y modelo de datos (este documento).
+- Prototipo visual en `/flujos` (lienzo, 9 tipos de paso, panel de propiedades, guardado local).
+- Piezas reutilizables ya en producción: `campaignSender` (envío con pausas y solo a quien aceptó marketing), `automationsService` (envío, antirrepetición), atención humana (`handlers/atencionHumana.js`), cupones, pedidos, domicilios con ETA.
+
+## Etapa 1 — Guardar flujos de verdad (1-2 días)
+- Migración `db/migrate_flujos.js` (en `migrate_all`): `flujos`, `flujo_nodos`, `flujo_conexiones`, `etiquetas`, `etiquetas_cliente`. Todo con `negocio_id`.
+- Servicio `api/services/flujos.js`: validar el grafo (un solo disparador, sin nodos huérfanos ni ciclos sin espera, máx. 30 nodos, textos ≤ 500) con **tests** (mismo estilo que `perfilNegocio`).
+- Rutas `/api/flujos` (listar, crear, guardar, activar/desactivar, borrar) filtradas por `negocio_id`; límite de flujos por plan.
+- El prototipo `FlujosPage` pasa a leer/guardar en la API (lista de flujos + editor). Se mantiene "Volver al ejemplo".
+- **Listo cuando:** crear un flujo, recargar y verlo igual desde otro navegador; un grafo inválido devuelve el motivo en español.
+
+## Etapa 2 — Motor mínimo: responde de verdad (2-3 días)
+- `instance-manager/services/flowEngine.js` + tabla `flujo_ejecuciones` (`nodo_actual`, `estado`, `contexto`, `reanudar_en`).
+- Gancho en `messageHandler.js`: después de identificar al cliente y de la comprobación de atención humana, y **antes** de llamar a la IA: (1) ¿hay ejecución esperando respuesta? (2) ¿el texto dispara un flujo activo? Si ninguna, sigue el camino de hoy.
+- Nodos: disparador (palabra / primer mensaje), mensaje (con `{nombre}`), opciones (lista numerada), pregunta (guarda dato), etiqueta, condición, IA, asesor.
+- Tope de 50 nodos por pasada, error → ejecución en `error` + aviso al dueño + el cliente cae en la IA.
+- **Listo cuando:** escribir "PROMO" desde otro número dispara el flujo de ejemplo de punta a punta y cada paso queda registrado.
+
+## Etapa 3 — Esperas y mensajes proactivos (1-2 días)
+- Nodo espera: `reanudar_en`; el scheduler (el mismo ciclo de 30 s de campañas) reanuda ejecuciones vencidas.
+- Todo envío que no responde a un mensaje del cliente pasa por la regla de `campaignSender`: solo `acepta_marketing = 1`, pausas 2-5 s, tope diario por negocio.
+- **Listo cuando:** "esperar 10 min y recordar el carrito" funciona y no escribe a quien no aceptó marketing.
+
+## Etapa 4 — Comercio dentro del flujo (2-3 días)
+- Nodos `pedido` (reusa el flujo de pedidos de `gemini.js`/`paymentHandler`), `cobrar`, `cupón` (`services/cupones.js`) y `domicilio`.
+- Plantillas listas por tipo de negocio (`utils/capacidades.js`): restaurante (tomar pedido), tienda (catálogo), servicios (agendar), promo (la del ejemplo).
+- **Listo cuando:** un cliente completa un pedido pagado empezando en un flujo.
+
+## Etapa 5 — Segmentos, difusiones y métricas (2 días)
+- Campañas pueden elegir una **etiqueta** como segmento (`campaignSender.destinatarios`).
+- Métricas por flujo: entradas, completados, abandono por nodo (se lee de `flujo_ejecuciones`).
+- Pantalla de etiquetas de clientes en Clientes.
+
+## Etapa 6 — Canal oficial y pulido (según Meta)
+- Con **WhatsApp Cloud API** se activan botones reales y plantillas para escribir fuera de las 24 h (hoy con QR/Baileys solo hay lista numerada). Depende de la verificación de Meta (ver plan de producción).
+- Deshacer/rehacer, zoom, duplicar flujo, simulador "probar flujo" sin enviar nada a clientes.
+
+## Riesgos
+- **Bloqueo de número** (Baileys): por eso el tope diario y las pausas son parte del motor, no opcionales.
+- **Ley 1581**: etiquetas y datos capturados cuentan como datos personales; documentar en la política y permitir borrarlos.
+- **Dos "cerebros"** (flujo vs IA): regla clara — un flujo activo manda mientras dura la ejecución; al terminar o fallar, vuelve la IA.
+- **Complejidad para el dueño**: arrancar siempre desde plantillas; el lienzo en blanco es para quien ya sabe.
+
+## Decisiones que necesito del socio (antes de la Etapa 1)
+1. Límite de flujos por plan (propuesta: Emprendedor 3 · Starter 5 · Professional 20 · Enterprise ilimitado).
+2. ¿Desde qué plan se ofrece? (propuesta: desde Emprendedor, con límites).
+3. ¿Se muestra ya el menú "Flujos" a los clientes o se oculta hasta la Etapa 2?
