@@ -2,31 +2,48 @@
 
 ---
 
-## 📅 Plan para Hoy: 2026-10-18
+## 📅 Plan para Hoy: 2026-10-23
 
-**Rama de trabajo: `caja-emprendedor` (todo va ahí, no a `main`).** Idea grande para diseñar: un **constructor de flujos tipo ManyChat con la esencia de Antigravity** (flujos visuales, disparadores, IA en español colombiano, pedidos/pagos/domicilios integrados).
+**Rama de trabajo: `caja-emprendedor` (producción; todo va ahí, no a `main`).** Antes de empezar: `git pull` (otras sesiones también suben a esta rama) y `npm install` en `antigravity/` **y** en `agency-platform-react/` (sin `node_modules` del backend fallan 5 archivos de `test/unit` por módulos que faltan, no por código).
 
-### 🔐 Seguridad (2FA, recuperación de contraseña y política de contraseñas ya están hechos)
-- [ ] Seguir la auditoría de rutas: revisar IDOR por `negocio_id` en `/cupones`, `/api/campanas`, `/bot/config`, `/clientes`; el `express.json({ limit: '50mb' })` global es excesivo (bajarlo y subir solo en las rutas de imágenes).
-- [ ] Revisar `SELECT *` restantes en `auth.js` (líneas ~205 y ~262) para que no viajen al cliente.
-- [ ] CORS/helmet/CSP y rate limit con almacén compartido (Redis) antes de escalar a más de una instancia.
-- [ ] Secretos: confirmar que no quedan claves en el repo; rotar si hace falta.
+### 🧑 Lo hace el socio (la IA no tiene acceso)
+- [ ] **Claves VAPID** en Railway (`PUSH_VAPID_PUBLIC_KEY` / `PRIVATE_KEY`) para encender los avisos push; luego probar "Activar avisos" en Ajustes → Notificaciones desde un celular.
+- [ ] **Recorrido con datos reales** (todo se probó con la API simulada): kanban y arrastre de pedidos, modo cocina con un restaurante real (¿cada pedido trae `items`?), sonidos y vibración, bandeja de chats, `/bot/test` con Gemini real, campañas con `{nombre}`.
+- [ ] Decidir qué más se oculta o muestra por tipo de negocio (`utils/capacidades.js`) y si hay interruptor de herramientas extra en Ajustes (negocios mixtos).
+- [ ] Videos cortos (30-60 s) por sección para `AyudaRapida` (prop `video`).
+
+### 🔐 Seguridad
+- [ ] Seguir la auditoría de rutas: IDOR por `negocio_id` en `/cupones`, `/api/campanas`, `/bot/config`, `/clientes`; bajar el `express.json({ limit: '50mb' })` global y subir solo en rutas de imágenes.
+- [ ] `SELECT *` restantes en `auth.js` (~205 y ~262) para que no viajen al cliente.
+- [ ] CORS/helmet/CSP y rate limit con almacén compartido (Redis) antes de más de una instancia; confirmar que no quedan claves en el repo.
 
 ### 🧑‍💼 Cliente
-- [ ] **Redes del negocio del cliente** (Instagram/Facebook/TikTok) en Ajustes → Negocio, para que el bot las comparta (necesita columna nueva en `negocios`).
-- [ ] **Mover Preferencias (zona horaria/moneda/fecha) al backend** y usarlas en Pedidos, Pagos y Dashboard (hoy `localStorage`).
-- [ ] ETA y aviso por WhatsApp "va en camino" en el seguimiento del domiciliario.
-- [ ] Videos cortos de 30-60 s por sección en `AyudaRapida` (material del socio).
-- [ ] Probar con datos reales: sockets en vivo, push (faltan claves VAPID), `/bot/test` con Gemini real.
+- [ ] Aplicar la capacidad `domicilios` al menú (hoy el bloqueo es solo por plan) y diseñar la herramienta de **agenda/citas** para servicios y salud (hoy ven solo el núcleo).
+- [ ] Redes del negocio del cliente (Instagram/Facebook/TikTok) en Ajustes → Negocio para que el bot las comparta (columna nueva en `negocios`).
+- [ ] Mover Preferencias (zona horaria/moneda/fecha) al backend y usarlas en Pedidos, Pagos y Dashboard (hoy `localStorage`).
+- [ ] Estado leído/anclado de la bandeja de chats al backend (hoy por dispositivo) si el dueño usa más de un aparato.
 
 ### ✨ Visual e interactivo
-- [ ] Tema oscuro: revisar pantallas con colores hex sueltos. Auditoría a 375px del admin y botones ≥44px.
-- [ ] Micro-interacciones y `Skeleton` en las pantallas que faltan. Texto `ANTIGRAVITY` suelto en `Ecosystem.jsx` y `AdminLayout.jsx`.
+- [ ] Tema oscuro: revisar pantallas con colores hex sueltos (el recorrido automático no ve contraste, solo errores y desbordes). Auditoría a 375 px del panel admin.
+- [ ] Texto `ANTIGRAVITY` suelto en `Ecosystem.jsx` y `AdminLayout.jsx`.
+- [ ] Limpiar avisos de lint viejos en archivos que no son de esta tanda (`HitosContext`, `Ecosystem`, `PortalDomiciliario`: `react-hooks/refs` y `rules-of-hooks`).
 
 ### 🧩 Constructor de flujos tipo ManyChat (fase de diseño)
-- [ ] Documento en `docs/`: qué toma de ManyChat (disparadores por palabra clave, pasos, botones, etiquetas, difusiones, captura de datos) y qué lo hace nuestro (IA con contexto del negocio, pedidos/pagos/domicilios/cupones integrados, planes de $25.000-$449.000).
+- [ ] Documento en `docs/`: qué toma de ManyChat (disparadores por palabra clave, pasos, botones, etiquetas, difusiones, captura de datos) y qué lo hace nuestro (IA con contexto del negocio, pedidos/pagos/domicilios/cupones integrados).
 - [ ] Modelo de datos (`flujos`, `flujo_nodos`, `flujo_ejecuciones`, `etiquetas_cliente`) y qué reutiliza de `automationsService` y `campaignSender`.
 - [ ] Prototipo visual del editor (lienzo de nodos), solo front con datos locales.
+
+---
+
+## ✅ 22 oct — Verificación final de las mejoras interactivas
+
+- [x] **Todo sobre `caja-emprendedor` actualizado** (otras sesiones añadieron catálogo de +50 tipos de negocio, validación de `PUT /perfil`, footer, Preferencias): se comprobó que el modo cocina hereda por **familia** (granizados y pizzería sí, ropa y sin tipo no).
+- [x] **Backend**: `npm install` en `antigravity/` y `node --test test/unit` → **102 de 102 pasaban** (las 5 "fallas" de antes eran módulos sin instalar). Los smoke necesitan MySQL y no se corrieron.
+- [x] **Frontend**: `vite build` OK y lint sin errores nuevos en lo de esta tanda; los 4 avisos "reales" que quedan están en archivos antiguos (ver plan).
+- [x] **Fallo de lógica corregido**: dos toques seguidos en "avanzar" encadenaban dos estados y "Deshacer" podía dejar el pedido a medias. Ahora `useAvanzarPedido` (compartido por Pedidos, Tablero y Cocina) bloquea el segundo mientras el primero está pendiente y lo libera al deshacer o confirmar. Pedidos usa ese mismo hook (se quitó la copia local, que además llamaba a `alert()`).
+- [x] **Seguridad**: `POST /api/bot/test` (vista previa "Probar mi bot", gasta una llamada a Gemini) ahora tiene tope de 15 por minuto **por negocio** (antes solo el global de 100/min por IP) y el historial que manda el navegador se sanea (roles válidos, 500 caracteres, 10 turnos). Test nuevo `test/unit/botTestLimite.test.js`; total `test/unit`: **103 de 103**.
+- [x] **Bandeja de chats**: si llega un mensaje a la conversación abierta ya no queda marcada "sin leer".
+- [x] **Pruebas en navegador** (API simulada, 1280 y 375 px): cocina por familia, doble toque, deshacer, kanban (mover, confirmar, movimiento inválido por eventos de arrastre), diálogos propios, bandeja, vista previa de campañas, analytics, compartir resumen, atajos, landing interactiva; recorrido de las 22 pantallas del panel en escritorio, móvil y móvil oscuro buscando errores de consola, pantallas vacías y desbordes horizontales.
 
 ---
 
