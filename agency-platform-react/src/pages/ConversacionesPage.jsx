@@ -115,6 +115,9 @@ const ConversacionesPage = () => {
             const response = await api.get('/conversaciones', { params: { buscar } });
             const lista = response.data.conversaciones || [];
             setConversaciones(lista);
+            // Si el chat abierto recibió mensajes mientras se miraba, no queda marcado como "sin leer"
+            const abierta = selRef.current && lista.find((c) => c.id === selRef.current.id);
+            if (abierta) marcarLeida(abierta);
             // Primera vez en este dispositivo: todo lo existente cuenta como leído (si no, todo saldría "sin leer")
             setLeidas((prev) => {
                 if (prev) return prev;

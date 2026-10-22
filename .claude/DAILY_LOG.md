@@ -69,6 +69,26 @@ Diseño completo en `docs/ecosistema-inventario-facturacion.md`. **Hecho (commit
   - **Prototipo visual del editor de flujos** en `/flujos` (menú "Flujos (prototipo)"): lienzo con nodos arrastrables, conexiones, panel de propiedades, 9 tipos de paso (`components/flujos/catalogo.js`), guardado en localStorage, flujo de ejemplo. No ejecuta nada en el bot. Verificado en el navegador con la API apagada (render, agregar paso, quitar conexión); sin probar con táctil.
 - [ ] Sin probar con MySQL real: la migración nueva, la lectura de redes en el prompt del bot y `/business/preferencias`.
 
+### 🔁 Pendientes que dejó la sesión en la nube (22 oct) y que siguen abiertos
+Antes de empezar: `git pull` (otras sesiones también suben a `caja-emprendedor`) y `npm install` en `antigravity/` **y** en `agency-platform-react/`.
+- [ ] **Lo hace el socio**: claves VAPID en Railway (`PUSH_VAPID_PUBLIC_KEY` / `PRIVATE_KEY`) y probar "Activar avisos" en un celular; recorrido con datos reales (kanban y arrastre, modo cocina con un restaurante real —¿cada pedido trae `items`?—, sonidos y vibración, bandeja de chats, `/bot/test` con Gemini real, campañas con `{nombre}`); decidir qué más se oculta o muestra por tipo de negocio (`utils/capacidades.js`) y si hay interruptor de herramientas extra para negocios mixtos; videos de 30-60 s para `AyudaRapida`.
+- [ ] Aplicar la capacidad `domicilios` al menú (hoy el bloqueo es solo por plan) y diseñar la herramienta de **agenda/citas** para servicios y salud (hoy solo ven el núcleo).
+- [ ] Estado leído/anclado de la bandeja de chats al backend (hoy por dispositivo) si el dueño usa más de un aparato.
+- [ ] Limpiar avisos de lint viejos que no son de esta tanda (`HitosContext`, `Ecosystem`, `PortalDomiciliario`: `react-hooks/refs` y `rules-of-hooks`).
+- (Ya hechos aquí y que la lista de la nube aún mostraba abiertos: auditoría de IDOR y `SELECT *` en `auth.js`, redes del negocio, Preferencias al backend, texto `ANTIGRAVITY`, documento y prototipo del constructor de flujos, que hoy es el constructor real.)
+
+---
+
+## ✅ 22 oct — Verificación final de las mejoras interactivas
+
+- [x] **Todo sobre `caja-emprendedor` actualizado** (otras sesiones añadieron catálogo de +50 tipos de negocio, validación de `PUT /perfil`, footer, Preferencias): se comprobó que el modo cocina hereda por **familia** (granizados y pizzería sí, ropa y sin tipo no).
+- [x] **Backend**: `npm install` en `antigravity/` y `node --test test/unit` → **102 de 102 pasaban** (las 5 "fallas" de antes eran módulos sin instalar). Los smoke necesitan MySQL y no se corrieron.
+- [x] **Frontend**: `vite build` OK y lint sin errores nuevos en lo de esta tanda; los 4 avisos "reales" que quedan están en archivos antiguos (ver plan).
+- [x] **Fallo de lógica corregido**: dos toques seguidos en "avanzar" encadenaban dos estados y "Deshacer" podía dejar el pedido a medias. Ahora `useAvanzarPedido` (compartido por Pedidos, Tablero y Cocina) bloquea el segundo mientras el primero está pendiente y lo libera al deshacer o confirmar. Pedidos usa ese mismo hook (se quitó la copia local, que además llamaba a `alert()`).
+- [x] **Seguridad**: `POST /api/bot/test` (vista previa "Probar mi bot", gasta una llamada a Gemini) ahora tiene tope de 15 por minuto **por negocio** (antes solo el global de 100/min por IP) y el historial que manda el navegador se sanea (roles válidos, 500 caracteres, 10 turnos). Test nuevo `test/unit/botTestLimite.test.js`; total `test/unit`: **103 de 103**.
+- [x] **Bandeja de chats**: si llega un mensaje a la conversación abierta ya no queda marcada "sin leer".
+- [x] **Pruebas en navegador** (API simulada, 1280 y 375 px): cocina por familia, doble toque, deshacer, kanban (mover, confirmar, movimiento inválido por eventos de arrastre), diálogos propios, bandeja, vista previa de campañas, analytics, compartir resumen, atajos, landing interactiva; recorrido de las 22 pantallas del panel en escritorio, móvil y móvil oscuro buscando errores de consola, pantallas vacías y desbordes horizontales.
+
 ---
 
 ## ✅ 17 oct — Footer con redes, Preferencias y fuga en el perfil

@@ -27,7 +27,7 @@ import PedidoSwipeCard from '../components/PedidoSwipeCard';
 import AyudaRapida from '../components/AyudaRapida';
 import { SkeletonList } from '../components/Skeleton';
 import PedidosKanban from '../components/PedidosKanban';
-import { ETIQUETA_RAPIDA } from '../hooks/useAvanzarPedido';
+import { ETIQUETA_RAPIDA, useAvanzarPedido } from '../hooks/useAvanzarPedido';
 import { useUndo } from '../context/UndoContext';
 import { useConfirm } from '../context/ConfirmContext';
 import usePreferencias from '../hooks/usePreferencias';
@@ -49,8 +49,8 @@ const PedidosPage = () => {
     const prefs = usePreferencias();
     const navigate = useNavigate();
     const { celebrar } = useHitos();
-    const { conectado, suscribir, refrescarPendientes } = usePedidosLive();
-    const { diferir, avisarError } = useUndo();
+    const { conectado, suscribir } = usePedidosLive();
+    const { avisarError } = useUndo();
     const confirmar = useConfirm();
     const [params] = useSearchParams();
     const buscarRef = useRef(null);
@@ -108,25 +108,12 @@ const PedidosPage = () => {
         }
     };
 
-    // Avance con un toque: la pantalla cambia al instante y el cambio real se confirma tras
-    // unos segundos, con "Deshacer" mientras tanto (los estados del backend solo avanzan).
-    const avanzarRapido = useCallback((pedido, nuevoEstado, mensaje) => {
-        const anterior = pedido.estado;
-        const poner = (estado) => {
-            setPedidos((prev) => prev.map((p) => (p.id === pedido.id ? { ...p, estado } : p)));
-            setPedidoSeleccionado((prev) => (prev && prev.id === pedido.id ? { ...prev, estado } : prev));
-        };
-        poner(nuevoEstado);
-        diferir({
-            mensaje: mensaje || `Pedido #${pedido.numero_pedido || pedido.id} actualizado`,
-            onDeshacer: () => poner(anterior),
-            onConfirmar: async () => {
-                await api.patch(`/pedidos/${pedido.id}/estado`, { estado: nuevoEstado });
-                if (nuevoEstado === 'pago_confirmado' || ESTADOS_PAGADOS.includes(nuevoEstado)) celebrar('venta_cobrada');
-                refrescarPendientes();
-            },
-        });
-    }, [diferir, celebrar, refrescarPendientes]);
+    // Avance con un toque (con "Deshacer"): ver hooks/useAvanzarPedido.js
+    const poner = useCallback((id, estado) => {
+        setPedidos((prev) => prev.map((p) => (p.id === id ? { ...p, estado } : p)));
+        setPedidoSeleccionado((prev) => (prev && prev.id === id ? { ...prev, estado } : prev));
+    }, []);
+    const avanzarRapido = useAvanzarPedido(poner);
 
     const avanzarEstado = async (nuevoEstado) => {
         if (!pedidoSeleccionado) return;

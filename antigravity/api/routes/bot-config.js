@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../../db/config');
+const rateLimit = require('express-rate-limit');
 const { verificarAuth } = require('../middleware/auth');
 
 const AGENTES_VALIDOS = ['ventas', 'pagos', 'pedidos', 'faq', 'reclamos', 'retencion'];
@@ -18,6 +19,18 @@ const AGENTES_POR_DEFECTO = {
 };
 
 router.use(verificarAuth);
+
+// Cada prueba del bot gasta una llamada a la IA: tope por negocio (no por IP) para que una cuenta
+// no agote la cuota ni la facture a todos. La vista previa "Probar mi bot" es de uso humano.
+const limitePruebaBot = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 15,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => `negocio:${req.negocioId || 'anon'}`,
+    validate: { keyGeneratorIpFallback: false },
+    message: { error: 'Estás probando muy rápido. Espera un minuto y vuelve a intentar.' },
+});
 
 router.get('/config', async (req, res) => {
     try {
@@ -228,7 +241,7 @@ router.put('/config/agentes', async (req, res) => {
     }
 });
 
-router.post('/test', async (req, res) => {
+router.post('/test', limitePruebaBot, async (req, res) => {
     try {
         const { mensaje } = req.body;
         // Historial opcional de la vista previa (chat de prueba): solo roles conocidos, texto corto
