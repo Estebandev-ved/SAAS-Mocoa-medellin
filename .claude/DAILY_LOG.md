@@ -16,7 +16,7 @@
 - [ ] ETA y aviso por WhatsApp "va en camino" en el seguimiento del domiciliario.
 - [ ] Videos cortos de 30-60 s por sección en `AyudaRapida` (material del socio).
 - [ ] Probar con datos reales: sockets en vivo, push (faltan claves VAPID), `/bot/test` con Gemini real, que el bot comparta las redes al preguntarlas y que Preferencias se guarden entre dispositivos.
-- [ ] Aplicar las Preferencias (fecha/zona) también en Conversaciones, Clientes, Caja y Analytics (hoy solo Pedidos y Dashboard).
+- [x] (21 oct) Preferencias aplicadas también en Conversaciones (hora y montos), Clientes y Analytics (montos). Caja no formatea montos propios (abre Mercado/Efipay externo).
 
 ### ✨ Visual e interactivo
 - [ ] Tema oscuro: revisar pantallas con colores hex sueltos (el prototipo de Flujos usa `bg-white` y bordes fijos). Auditoría a 375px del admin y botones ≥44px.

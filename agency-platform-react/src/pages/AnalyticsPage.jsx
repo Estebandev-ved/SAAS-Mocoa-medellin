@@ -16,8 +16,11 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import VentasInteractivas from '../components/VentasInteractivas';
+import usePreferencias from '../hooks/usePreferencias';
+import { formatearMoneda } from '../utils/preferencias';
 
 const AnalyticsPage = () => {
+    const prefs = usePreferencias();
     const navigate = useNavigate();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -40,7 +43,7 @@ const AnalyticsPage = () => {
     };
 
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(amount || 0);
+        return formatearMoneda(amount || 0, prefs);
     };
 
     if (loading) {

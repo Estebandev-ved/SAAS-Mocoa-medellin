@@ -74,3 +74,15 @@ export function formatearFecha(valor, { hora = false } = {}, prefs = leerPrefere
     : `${day}/${month}/${year}`;
   return hora ? `${fecha} ${partes.hour === '24' ? '00' : partes.hour}:${partes.minute}` : fecha;
 }
+
+/** Solo la hora (HH:MM) en la zona horaria elegida. */
+export function formatearHora(valor, prefs = leerPreferencias()) {
+  if (!valor) return '';
+  const d = new Date(valor);
+  if (Number.isNaN(d.getTime())) return '';
+  try {
+    return new Intl.DateTimeFormat('es-CO', { timeZone: prefs.zona_horaria, hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+  } catch {
+    return d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  }
+}

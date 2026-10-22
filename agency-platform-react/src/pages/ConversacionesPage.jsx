@@ -23,6 +23,8 @@ import {
 import { api } from '../services/api';
 import { usePedidosLive } from '../context/PedidosLiveContext';
 import { SkeletonList } from '../components/Skeleton';
+import usePreferencias from '../hooks/usePreferencias';
+import { formatearHora, formatearMoneda } from '../utils/preferencias';
 
 // Estado de la bandeja guardado en este dispositivo: qué chats ya se leyeron y cuáles están anclados.
 const leerLS = (clave, vacio) => {
@@ -45,6 +47,7 @@ const RESPUESTAS_BASE = [
 ];
 
 const ConversacionesPage = () => {
+    const prefs = usePreferencias();
     const { user } = useAuth();
     const navigate = useNavigate();
     const [conversaciones, setConversaciones] = useState([]);
@@ -225,8 +228,7 @@ const ConversacionesPage = () => {
 
     const formatTime = (dateStr) => {
         if (!dateStr) return '';
-        const date = new Date(dateStr);
-        return date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+        return formatearHora(dateStr, prefs);
     };
 
     return (
@@ -399,7 +401,7 @@ const ConversacionesPage = () => {
                                                 >
                                                     <span className="font-mono text-sm font-bold">#{p.numero_pedido || p.id}</span>
                                                     <span className="text-xs text-muted flex-1">{ETIQUETA_ESTADO[p.estado] || p.estado}</span>
-                                                    <span className="font-mono text-sm text-accent font-bold">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(p.total || 0)}</span>
+                                                    <span className="font-mono text-sm text-accent font-bold">{formatearMoneda(p.total || 0, prefs)}</span>
                                                 </button>
                                             </li>
                                         ))}

@@ -15,8 +15,11 @@ import {
     UserPlus
 } from 'lucide-react';
 import { api } from '../services/api';
+import usePreferencias from '../hooks/usePreferencias';
+import { formatearMoneda } from '../utils/preferencias';
 
 const ClientesPage = () => {
+    const prefs = usePreferencias();
     const navigate = useNavigate();
     const [clientes, setClientes] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -78,7 +81,7 @@ const ClientesPage = () => {
     };
 
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(amount || 0);
+        return formatearMoneda(amount || 0, prefs);
     };
 
     return (
