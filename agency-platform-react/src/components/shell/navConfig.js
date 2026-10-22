@@ -34,7 +34,7 @@ export const GRUPOS = [
     items: [
       { icon: Smartphone, label: 'WhatsApp', path: '/whatsapp' },
       { icon: Zap, label: 'Automatizaciones', path: '/automatizaciones' },
-      { icon: Workflow, label: 'Flujos (prototipo)', path: '/flujos' },
+      { icon: Workflow, label: 'Flujos', path: '/flujos' },
       { icon: Phone, label: 'Bot Llamadas', path: '/voice' },
       { icon: Layers, label: 'Multi-Canal', path: '/multichannel' },
       { icon: Activity, label: 'Monitoreo', path: '/monitoreo' },

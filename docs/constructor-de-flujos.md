@@ -86,21 +86,22 @@ Meta: que un dueño sin conocimientos técnicos arme flujos como en ManyChat y q
 - Prototipo visual en `/flujos` (lienzo, 9 tipos de paso, panel de propiedades, guardado local).
 - Piezas reutilizables ya en producción: `campaignSender` (envío con pausas y solo a quien aceptó marketing), `automationsService` (envío, antirrepetición), atención humana (`handlers/atencionHumana.js`), cupones, pedidos, domicilios con ETA.
 
-## Etapa 1 — Guardar flujos de verdad (1-2 días)
+## Etapa 1 — Guardar flujos de verdad (1-2 días) — HECHA el 21 oct
+_Nota: en vez de `flujo_nodos`/`flujo_conexiones` el grafo se guarda como JSON en `flujos.definicion` (se lee y guarda de una vez); `etiquetas` quedó simplificada a `etiquetas_cliente(negocio_id, cliente_id, etiqueta)`._
 - Migración `db/migrate_flujos.js` (en `migrate_all`): `flujos`, `flujo_nodos`, `flujo_conexiones`, `etiquetas`, `etiquetas_cliente`. Todo con `negocio_id`.
 - Servicio `api/services/flujos.js`: validar el grafo (un solo disparador, sin nodos huérfanos ni ciclos sin espera, máx. 30 nodos, textos ≤ 500) con **tests** (mismo estilo que `perfilNegocio`).
 - Rutas `/api/flujos` (listar, crear, guardar, activar/desactivar, borrar) filtradas por `negocio_id`; límite de flujos por plan.
 - El prototipo `FlujosPage` pasa a leer/guardar en la API (lista de flujos + editor). Se mantiene "Volver al ejemplo".
 - **Listo cuando:** crear un flujo, recargar y verlo igual desde otro navegador; un grafo inválido devuelve el motivo en español.
 
-## Etapa 2 — Motor mínimo: responde de verdad (2-3 días)
+## Etapa 2 — Motor mínimo: responde de verdad (2-3 días) — HECHA el 21 oct (sin probar con WhatsApp real)
 - `instance-manager/services/flowEngine.js` + tabla `flujo_ejecuciones` (`nodo_actual`, `estado`, `contexto`, `reanudar_en`).
 - Gancho en `messageHandler.js`: después de identificar al cliente y de la comprobación de atención humana, y **antes** de llamar a la IA: (1) ¿hay ejecución esperando respuesta? (2) ¿el texto dispara un flujo activo? Si ninguna, sigue el camino de hoy.
 - Nodos: disparador (palabra / primer mensaje), mensaje (con `{nombre}`), opciones (lista numerada), pregunta (guarda dato), etiqueta, condición, IA, asesor.
 - Tope de 50 nodos por pasada, error → ejecución en `error` + aviso al dueño + el cliente cae en la IA.
 - **Listo cuando:** escribir "PROMO" desde otro número dispara el flujo de ejemplo de punta a punta y cada paso queda registrado.
 
-## Etapa 3 — Esperas y mensajes proactivos (1-2 días)
+## Etapa 3 — Esperas y mensajes proactivos (1-2 días) — esperas HECHAS; falta el tope diario
 - Nodo espera: `reanudar_en`; el scheduler (el mismo ciclo de 30 s de campañas) reanuda ejecuciones vencidas.
 - Todo envío que no responde a un mensaje del cliente pasa por la regla de `campaignSender`: solo `acepta_marketing = 1`, pausas 2-5 s, tope diario por negocio.
 - **Listo cuando:** "esperar 10 min y recordar el carrito" funciona y no escribe a quien no aceptó marketing.

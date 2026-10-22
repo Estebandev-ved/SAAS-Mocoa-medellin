@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Trash2, Plus, RotateCcw, Link2, X } from 'lucide-react';
+import { Trash2, Plus, Link2, X, Save, Power, Loader2, FilePlus2 } from 'lucide-react';
+import api from '../services/api';
+import Toast from '../components/Toast';
+import { useConfirm } from '../context/ConfirmContext';
+import { mensajeError } from '../utils/errores';
 import { TIPOS, NODO_ANCHO, NODO_ALTO, nuevoNodo, flujoEjemplo } from '../components/flujos/catalogo';
 
-// PROTOTIPO del constructor de flujos: solo front, los datos viven en este navegador (localStorage).
-// Diseño y plan en docs/constructor-de-flujos.md. Todavía no se ejecuta nada en el bot.
-const CLAVE = 'noma_prototipo_flujo';
+// Constructor de flujos (diseño y plan en docs/constructor-de-flujos.md). Los flujos se guardan en la API
+// (/api/flujos) y, una vez encendidos, el bot los ejecuta cuando el cliente escribe la palabra clave.
 const CONTROL = 'w-full bg-white border border-[#C9C9C9] rounded-xl px-3 py-2 text-sm text-text focus:outline-none focus:border-accent';
 
-function cargar() {
-  try {
-    const f = JSON.parse(localStorage.getItem(CLAVE));
-    if (f && Array.isArray(f.nodos) && Array.isArray(f.conexiones) && f.nodos.every((n) => TIPOS[n.tipo])) return f;
-  } catch { /* sin datos guardados */ }
-  return flujoEjemplo();
-}
+// Flujo nuevo: solo el disparador, para que el dueño arme el resto (o parta del ejemplo).
+const flujoVacio = () => ({
+  nodos: [{ id: 'disparador', tipo: 'disparador', x: 40, y: 60, config: { ...TIPOS.disparador.config, palabra: '' } }],
+  conexiones: [],
+});
 
 const NOMBRE_SALIDA = { default: '', si: 'Sí', no: 'No', 1: '1', 2: '2', 3: '3' };
 
@@ -24,14 +25,118 @@ function punto(nodo, salida) {
 }
 
 export default function FlujosPage() {
-  const [flujo, setFlujo] = useState(cargar);
+  const confirmar = useConfirm();
+  const [lista, setLista] = useState([]);
+  const [limite, setLimite] = useState(null);
+  const [id, setId] = useState(null);              // null = flujo aún sin guardar
+  const [nombre, setNombre] = useState('Mi primer flujo');
+  const [activo, setActivo] = useState(false);
+  const [flujo, setFlujo] = useState(flujoEjemplo);
+  const [base, setBase] = useState('');            // foto de lo último guardado, para saber si hay cambios
+  const [cargando, setCargando] = useState(true);
+  const [ocupado, setOcupado] = useState(false);
+  const [aviso, setAviso] = useState(null);
   const [sel, setSel] = useState(null);
   const [origen, setOrigen] = useState(null); // { id, salida } esperando un destino
   const arrastre = useRef(null);
 
+  const foto = (n, f) => JSON.stringify({ n, f });
+  const sucio = foto(nombre, flujo) !== base;
+
+  const abrir = useCallback((f) => {
+    setId(f.id); setNombre(f.nombre); setActivo(f.activo); setFlujo(f.definicion);
+    setBase(foto(f.nombre, f.definicion)); setSel(null); setOrigen(null);
+  }, []);
+
+  const cargarLista = useCallback(async (abrirId) => {
+    try {
+      const { data } = await api.get('/flujos');
+      setLista(data.flujos); setLimite(data.limite);
+      const f = data.flujos.find((x) => x.id === abrirId) || (abrirId === undefined ? data.flujos[0] : null);
+      if (f) abrir(f);
+      else if (abrirId === undefined) { setId(null); setNombre('Mi primer flujo'); setActivo(false); setFlujo(flujoEjemplo()); setBase(''); }
+    } catch (e) {
+      setAviso({ type: 'error', message: mensajeError(e, 'cargar tus flujos') });
+    } finally {
+      setCargando(false);
+    }
+  }, [abrir]);
+
+  useEffect(() => { cargarLista(); }, [cargarLista]);
+
+  // Aviso del navegador al cerrar con cambios sin guardar
   useEffect(() => {
-    try { localStorage.setItem(CLAVE, JSON.stringify(flujo)); } catch { /* sin almacenamiento */ }
-  }, [flujo]);
+    if (!sucio) return undefined;
+    const antes = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', antes);
+    return () => window.removeEventListener('beforeunload', antes);
+  }, [sucio]);
+
+  const guardar = async (encender) => {
+    setOcupado(true);
+    try {
+      const cuerpo = { nombre: nombre.trim(), definicion: flujo, activo: encender ?? activo };
+      let idFinal = id;
+      if (id) await api.put(`/flujos/${id}`, cuerpo);
+      else idFinal = (await api.post('/flujos', cuerpo)).data.id;
+      await cargarLista(idFinal);
+      setAviso({ type: 'success', message: cuerpo.activo ? 'Flujo guardado y encendido' : 'Flujo guardado' });
+    } catch (e) {
+      setAviso({ type: 'error', message: e.response?.data?.error || mensajeError(e, 'guardar el flujo') });
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  const alternarActivo = async () => {
+    if (sucio || !id) { await guardar(!activo); return; }
+    setOcupado(true);
+    try {
+      await api.patch(`/flujos/${id}/activo`, { activo: !activo });
+      setActivo(!activo);
+      setLista((l) => l.map((f) => (f.id === id ? { ...f, activo: !activo } : f)));
+      setAviso({ type: 'success', message: !activo ? 'Flujo encendido: ya responde en WhatsApp' : 'Flujo apagado' });
+    } catch (e) {
+      setAviso({ type: 'error', message: e.response?.data?.error || mensajeError(e, 'cambiar el estado') });
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  const borrar = async () => {
+    if (!id) { cargarLista(); return; }
+    const ok = await confirmar({ titulo: '¿Borrar este flujo?', mensaje: `"${nombre}" dejará de responder y no se puede recuperar.`, boton: 'Borrar', peligro: true });
+    if (!ok) return;
+    setOcupado(true);
+    try {
+      await api.delete(`/flujos/${id}`);
+      await cargarLista();
+      setAviso({ type: 'success', message: 'Flujo borrado' });
+    } catch (e) {
+      setAviso({ type: 'error', message: mensajeError(e, 'borrar el flujo') });
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  const nuevoFlujo = async (conEjemplo) => {
+    if (sucio) {
+      const ok = await confirmar({ titulo: '¿Descartar los cambios?', mensaje: 'Tienes cambios sin guardar en este flujo.', boton: 'Descartar', peligro: true });
+      if (!ok) return;
+    }
+    setId(null); setActivo(false); setNombre(conEjemplo ? 'Promo por WhatsApp' : 'Flujo nuevo');
+    setFlujo(conEjemplo ? flujoEjemplo() : flujoVacio()); setBase(''); setSel(null); setOrigen(null);
+  };
+
+  const cambiarDeFlujo = async (nuevoId) => {
+    const f = lista.find((x) => x.id === Number(nuevoId));
+    if (!f || f.id === id) return;
+    if (sucio) {
+      const ok = await confirmar({ titulo: '¿Descartar los cambios?', mensaje: 'Tienes cambios sin guardar en este flujo.', boton: 'Descartar', peligro: true });
+      if (!ok) return;
+    }
+    abrir(f);
+  };
 
   const nodoPorId = (id) => flujo.nodos.find((n) => n.id === id);
   const actualizarNodo = useCallback((id, cambios) => {
@@ -82,25 +187,58 @@ export default function FlujosPage() {
   };
   const quitarConexion = (c) => setFlujo((f) => ({ ...f, conexiones: f.conexiones.filter((x) => x !== c) }));
 
-  const reiniciar = () => { setFlujo(flujoEjemplo()); setSel(null); setOrigen(null); };
-
   const seleccionado = sel ? nodoPorId(sel) : null;
   const ancho = Math.max(1300, ...flujo.nodos.map((n) => n.x + NODO_ANCHO + 80));
   const alto = Math.max(520, ...flujo.nodos.map((n) => n.y + NODO_ALTO + 80));
 
   return (
     <div className="p-4 md:p-6 max-w-[1500px] mx-auto">
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-        <div>
-          <h1 className="font-head text-2xl text-text">Constructor de flujos</h1>
-          <p className="text-sm text-muted max-w-2xl">
-            Prototipo: arma conversaciones arrastrando pasos. Aún no se activa en tu bot; lo que armes se guarda solo en este navegador.
-          </p>
-        </div>
-        <button type="button" onClick={reiniciar} className="h-11 px-4 rounded-xl border border-[#C9C9C9] bg-white text-sm text-text inline-flex items-center gap-2 cursor-pointer">
-          <RotateCcw className="w-4 h-4" /> Volver al ejemplo
+      {aviso && <Toast type={aviso.type} message={aviso.message} onClose={() => setAviso(null)} />}
+      <div className="mb-4">
+        <h1 className="font-head text-2xl text-text">Flujos</h1>
+        <p className="text-sm text-muted max-w-2xl">
+          Arma conversaciones paso a paso: cuando un cliente escriba la palabra clave, tu bot sigue el flujo. Si el flujo no entiende, responde la IA de siempre.
+        </p>
+      </div>
+
+      {cargando ? (
+        <div className="py-16 flex justify-center text-muted"><Loader2 className="w-6 h-6 animate-spin" aria-label="Cargando" /></div>
+      ) : (<>
+      <div className="flex flex-wrap items-end gap-3 mb-4">
+        {lista.length > 0 && (
+          <label className="text-xs font-semibold text-text">Tus flujos
+            <select value={id ?? ''} onChange={(e) => cambiarDeFlujo(e.target.value)} className={`${CONTROL} mt-1 min-h-[44px] min-w-[180px]`}>
+              {id === null && <option value="">(sin guardar)</option>}
+              {lista.map((f) => <option key={f.id} value={f.id}>{f.nombre}{f.activo ? ' · encendido' : ''}</option>)}
+            </select>
+          </label>
+        )}
+        <label className="text-xs font-semibold text-text flex-1 min-w-[180px]">Nombre
+          <input value={nombre} maxLength={100} onChange={(e) => setNombre(e.target.value)} className={`${CONTROL} mt-1 min-h-[44px]`} />
+        </label>
+        <button type="button" onClick={() => nuevoFlujo(false)} disabled={ocupado || (limite !== null && lista.length >= limite)}
+          title={limite !== null && lista.length >= limite ? `Tu plan permite ${limite} flujos` : undefined}
+          className="h-11 px-4 rounded-xl border border-[#C9C9C9] bg-white text-sm text-text inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          <FilePlus2 className="w-4 h-4" /> Nuevo
+        </button>
+        <button type="button" onClick={() => nuevoFlujo(true)} disabled={ocupado || (limite !== null && lista.length >= limite)}
+          className="h-11 px-4 rounded-xl border border-[#C9C9C9] bg-white text-sm text-text cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          Partir del ejemplo
+        </button>
+        <button type="button" onClick={() => guardar()} disabled={ocupado || !nombre.trim() || (!sucio && id !== null)}
+          className="h-11 px-5 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold inline-flex items-center gap-2 border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          {ocupado ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Guardar{sucio ? ' *' : ''}
+        </button>
+        <button type="button" onClick={alternarActivo} disabled={ocupado || !nombre.trim()} aria-pressed={activo}
+          className={`h-11 px-4 rounded-xl text-sm font-semibold inline-flex items-center gap-2 border cursor-pointer disabled:opacity-50 ${activo ? 'bg-success/10 text-success border-success/40' : 'bg-white text-text border-[#C9C9C9]'}`}>
+          <Power className="w-4 h-4" /> {activo ? 'Encendido' : 'Apagado'}
+        </button>
+        <button type="button" onClick={borrar} disabled={ocupado} aria-label="Borrar flujo"
+          className="h-11 w-11 rounded-xl border border-danger/40 text-danger bg-white inline-flex items-center justify-center cursor-pointer disabled:opacity-50">
+          <Trash2 className="w-4 h-4" />
         </button>
       </div>
+      {limite !== null && <p className="text-xs text-muted mb-3">Tu plan incluye hasta {limite} flujos ({lista.length} en uso). Para encender un flujo debe estar completo: con palabra clave y todos los pasos conectados.</p>}
 
       <div className="flex flex-wrap gap-2 mb-3" aria-label="Agregar paso">
         {Object.entries(TIPOS).filter(([k]) => k !== 'disparador').map(([k, t]) => (
@@ -179,6 +317,7 @@ export default function FlujosPage() {
           )}
         </aside>
       </div>
+      </>)}
     </div>
   );
 }
