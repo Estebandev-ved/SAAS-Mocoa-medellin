@@ -52,7 +52,7 @@ function asegurarTipoNegocio() {
 // Migraciones recientes de las que depende código que corre en cada petición (redes del negocio, flujos,
 // inventario). Idempotentes y rápidas: así el código nuevo no se rompe si nadie activó RUN_MIGRATIONS_ON_START.
 function asegurarEsquemaReciente() {
-    const archivos = ['migrate_redes_negocio.js', 'migrate_flujos.js', 'migrate_inventario.js'];
+    const archivos = ['migrate_redes_negocio.js', 'migrate_flujos.js', 'migrate_inventario.js', 'migrate_instagram_token.js'];
     return archivos.reduce((cadena, archivo) => cadena.then(() => new Promise((resolve) => {
         const hijo = spawn(process.execPath, [path.join(__dirname, '../db', archivo)], { stdio: 'inherit', env: process.env });
         hijo.on('error', () => resolve(false));

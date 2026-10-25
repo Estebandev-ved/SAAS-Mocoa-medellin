@@ -92,6 +92,9 @@ router.get('/', async (req, res) => {
             [...params, parseInt(limit), parseInt(offset)]
         );
 
+        // Pedidos con stock reservado (productos con inventario controlado): una sola consulta para toda la página.
+        const reservados = await inventario.pedidosConStockReservado(db, req.negocioId, pedidos.map((p) => p.id));
+
         for (const pedido of pedidos) {
             try {
                 const [items] = await db.execute(
@@ -113,6 +116,7 @@ router.get('/', async (req, res) => {
             }
 
             pedido.cliente = { nombre: pedido.cliente_nombre, whatsapp: pedido.cliente_whatsapp };
+            pedido.stock_reservado = reservados.has(pedido.id) && pedido.estado !== 'cancelado';
 
             pedido.tiene_imagen_pago = !!pedido.imagen_pago;
             if (pedido.imagen_pago) {
@@ -172,6 +176,7 @@ router.get('/:id', async (req, res) => {
 
         const pedido = pedidos[0];
         pedido.cliente = { nombre: pedido.cliente_nombre, whatsapp: pedido.cliente_whatsapp };
+        pedido.stock_reservado = pedido.estado !== 'cancelado' && (await inventario.pedidosConStockReservado(db, req.negocioId, [pedido.id])).has(pedido.id);
 
         try {
             const [items] = await db.execute(
@@ -238,9 +243,10 @@ router.patch('/:id/estado', async (req, res) => {
         );
 
         // Cancelar un pedido devuelve al inventario lo que se había reservado (idempotente).
+        let stockDevuelto = 0;
         if (nuevoEstado === 'cancelado' && estadoActual !== 'cancelado') {
             try {
-                await inventario.devolverPedido(db, { negocioId: req.negocioId, pedidoId: id });
+                stockDevuelto = (await inventario.devolverPedido(db, { negocioId: req.negocioId, pedidoId: id })).devueltos;
             } catch (e) {
                 console.error('[Pedidos] No se pudo devolver el stock del pedido cancelado:', e.message);
             }
@@ -259,7 +265,7 @@ router.patch('/:id/estado', async (req, res) => {
             enviarEncuestaSiCorresponde(req.negocioId, id);
         }
 
-        res.json({ success: true, message: `Estado actualizado a ${nuevoEstado}` });
+        res.json({ success: true, message: `Estado actualizado a ${nuevoEstado}`, stock_devuelto: stockDevuelto });
     } catch (error) {
         console.error('[Pedidos] Error:', error.message);
         res.status(500).json({ error: 'Error al actualizar estado' });

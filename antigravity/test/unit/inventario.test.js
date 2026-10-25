@@ -24,6 +24,14 @@ function crearBd(productos) {
         if (q.startsWith('SELECT id, nombre, stock, controla_stock FROM productos')) {
             return [p.slice(1).map((id) => estado.productos.get(id)).filter(Boolean)];
         }
+        if (q.startsWith('SELECT referencia_id, SUM(cantidad) AS neto')) {
+            const ids = p.slice(1);
+            const por = new Map();
+            for (const m of estado.movs.filter((x) => x.negocio_id === p[0] && x.referencia_tipo === 'pedido' && ids.includes(x.referencia_id) && ['salida', 'devolucion'].includes(x.tipo))) {
+                por.set(m.referencia_id, (por.get(m.referencia_id) || 0) + m.cantidad);
+            }
+            return [[...por.entries()].map(([referencia_id, neto]) => ({ referencia_id, neto }))];
+        }
         if (q.startsWith('SELECT producto_id, SUM(cantidad) AS neto')) {
             const por = new Map();
             for (const m of estado.movs.filter((x) => x.negocio_id === p[0] && x.referencia_tipo === 'pedido' && x.referencia_id === p[1] && ['salida', 'devolucion'].includes(x.tipo))) {
@@ -122,4 +130,16 @@ test('mensaje al cliente distingue agotado de pocas unidades', () => {
     const t = I.mensajeSinStock([{ nombre: 'Gorra', disponible: 1, pedido: 3 }, { nombre: 'Camisa', disponible: 0, pedido: 1 }]);
     assert.match(t, /Gorra: solo quedan 1 \(pediste 3\)/);
     assert.match(t, /Camisa: está agotado/);
+});
+
+test('pedidosConStockReservado: marca los pedidos con stock descontado y deja de marcar los devueltos', async () => {
+    const { pool } = crearBd([camisa, gorra, servicio]);
+    await I.descontarPedido(pool, { negocioId: 1, pedidoId: 60, items: [{ producto_id: 1, cantidad: 2 }] });
+    await I.descontarPedido(pool, { negocioId: 1, pedidoId: 61, items: [{ producto_id: 3, cantidad: 4 }] });   // servicio: no controla stock
+    await I.descontarPedido(pool, { negocioId: 1, pedidoId: 62, items: [{ producto_id: 1, cantidad: 1 }] });
+    await I.devolverPedido(pool, { negocioId: 1, pedidoId: 62 });
+    const r = await I.pedidosConStockReservado(pool, 1, [60, 61, 62, 63, 'x', null]);
+    assert.deepStrictEqual([...r], [60]);
+    assert.deepStrictEqual([...(await I.pedidosConStockReservado(pool, 1, []))], []);
+    assert.deepStrictEqual([...(await I.pedidosConStockReservado({ execute: async () => { throw new Error('sin tabla'); } }, 1, [60]))], []);
 });

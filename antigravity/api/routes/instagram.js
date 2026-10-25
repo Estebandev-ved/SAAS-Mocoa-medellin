@@ -2,6 +2,12 @@ const express = require('express');
 const router = express.Router();
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
+const { firmaValida } = require('../services/metaWebhook');
+const { cifrarSecreto, descifrarSecreto } = require('../services/secretos');
+
+// Los clientes de Instagram se guardan con este prefijo en `clientes.whatsapp` (VARCHAR(20): el id de Instagram mide
+// hasta 17 dígitos, así que el prefijo debe ser corto).
+const PREFIJO_CLIENTE = 'ig_';
 
 // Instagram webhook verification
 router.get('/webhook', (req, res) => {
@@ -22,12 +28,25 @@ router.get('/webhook', (req, res) => {
 // Instagram webhook handler
 router.post('/webhook', async (req, res) => {
     try {
+        // Solo Meta puede enviar eventos: se valida la firma sobre el cuerpo crudo con el secreto de la app.
+        // Sin META_APP_SECRET no se puede validar: en producción se rechaza (mejor sin respuesta que a un falso).
+        const secreto = process.env.META_APP_SECRET;
+        if (secreto) {
+            if (!firmaValida(req.rawBody, req.get ? req.get('x-hub-signature-256') : req.headers['x-hub-signature-256'], secreto)) {
+                console.warn('[Instagram] Webhook rechazado: firma inválida');
+                return res.sendStatus(403);
+            }
+        } else if (process.env.NODE_ENV === 'production') {
+            console.error('[Instagram] Webhook rechazado: falta META_APP_SECRET para validar la firma');
+            return res.sendStatus(403);
+        }
+
         const body = req.body;
 
         if (body.object === 'instagram') {
             for (const entry of body.entry || []) {
                 for (const event of entry.messaging || []) {
-                    await handleInstagramMessage(event);
+                    await handleInstagramMessage(event, entry.id);
                 }
             }
         }
@@ -65,7 +84,7 @@ router.post('/connect', verificarAuth, async (req, res) => {
         // Save to database
         await db.execute(
             'UPDATE negocios SET instagram_token = ?, instagram_user_id = ?, instagram_nombre = ? WHERE id = ?',
-            [access_token, igAccount?.id || page_id, igAccount?.name || 'Instagram', negocioId]
+            [cifrarSecreto(access_token), igAccount?.id || page_id, igAccount?.name || 'Instagram', negocioId]
         );
 
         res.json({
@@ -125,18 +144,22 @@ router.post('/disconnect', verificarAuth, async (req, res) => {
 });
 
 // Handle incoming Instagram message
-async function handleInstagramMessage(event) {
+async function handleInstagramMessage(event, entryId) {
     try {
         const senderId = event.sender?.id;
         const message = event.message;
         const text = message?.text || '';
 
         if (!senderId || !text) return;
+        // Eco de un mensaje que mandamos nosotros: se ignora (si no, el bot se respondería a sí mismo).
+        if (message?.is_echo) return;
 
-        // Find business by Instagram user ID
+        // El negocio es la cuenta que RECIBE el mensaje (entry.id / recipient.id), no quien lo envía.
+        const cuentaId = entryId || event.recipient?.id;
+        if (!cuentaId) return;
         const [negocios] = await db.execute(
             'SELECT id FROM negocios WHERE instagram_user_id = ?',
-            [senderId]
+            [cuentaId]
         );
 
         if (negocios.length === 0) return;
@@ -146,14 +169,14 @@ async function handleInstagramMessage(event) {
         // Get or create client
         let [clientes] = await db.execute(
             'SELECT id FROM clientes WHERE negocio_id = ? AND whatsapp = ?',
-            [negocioId, `instagram_${senderId}`]
+            [negocioId, `${PREFIJO_CLIENTE}${senderId}`]
         );
 
         let clienteId;
         if (clientes.length === 0) {
             const [result] = await db.execute(
                 'INSERT INTO clientes (negocio_id, nombre, whatsapp) VALUES (?, ?, ?)',
-                [negocioId, 'Instagram User', `instagram_${senderId}`]
+                [negocioId, 'Instagram User', `${PREFIJO_CLIENTE}${senderId}`]
             );
             clienteId = result.insertId;
         } else {
@@ -163,14 +186,14 @@ async function handleInstagramMessage(event) {
         // Save incoming message
         await db.execute(
             'INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido) VALUES (?, ?, ?, ?)',
-            [negocioId, `instagram_${senderId}`, 'entrada', text]
+            [negocioId, `${PREFIJO_CLIENTE}${senderId}`, 'entrada', text]
         );
 
         // Process with orchestrator
         const orchestrator = require('../../instance-manager/agents/orchestrator');
         const contextoRows = await db.execute(
             'SELECT tipo, contenido FROM mensajes WHERE negocio_id = ? AND numero_cliente = ? ORDER BY created_at DESC LIMIT 10',
-            [negocioId, `instagram_${senderId}`]
+            [negocioId, `${PREFIJO_CLIENTE}${senderId}`]
         );
         const contexto = (contextoRows[0] || []).reverse().map(m => ({
             rol: m.tipo === 'entrada' ? 'cliente' : 'bot',
@@ -182,7 +205,7 @@ async function handleInstagramMessage(event) {
         // Save response
         await db.execute(
             'INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido, agente_proceso, intencion_detectada) VALUES (?, ?, ?, ?, ?, ?)',
-            [negocioId, `instagram_${senderId}`, 'salida', respuesta.respuesta, respuesta.agente_usado, respuesta.intencion || '']
+            [negocioId, `${PREFIJO_CLIENTE}${senderId}`, 'salida', respuesta.respuesta, respuesta.agente_usado, respuesta.intencion || '']
         );
 
         // Send via Instagram Graph API
@@ -190,7 +213,7 @@ async function handleInstagramMessage(event) {
             'SELECT instagram_token FROM negocios WHERE id = ?',
             [negocioId]
         );
-        const accessToken = negocioData[0]?.instagram_token;
+        const accessToken = descifrarSecreto(negocioData[0]?.instagram_token);
 
         if (accessToken) {
             await fetch(
@@ -210,5 +233,8 @@ async function handleInstagramMessage(event) {
         console.error('[Instagram] Error handling message:', error);
     }
 }
+
+// Se expone para las pruebas (sin levantar el servidor).
+router.handleInstagramMessage = handleInstagramMessage;
 
 module.exports = router;

@@ -209,6 +209,26 @@ function sanearStock(v) {
     return { valor: n };
 }
 
+/**
+ * De estos pedidos, cuáles tienen stock reservado (se descontó y aún no se devolvió).
+ * Devuelve un Set de ids. Si la tabla de inventario aún no existe devuelve un Set vacío.
+ */
+async function pedidosConStockReservado(db, negocioId, pedidoIds) {
+    const ids = [...new Set((pedidoIds || []).map(Number).filter((n) => n > 0))];
+    if (ids.length === 0) return new Set();
+    try {
+        const [filas] = await db.execute(
+            `SELECT referencia_id, SUM(cantidad) AS neto FROM inventario_movimientos
+             WHERE negocio_id = ? AND referencia_tipo = 'pedido' AND tipo IN ('salida', 'devolucion') AND referencia_id IN (${ids.map(() => '?').join(',')})
+             GROUP BY referencia_id`,
+            [negocioId, ...ids]
+        );
+        return new Set(filas.filter((f) => Number(f.neto) < 0).map((f) => Number(f.referencia_id)));
+    } catch (e) {
+        return new Set();
+    }
+}
+
 /** Frase para el cliente cuando no alcanza el stock. */
 function mensajeSinStock(faltantes) {
     const lineas = faltantes.map((f) => (f.disponible > 0
@@ -219,5 +239,5 @@ function mensajeSinStock(faltantes) {
 
 module.exports = {
     TIPOS, ErrorInventario, calcularNuevoStock, validarDelta, registrarMovimiento, conTransaccion, ajustarStock,
-    agruparItems, verificarDisponibilidad, descontarPedido, devolverPedido, mensajeSinStock, sanearCamposInventario, sanearStock,
+    agruparItems, verificarDisponibilidad, descontarPedido, devolverPedido, mensajeSinStock, sanearCamposInventario, sanearStock, pedidosConStockReservado,
 };

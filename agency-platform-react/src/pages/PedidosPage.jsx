@@ -50,7 +50,7 @@ const PedidosPage = () => {
     const navigate = useNavigate();
     const { celebrar } = useHitos();
     const { conectado, suscribir } = usePedidosLive();
-    const { avisarError } = useUndo();
+    const { avisarError, avisarOk } = useUndo();
     const confirmar = useConfirm();
     const [params] = useSearchParams();
     const buscarRef = useRef(null);
@@ -119,7 +119,8 @@ const PedidosPage = () => {
         if (!pedidoSeleccionado) return;
         setAvanzando(true);
         try {
-            await api.patch(`/pedidos/${pedidoSeleccionado.id}/estado`, { estado: nuevoEstado });
+            const { data } = await api.patch(`/pedidos/${pedidoSeleccionado.id}/estado`, { estado: nuevoEstado });
+            if (data?.stock_devuelto > 0) avisarOk('Pedido cancelado: el stock reservado volvió a tu inventario.');
             await fetchPedidos();
             setPedidoSeleccionado((prev) => (prev ? { ...prev, estado: nuevoEstado } : prev));
         } catch (error) {
@@ -473,6 +474,12 @@ const PedidosPage = () => {
                                         <span className="text-xl font-bold text-accent">{formatCurrency(pedidoSeleccionado.total)}</span>
                                     </div>
                                 </div>
+
+                                {pedidoSeleccionado.stock_reservado && (
+                                    <p className="text-xs rounded-xl bg-success/10 text-success px-3 py-2" role="note">
+                                        📦 Stock reservado: los productos con inventario ya se descontaron. Si cancelas el pedido, vuelven a tu stock.
+                                    </p>
+                                )}
 
                                 <div className="text-xs text-muted">
                                     <p>Fecha: {formatFecha(pedidoSeleccionado.created_at)}</p>

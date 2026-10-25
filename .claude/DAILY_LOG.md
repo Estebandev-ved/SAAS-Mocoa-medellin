@@ -35,16 +35,21 @@ Diseño completo en `docs/ecosistema-inventario-facturacion.md`. **Hecho (commit
 - Pantalla **Productos**: interruptor "Controlar inventario" (explicado), stock inicial/actual, "avisarme cuando queden", SKU; insignias Agotado / Pocas unidades / N en stock; botones **Ajustar stock** (entró mercancía / salió o se dañó, con motivo y vista previa del resultado) e **Historial**; **Exportar** e **Importar Excel** (subir .csv → vista previa por fila → confirmar; plantilla descargable). Probado en el navegador contra las rutas reales con base simulada.
 
 **Pendiente de la Fase 1 (lo que queda):**
-1. **Pedidos**: mostrar en el detalle un aviso "Stock reservado" y, al cancelar, un aviso "Se devolvió el stock" (la API puede responder `stock_devuelto`).
+1. ✅ (25 oct) **Pedidos** muestra "Stock reservado" en el detalle y, al cancelar, avisa que el stock volvió (`stock_reservado` en la lista y el detalle, `stock_devuelto` en `PATCH /:id/estado`).
 2. Probar con **MySQL real**: crear producto con inventario, vender por el bot, cancelar y ver el stock devuelto, importar un CSV de verdad.
 3. Fase 2 del documento (costo/margen, conteo físico, reportes, roles, venta de mostrador, facturación con proveedor).
 4. Los pasos de flujos "Hay stock" ya leen este inventario; falta añadir un paso "Reservar" si hiciera falta.
 
 **Probar con MySQL real antes de producción:** la migración (índice único `(negocio_id, sku)`), una venta por el bot con producto sin stock/con poco stock, cancelar y ver el stock devuelto, y que productos sin "controlar inventario" sigan vendiéndose igual que antes.
 
+### 🧭 Organización de la app (propuesta en `docs/organizacion-de-la-app.md`)
+- [ ] Decisiones del socio: menú de 8 entradas (Inicio · Mensajes · Ventas · Productos · Clientes · Marketing · Reportes · Ajustes), nombre de "Flujos", Modo Simple/Avanzado.
+- [ ] Etapa 1: reordenar `navConfig.js` (grupos y nombres) · Etapa 2: Ajustes → Canales y Mensajes con filtro por canal · Etapa 3: pestañas por sección.
+
 ### 📸 Instagram: comentarios → respuesta pública + DM (diseño en `docs/instagram-comentarios.md`)
 - [x] (25 oct) Arreglada la verificación del webhook de Instagram (`a && b || 'texto'` era siempre verdadero) + test.
-- [ ] **Seguridad antes de usarlo**: validar la firma `X-Hub-Signature-256` con `META_APP_SECRET` (cuerpo crudo, como `CloudApiProvider`) y guardar `instagram_token` **cifrado** (hoy en texto plano y pegado a mano).
+- [x] (25 oct) **Seguridad de Instagram**: el webhook valida la firma `X-Hub-Signature-256` con `META_APP_SECRET` sobre el cuerpo crudo (sin secreto, en producción se rechaza; **hay que poner `META_APP_SECRET` en Railway** para que lleguen mensajes); el token se guarda **cifrado** (`api/services/secretos.js`, `enc:v1:`; los viejos en texto plano se siguen leyendo; migración `migrate_instagram_token.js` ensancha la columna a TEXT). **Bugs reales que tenía**: buscaba el negocio por quien ENVÍA (nunca coincidía, así que los DMs de Instagram no se respondían), no ignoraba los ecos propios y el id de cliente `instagram_<id>` no cabía en `clientes.whatsapp` VARCHAR(20) (ahora `ig_<id>`). 6 tests.
+- [ ] Falta del lado de Instagram: conectar con OAuth (botón) y renovar token, comentarios, y la revisión de Meta (ver `docs/instagram-comentarios.md`).
 - [ ] Decisiones del socio: Instagram Login vs Facebook Login, quién verifica el negocio en Meta, desde qué plan se ofrece, probar primero en modo desarrollo con su cuenta.
 - [ ] Etapas: OAuth "Conectar Instagram" + renovación de token → webhook de `comments` + disparador "Comentario en Instagram" en flujos (respuesta pública variada + respuesta privada) → clientes de Instagram (`canal`, `ig_id`) → revisión de Meta.
 

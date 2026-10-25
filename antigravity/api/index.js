@@ -146,8 +146,10 @@ app.use(cors({
     credentials: true
 }));
 // Límite global bajo; solo la subida de foto de carta (base64) admite cuerpos grandes.
-const jsonGrande = express.json({ limit: '15mb' });
-app.use((req, res, next) => (req.path === '/api/productos/importar-foto' ? jsonGrande : express.json({ limit: '1mb' }))(req, res, next));
+// Los webhooks de Meta se firman sobre el cuerpo exacto: se conserva el original junto al JSON ya leído.
+const guardarCuerpoCrudo = (req, res, buf) => { if (req.originalUrl && req.originalUrl.includes('/webhook')) req.rawBody = buf; };
+const jsonGrande = express.json({ limit: '15mb', verify: guardarCuerpoCrudo });
+app.use((req, res, next) => (req.path === '/api/productos/importar-foto' ? jsonGrande : express.json({ limit: '1mb', verify: guardarCuerpoCrudo }))(req, res, next));
 
 // OCR Test Endpoint - PUBLIC for testing (before auth routes)
 const multer = require('multer');

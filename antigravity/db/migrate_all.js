@@ -48,6 +48,7 @@ const MIGRACIONES = [
     'migrate_redes_negocio.js',
     'migrate_flujos.js',
     'migrate_inventario.js',
+    'migrate_instagram_token.js',
 ];
 
 const BASE = process.env.MYSQL_DATABASE || 'antigravity';
