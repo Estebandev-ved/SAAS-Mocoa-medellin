@@ -60,6 +60,16 @@ async function run() {
         `);
         console.log('[OK] tabla etiquetas_cliente');
 
+        // Disparadores por evento (pedido pagado/entregado, cliente inactivo): el flujo arranca solo, sin palabra clave.
+        for (const [columna, definicion] of [['evento', 'VARCHAR(30) NULL'], ['evento_dias', 'INT NULL']]) {
+            const [existe] = await db.execute(
+                "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'flujos' AND COLUMN_NAME = ?", [columna]
+            );
+            if (existe.length) { console.log(`[SKIP] flujos.${columna} ya existe`); continue; }
+            await db.execute(`ALTER TABLE flujos ADD COLUMN ${columna} ${definicion}`);
+            console.log(`[OK] flujos.${columna} agregada`);
+        }
+
         // Las campañas pueden dirigirse a una etiqueta: se agrega el valor al ENUM de segmento (conserva los datos).
         const [col] = await db.execute(
             "SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'campañas' AND COLUMN_NAME = 'segmento'"

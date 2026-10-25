@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const inventario = require('../services/inventario');
+const flujosEjecucion = require('../services/flujosEjecucion');
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
 const { isAutomationActive, yaSeNotifico, registrarNotificacion, enviarWhatsApp, enviarEncuestaSiCorresponde } = require('../services/automationsService');
@@ -243,6 +244,14 @@ router.patch('/:id/estado', async (req, res) => {
             } catch (e) {
                 console.error('[Pedidos] No se pudo devolver el stock del pedido cancelado:', e.message);
             }
+        }
+
+        // Flujos con disparador por evento (pedido pagado / entregado): en segundo plano y sin tumbar nada.
+        if (nuevoEstado !== estadoActual && (nuevoEstado === 'pago_confirmado' || nuevoEstado === 'entregado')) {
+            flujosEjecucion.dispararEventoPedido({
+                negocioId: req.negocioId, pedidoId: id,
+                evento: nuevoEstado === 'pago_confirmado' ? 'pedido_pagado' : 'pedido_entregado', enviarA: enviarWhatsApp,
+            });
         }
 
         if (nuevoEstado === 'entregado') {

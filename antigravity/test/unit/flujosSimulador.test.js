@@ -57,3 +57,24 @@ test('el estado que manda el navegador se sanea (no confía en nada)', () => {
     const raro = simular({ definicion, modo: 'mensaje', texto: 'promo', ejec: { estado: 'esperando_respuesta', nodo_actual: 'no_existe', contexto: 'x' } });
     assert.ok(raro.mensajes.length > 0);
 });
+
+test('simulador: disparador por evento arranca solo y un mensaje suelto no lo inicia', () => {
+    const def = {
+        nodos: [n('a', 'disparador', { modo: 'pedido_pagado' }), n('b', 'mensaje', { texto: 'Gracias por tu compra' }), n('c', 'info_pago', { nota: '' }), n('d', 'saltar', { flujo_id: 4 })],
+        conexiones: [c('a', 'default', 'b'), c('b', 'default', 'c'), c('c', 'default', 'd')],
+    };
+    const r = simular({ definicion: def, modo: 'evento' });
+    assert.deepStrictEqual(textos(r).slice(0, 1), ['Gracias por tu compra']);
+    assert.ok(textos(r).some((t) => /métodos de pago/.test(t)));
+    assert.ok(textos(r).some((t) => /flujo n\.º 4/.test(t)));
+    assert.ok(simular({ definicion: definicion, modo: 'evento' }).error);   // el de palabra clave no tiene evento
+});
+
+test('simulador: los datos del cliente de prueba alimentan las condiciones', () => {
+    const def = {
+        nodos: [n('a', 'disparador', { palabra: 'vip' }), n('b', 'condicion', { tipo: 'gastado', minimo: 100000 }), n('c', 'mensaje', { texto: 'Eres VIP' }), n('d', 'mensaje', { texto: 'Aún no' })],
+        conexiones: [c('a', 'default', 'b'), c('b', 'si', 'c'), c('b', 'no', 'd')],
+    };
+    assert.strictEqual(textos(simular({ definicion: def, modo: 'mensaje', texto: 'vip' }))[0], 'Aún no');
+    assert.strictEqual(textos(simular({ definicion: def, modo: 'mensaje', texto: 'vip', datos: { total_gastado: 250000 } }))[0], 'Eres VIP');
+});

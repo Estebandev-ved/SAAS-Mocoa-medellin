@@ -32,12 +32,15 @@ function aMensajes(resultado, etiquetas) {
         else if (a.tipo === 'etiqueta') {
             tags = a.accion === 'quitar' ? tags.filter((t) => t !== a.nombre) : [...new Set([...tags, a.nombre])];
             mensajes.push({ de: 'sistema', texto: `🏷️ ${a.accion === 'quitar' ? 'Se quita' : 'Se pone'} la etiqueta "${a.nombre}"` });
+        } else if (a.tipo === 'info_pago') {
+            mensajes.push({ de: 'sistema', texto: `💳 Aquí se envían tus métodos de pago (Nequi / Bancolombia de Ajustes)${a.nota ? `. Nota: ${a.nota}` : ''}` });
         } else if (a.tipo === 'asesor') {
             if (a.aviso) mensajes.push({ de: 'bot', texto: a.aviso });
             mensajes.push({ de: 'sistema', texto: '🙋 Aquí el chat pasaría a una persona y el bot dejaría de responder' });
         }
     }
     if (resultado.ia) mensajes.push({ de: 'sistema', texto: `🤖 Aquí responde la IA del negocio con esta instrucción: "${resultado.ia}"` });
+    if (resultado.saltar) mensajes.push({ de: 'sistema', texto: `↪️ Aquí el cliente pasaría al flujo n.º ${resultado.saltar} (se prueba aparte)` });
     if (resultado.fallback) mensajes.push({ de: 'sistema', texto: '🤖 El flujo no entendió: responde la IA de siempre' });
     if (resultado.ejec.estado === 'error') mensajes.push({ de: 'sistema', texto: '⚠️ El flujo se cortó por tener demasiados pasos seguidos' });
     if (resultado.ejec.estado === 'esperando_tiempo') mensajes.push({ de: 'sistema', texto: '⏳ El flujo espera un rato antes de seguir. Usa "Saltar la espera" para ver qué pasa después' });
@@ -55,7 +58,13 @@ function simular(entrada) {
     if (v.error) return { error: v.error };
     const def = v.definicion;
     const etiquetas = sanearEtiquetas(entrada.etiquetas);
-    const cliente = { nombre: typeof entrada.nombre === 'string' ? entrada.nombre.trim().slice(0, 60) : '', etiquetas };
+    // Datos opcionales del cliente de prueba para probar las condiciones (gastado, pedidos, horario); por defecto, un cliente nuevo.
+    const d = entrada.datos && typeof entrada.datos === 'object' ? entrada.datos : {};
+    const num = (v) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : 0);
+    const cliente = {
+        nombre: typeof entrada.nombre === 'string' ? entrada.nombre.trim().slice(0, 60) : '', etiquetas,
+        total_gastado: num(d.total_gastado), total_pedidos: num(d.total_pedidos), dentroHorario: d.dentroHorario !== false,
+    };
     const ejec = sanearEjec(entrada.ejec);
     const texto = typeof entrada.texto === 'string' ? entrada.texto.trim().slice(0, MAX_TEXTO) : '';
 
@@ -63,6 +72,11 @@ function simular(entrada) {
     if (entrada.modo === 'saltar_espera') {
         if (!ejec || ejec.estado !== 'esperando_tiempo') return { error: 'No hay ninguna espera para saltar' };
         resultado = M.reanudar(def, ejec, cliente);
+    } else if (entrada.modo === 'evento') {
+        // Disparador por evento: el flujo arranca solo, sin que el cliente escriba nada.
+        const { evento } = F.datosDisparador(def);
+        if (!evento) return { error: 'Este flujo empieza con una palabra clave, no con un evento' };
+        resultado = M.iniciar(def, cliente);
     } else {
         if (!texto) return { error: 'Escribe un mensaje' };
         if (ejec && ejec.estado === 'esperando_respuesta') {

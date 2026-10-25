@@ -3,6 +3,8 @@ const router = express.Router();
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
 const F = require('../services/flujos');
+const { listarPlantillas } = require('../services/flujosPlantillas');
+const { familiaDe } = require('../services/tiposNegocio');
 const { HORAS_VIGENCIA_RESPUESTA } = require('../services/flujosEjecucion');
 const { simular } = require('../services/flujosSimulador');
 
@@ -51,6 +53,17 @@ function leerCuerpo(req, res) {
     return { nombre, definicion, activo };
 }
 
+// Plantillas listas para usar; las recomendadas para el tipo de negocio van primero.
+router.get('/plantillas', async (req, res) => {
+    try {
+        const [n] = await db.execute('SELECT tipo_negocio FROM negocios WHERE id = ?', [req.negocioId]);
+        res.json({ plantillas: listarPlantillas(familiaDe(n[0] && n[0].tipo_negocio)) });
+    } catch (error) {
+        console.error('[Flujos] Error listando plantillas:', error.message);
+        res.status(500).json({ error: 'Error al obtener las plantillas' });
+    }
+});
+
 // Etiquetas que los flujos han puesto a los clientes del negocio, con cuántos clientes tiene cada una.
 router.get('/etiquetas', async (req, res) => {
     try {
@@ -86,10 +99,10 @@ router.post('/', async (req, res) => {
         if ((await contarFlujos(req.negocioId)) >= limite) {
             return res.status(403).json({ error: `Tu plan permite hasta ${limite} flujos. Mejora tu plan para crear más.`, codigo: 'LIMITE_FLUJOS', limite });
         }
-        const { palabraClave, primerMensaje } = F.datosDisparador(datos.definicion);
+        const { palabraClave, primerMensaje, evento, eventoDias } = F.datosDisparador(datos.definicion);
         const [r] = await db.execute(
-            'INSERT INTO flujos (negocio_id, nombre, activo, definicion, palabra_clave, primer_mensaje) VALUES (?, ?, ?, ?, ?, ?)',
-            [req.negocioId, datos.nombre, datos.activo, JSON.stringify(datos.definicion), palabraClave, primerMensaje]
+            'INSERT INTO flujos (negocio_id, nombre, activo, definicion, palabra_clave, primer_mensaje, evento, evento_dias) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [req.negocioId, datos.nombre, datos.activo, JSON.stringify(datos.definicion), palabraClave, primerMensaje, evento, eventoDias]
         );
         res.status(201).json({ success: true, id: r.insertId });
     } catch (error) {
@@ -102,11 +115,11 @@ router.put('/:id', async (req, res) => {
     try {
         const datos = leerCuerpo(req, res);
         if (!datos) return;
-        const { palabraClave, primerMensaje } = F.datosDisparador(datos.definicion);
+        const { palabraClave, primerMensaje, evento, eventoDias } = F.datosDisparador(datos.definicion);
         const [r] = await db.execute(
-            `UPDATE flujos SET nombre = ?, activo = ?, definicion = ?, palabra_clave = ?, primer_mensaje = ?, version = version + 1
+            `UPDATE flujos SET nombre = ?, activo = ?, definicion = ?, palabra_clave = ?, primer_mensaje = ?, evento = ?, evento_dias = ?, version = version + 1
              WHERE id = ? AND negocio_id = ?`,
-            [datos.nombre, datos.activo, JSON.stringify(datos.definicion), palabraClave, primerMensaje, req.params.id, req.negocioId]
+            [datos.nombre, datos.activo, JSON.stringify(datos.definicion), palabraClave, primerMensaje, evento, eventoDias, req.params.id, req.negocioId]
         );
         if (r.affectedRows === 0) return res.status(404).json({ error: 'Flujo no encontrado' });
         res.json({ success: true });

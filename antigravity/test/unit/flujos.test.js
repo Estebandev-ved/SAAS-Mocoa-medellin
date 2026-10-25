@@ -27,7 +27,7 @@ const limpio = (d) => { const r = F.validarDefinicion(d); assert.ok(r.definicion
 test('el flujo de ejemplo es válido y se puede activar', () => {
     const def = limpio(ejemplo());
     assert.strictEqual(F.validarParaActivar(def), null);
-    assert.deepStrictEqual(F.datosDisparador(def), { palabraClave: 'promo', primerMensaje: false });
+    assert.deepStrictEqual(F.datosDisparador(def), { palabraClave: 'promo', primerMensaje: false, evento: null, eventoDias: null });
 });
 
 test('rechaza formatos raros, tipos desconocidos, ids malos y exceso de pasos', () => {
@@ -199,4 +199,79 @@ test('métricas: junta estados y descuenta los que ya abandonaron de "en curso"'
     );
     assert.deepStrictEqual(r, { entraron: 13, terminaron: 6, en_curso: 2, con_error: 1, abandonaron: 4, abandonos: [{ nodo: 'c', total: 3 }, { nodo: 'b', total: 1 }] });
     assert.strictEqual(F.resumirMetricas([], []).entraron, 0);
+});
+
+// ---------- condiciones nuevas, pasos de comercio, saltos y disparadores por evento ----------
+
+test('disparadores por evento: se activan sin palabra clave y guardan los días de inactividad', () => {
+    const base = (config) => limpio({ nodos: [n('a', 'disparador', config), n('b', 'mensaje', { texto: 'hola' })], conexiones: [c('a', 'default', 'b')] });
+    const pagado = base({ modo: 'pedido_pagado' });
+    assert.strictEqual(F.validarParaActivar(pagado), null);
+    assert.deepStrictEqual(F.datosDisparador(pagado), { palabraClave: null, primerMensaje: false, evento: 'pedido_pagado', eventoDias: null });
+    const inactivo = base({ modo: 'cliente_inactivo', dias: 45 });
+    assert.deepStrictEqual(F.datosDisparador(inactivo), { palabraClave: null, primerMensaje: false, evento: 'cliente_inactivo', eventoDias: 45 });
+    assert.strictEqual(F.datosDisparador(base({ modo: 'cliente_inactivo', dias: 99999 })).eventoDias, 365);
+    assert.strictEqual(F.datosDisparador(base({ modo: 'inventado', palabra: 'x' })).palabraClave, 'x');   // modo raro cae en palabra
+});
+
+test('condiciones: cada tipo limpia su configuración y los flujos viejos siguen siendo de etiqueta', () => {
+    const cond = (config) => limpio({ nodos: [n('a', 'disparador'), n('b', 'condicion', config)], conexiones: [] }).nodos[1].config;
+    assert.deepStrictEqual(cond({ valor: 'VIP Gold' }), { tipo: 'etiqueta', valor: 'vip_gold' });
+    assert.deepStrictEqual(cond({ tipo: 'dato', campo: 'Barrio', valor: 'Laureles' }), { tipo: 'dato', campo: 'barrio', valor: 'Laureles' });
+    assert.deepStrictEqual(cond({ tipo: 'gastado', minimo: '150000' }), { tipo: 'gastado', minimo: 150000 });
+    assert.deepStrictEqual(cond({ tipo: 'pedidos', minimo: -3 }), { tipo: 'pedidos', minimo: 0 });
+    assert.deepStrictEqual(cond({ tipo: 'stock', producto_id: 7 }), { tipo: 'stock', producto_id: 7, minimo: 1 });
+    assert.deepStrictEqual(cond({ tipo: 'horario', basura: 1 }), { tipo: 'horario' });
+    assert.strictEqual(cond({ tipo: 'hackeo' }).tipo, 'etiqueta');
+});
+
+test('para activar: condiciones y saltos incompletos se rechazan con un motivo', () => {
+    const flujo = (nodo) => limpio({ nodos: [n('a', 'disparador', { palabra: 'x' }), nodo], conexiones: [c('a', 'default', nodo.id)] });
+    assert.match(F.validarParaActivar(flujo(n('b', 'condicion', { tipo: 'dato', campo: 'barrio' }))), /dato/);
+    assert.match(F.validarParaActivar(flujo(n('b', 'condicion', { tipo: 'stock' }))), /producto/);
+    assert.match(F.validarParaActivar(flujo(n('b', 'condicion', { tipo: 'etiqueta' }))), /etiqueta/);
+    assert.match(F.validarParaActivar(flujo(n('b', 'saltar', {}))), /otro flujo/);
+    assert.strictEqual(F.validarParaActivar(flujo(n('b', 'saltar', { flujo_id: 3 }))), null);
+    assert.strictEqual(F.validarParaActivar(flujo(n('b', 'condicion', { tipo: 'horario' }))), null);
+    assert.strictEqual(F.validarParaActivar(flujo(n('b', 'info_pago', { nota: 'Envía tu comprobante' }))), null);
+});
+
+test('motor: condiciones por dato capturado, gastado, pedidos, horario y stock', () => {
+    const def = (config) => limpio({
+        nodos: [n('a', 'disparador', { palabra: 'x' }), n('b', 'condicion', config), n('c', 'mensaje', { texto: 'SI' }), n('d', 'mensaje', { texto: 'NO' })],
+        conexiones: [c('a', 'default', 'b'), c('b', 'si', 'c'), c('b', 'no', 'd')],
+    });
+    const texto = (d, cliente) => M.iniciar(d, cliente).acciones[0].texto;
+    assert.strictEqual(texto(def({ tipo: 'gastado', minimo: 100000 }), { total_gastado: 150000 }), 'SI');
+    assert.strictEqual(texto(def({ tipo: 'gastado', minimo: 100000 }), { total_gastado: 99999 }), 'NO');
+    assert.strictEqual(texto(def({ tipo: 'pedidos', minimo: 2 }), { total_pedidos: 2 }), 'SI');
+    assert.strictEqual(texto(def({ tipo: 'pedidos', minimo: 2 }), {}), 'NO');
+    assert.strictEqual(texto(def({ tipo: 'horario' }), { dentroHorario: false }), 'NO');
+    assert.strictEqual(texto(def({ tipo: 'horario' }), {}), 'SI');   // sin dato: se asume abierto
+    assert.strictEqual(texto(def({ tipo: 'stock', producto_id: 7, minimo: 2 }), { stock: { 7: 1 } }), 'NO');
+    assert.strictEqual(texto(def({ tipo: 'stock', producto_id: 7, minimo: 2 }), { stock: { 7: 5 } }), 'SI');
+    assert.strictEqual(texto(def({ tipo: 'stock', producto_id: 7, minimo: 2 }), { stock: { 7: null } }), 'SI'); // no controla inventario
+    assert.strictEqual(texto(def({ tipo: 'stock', producto_id: 7 }), {}), 'SI');
+});
+
+test('motor: condición por dato usa lo que el cliente respondió antes', () => {
+    const d = limpio({
+        nodos: [n('a', 'disparador', { palabra: 'x' }), n('p', 'pregunta', { texto: '¿Barrio?', campo: 'barrio' }), n('k', 'condicion', { tipo: 'dato', campo: 'barrio', valor: 'laureles' }),
+            n('s', 'mensaje', { texto: 'Cubrimos tu zona' }), n('f', 'mensaje', { texto: 'Aún no llegamos' })],
+        conexiones: [c('a', 'default', 'p'), c('p', 'default', 'k'), c('k', 'si', 's'), c('k', 'no', 'f')],
+    });
+    const ini = M.iniciar(d, { nombre: 'Ana' });
+    assert.strictEqual(M.continuar(d, ini.ejec, 'Vivo en Laureles, cerca del parque', { nombre: 'Ana' }).acciones[0].texto, 'Cubrimos tu zona');
+    assert.strictEqual(M.continuar(d, ini.ejec, 'Belén', { nombre: 'Ana' }).acciones[0].texto, 'Aún no llegamos');
+});
+
+test('motor: info de pago y salto a otro flujo', () => {
+    const d = limpio({
+        nodos: [n('a', 'disparador', { palabra: 'x' }), n('b', 'info_pago', { nota: 'Envía el comprobante' }), n('c', 'saltar', { flujo_id: 9 })],
+        conexiones: [c('a', 'default', 'b'), c('b', 'default', 'c')],
+    });
+    const r = M.iniciar(d, { nombre: 'Ana' });
+    assert.deepStrictEqual(r.acciones, [{ tipo: 'info_pago', nota: 'Envía el comprobante' }]);
+    assert.strictEqual(r.saltar, 9);
+    assert.strictEqual(r.ejec.estado, 'terminada');
 });

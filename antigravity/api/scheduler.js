@@ -1,6 +1,6 @@
 const db = require('../db/config');
 const { procesarCampanasPendientes, cerrarCampanasHuerfanas } = require('./services/campaignSender');
-const { procesarEsperas } = require('./services/flujosEjecucion');
+const { procesarEsperas, revisarInactivos } = require('./services/flujosEjecucion');
 const { isAutomationActive, yaSeNotifico, registrarNotificacion, enviarWhatsApp } = require('./services/automationsService');
 
 // Scheduler liviano en proceso (mismo patrón que el setInterval de stats de
@@ -343,6 +343,10 @@ function iniciarScheduler() {
         const reanudarFlujos = () => procesarEsperas(enviarWhatsApp).catch((e) => console.error('[Flujos] Error en esperas:', e.message));
         reanudarFlujos();
         setInterval(reanudarFlujos, 30 * 1000);
+        // Flujos con disparador "cliente inactivo": cada 10 minutos, pocos clientes por pasada.
+        const buscarInactivos = () => revisarInactivos(enviarWhatsApp).catch((e) => console.error('[Flujos] Error buscando clientes inactivos:', e.message));
+        setTimeout(buscarInactivos, 60 * 1000);
+        setInterval(buscarInactivos, 10 * 60 * 1000);
     });
     tick().catch(err => console.error('[Scheduler] Error en tick inicial:', err.code || err.message));
     setInterval(() => {

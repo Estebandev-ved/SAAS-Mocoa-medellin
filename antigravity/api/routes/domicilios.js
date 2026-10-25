@@ -884,6 +884,10 @@ router.post('/driver/update-status', verificarAuthDomiciliario, async (req, res)
                 // para los pedidos que se entregan vía domiciliario en vez de
                 // marcarse "entregado" directo desde el dashboard.
                 pedirResenaSiCorresponde(req.domiciliario.negocio_id, domData[0].pedido_id, domData[0].cliente_whatsapp);
+                require('../services/flujosEjecucion').dispararEventoPedido({
+                    negocioId: req.domiciliario.negocio_id, pedidoId: domData[0].pedido_id, evento: 'pedido_entregado',
+                    enviarA: require('../services/automationsService').enviarWhatsApp,
+                });
                 enviarEncuestaSiCorresponde(req.domiciliario.negocio_id, domData[0].pedido_id);
             }
         }

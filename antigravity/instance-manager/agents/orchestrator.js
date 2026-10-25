@@ -7,6 +7,7 @@ const { calcularCondicionesDomicilio } = require('../services/domicilioTarifa');
 const { calcularEstado } = require('../../api/services/billing');
 const cupones = require('../../api/services/cupones');
 const inventario = require('../../api/services/inventario');
+const { dentroDeHorario } = require('../../api/services/horario');
 
 const LIMITES_POR_PLAN = {
     starter: { mensajes_por_minuto: 10, mensajes_por_hora: 100, tokens_por_dia: 50000 },
@@ -261,35 +262,7 @@ async function verificarHorario(negoId) {
             return { dentro_horario: true };
         }
         
-        // El servidor (Railway) corre en UTC: sin zona explícita el horario del
-        // negocio se evaluaba 5 h corrido respecto a Colombia.
-        const zona = process.env.BOT_TIMEZONE || 'America/Bogota';
-        const partes = new Intl.DateTimeFormat('en-GB', { timeZone: zona, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-            .formatToParts(new Date());
-        const horaActual = Number(partes.find(p => p.type === 'hour').value) * 60
-            + Number(partes.find(p => p.type === 'minute').value);
-        
-        // Parse time strings - handle both HH:MM and HH:MM:SS formats
-        const inicioStr = String(negocio.horario_activo_inicio).slice(0, 5);
-        const finStr = String(negocio.horario_activo_fin).slice(0, 5);
-        
-        const [inicioH, inicioM] = inicioStr.split(':').map(Number);
-        const [finH, finM] = finStr.split(':').map(Number);
-        
-        const inicioMinutos = inicioH * 60 + inicioM;
-        const finMinutos = finH * 60 + finM;
-        
-        // Handle times that cross midnight (e.g., 8am to 12am)
-        let dentroHorario;
-        if (inicioMinutos <= finMinutos) {
-            // Normal: e.g., 8:00 to 22:00
-            dentroHorario = horaActual >= inicioMinutos && horaActual <= finMinutos;
-        } else {
-            // Crosses midnight: e.g., 22:00 to 8:00
-            dentroHorario = horaActual >= inicioMinutos || horaActual <= finMinutos;
-        }
-        
-        console.log(`[Orchestrator] Horario: actual=${horaActual}min, inicio=${inicioMinutos}min, fin=${finMinutos}min, dentro=${dentroHorario}`);
+        const dentroHorario = dentroDeHorario(negocio.horario_activo_inicio, negocio.horario_activo_fin);
         
         return {
             dentro_horario: dentroHorario,
@@ -558,6 +531,9 @@ async function confirmarPago(negocioId, clienteId, datos) {
             );
 
             console.log(`[Orchestrator] Pago confirmado para pedido ${pedidos[0].id}`);
+            require('../../api/services/flujosEjecucion').dispararEventoPedido({
+                negocioId, pedidoId: pedidos[0].id, evento: 'pedido_pagado', enviarA: require('../../api/services/automationsService').enviarWhatsApp,
+            });
         }
     } catch (error) {
         console.error('[Orchestrator] Error confirmando pago:', error);

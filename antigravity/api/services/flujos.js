@@ -7,6 +7,9 @@ const MAX_TEXTO = 500;
 const MAX_CORTO = 60;
 const LIMITE_FLUJOS_POR_PLAN = { emprendedor: 3, starter: 5, professional: 20, enterprise: Infinity };
 
+const MODOS_DISPARADOR = ['palabra', 'primer_mensaje', 'pedido_pagado', 'pedido_entregado', 'cliente_inactivo'];
+const EVENTOS = ['pedido_pagado', 'pedido_entregado', 'cliente_inactivo'];
+const TIPOS_CONDICION = ['etiqueta', 'dato', 'gastado', 'pedidos', 'horario', 'stock'];
 const ID_VALIDO = /^[A-Za-z0-9_-]{1,40}$/;
 const UNIDADES = ['minutos', 'horas', 'días'];
 
@@ -17,7 +20,12 @@ const texto = (v, max, def = '') => (typeof v === 'string' ? v.trim().slice(0, m
 const TIPOS = {
     disparador: {
         salidas: ['default'], espera: false,
-        limpiar: (c = {}) => ({ modo: c.modo === 'primer_mensaje' ? 'primer_mensaje' : 'palabra', palabra: texto(c.palabra, MAX_CORTO) }),
+        // modo: la palabra que escribe el cliente, su primer mensaje, o un evento del negocio (el flujo arranca solo).
+        limpiar: (c = {}) => {
+            const modo = MODOS_DISPARADOR.includes(c.modo) ? c.modo : 'palabra';
+            const dias = Math.round(Number(c.dias));
+            return { modo, palabra: texto(c.palabra, MAX_CORTO), dias: Number.isFinite(dias) ? Math.min(Math.max(dias, 1), 365) : 30 };
+        },
     },
     mensaje: { salidas: ['default'], espera: false, limpiar: (c = {}) => ({ texto: texto(c.texto, MAX_TEXTO) }) },
     espera: {
@@ -39,7 +47,27 @@ const TIPOS = {
         salidas: ['default'], espera: false,
         limpiar: (c = {}) => ({ accion: c.accion === 'quitar' ? 'quitar' : 'poner', nombre: normalizarEtiqueta(c.nombre) }),
     },
-    condicion: { salidas: ['si', 'no'], espera: false, limpiar: (c = {}) => ({ valor: normalizarEtiqueta(c.valor) }) },
+    // Condición con dos salidas (sí / no). `tipo` decide qué se pregunta; los flujos viejos (solo `valor`) son de etiqueta.
+    condicion: {
+        salidas: ['si', 'no'], espera: false,
+        limpiar: (c = {}) => {
+            const tipo = TIPOS_CONDICION.includes(c.tipo) ? c.tipo : 'etiqueta';
+            const entero = (v, max) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(Math.max(n, 0), max) : 0; };
+            if (tipo === 'dato') return { tipo, campo: texto(c.campo, 30).toLowerCase(), valor: texto(c.valor, MAX_CORTO) };
+            if (tipo === 'gastado') return { tipo, minimo: entero(c.minimo, 1000000000) };
+            if (tipo === 'pedidos') return { tipo, minimo: entero(c.minimo, 10000) };
+            if (tipo === 'stock') return { tipo, producto_id: entero(c.producto_id, 2147483647), minimo: Math.max(1, entero(c.minimo, 1000000)) };
+            if (tipo === 'horario') return { tipo };
+            return { tipo: 'etiqueta', valor: normalizarEtiqueta(c.valor) };
+        },
+    },
+    // Envía los métodos de pago del negocio (Nequi / Bancolombia que configuró en Ajustes).
+    info_pago: { salidas: ['default'], espera: false, limpiar: (c = {}) => ({ nota: texto(c.nota, 200) }) },
+    // Pasa la conversación a otro flujo del mismo negocio y termina este.
+    saltar: {
+        salidas: [], espera: false,
+        limpiar: (c = {}) => { const n = Math.round(Number(c.flujo_id)); return { flujo_id: Number.isFinite(n) && n > 0 ? n : 0 }; },
+    },
     ia: { salidas: ['default'], espera: false, limpiar: (c = {}) => ({ instruccion: texto(c.instruccion, MAX_TEXTO) }) },
     pedido: { salidas: ['default'], espera: false, limpiar: (c = {}) => ({ cobrar: !!c.cobrar, cupon: !!c.cupon }) },
     asesor: { salidas: [], espera: false, limpiar: (c = {}) => ({ aviso: texto(c.aviso, MAX_TEXTO) }) },
@@ -130,14 +158,20 @@ function hayBucleSinEspera(definicion) {
 /** Datos del disparador para guardarlos aparte (búsqueda rápida). */
 function datosDisparador(definicion) {
     const d = definicion.nodos.find((n) => n.tipo === 'disparador');
-    return { palabraClave: d.config.modo === 'palabra' ? normalizarTexto(d.config.palabra).slice(0, 60) || null : null, primerMensaje: d.config.modo === 'primer_mensaje' };
+    const evento = EVENTOS.includes(d.config.modo) ? d.config.modo : null;
+    return {
+        palabraClave: d.config.modo === 'palabra' ? normalizarTexto(d.config.palabra).slice(0, 60) || null : null,
+        primerMensaje: d.config.modo === 'primer_mensaje',
+        evento,
+        eventoDias: evento === 'cliente_inactivo' ? d.config.dias : null,
+    };
 }
 
 /** Reglas extra para poder encender el flujo. Devuelve null si está listo o el motivo en español. */
 function validarParaActivar(definicion) {
     const disp = definicion.nodos.find((n) => n.tipo === 'disparador');
-    const { palabraClave, primerMensaje } = datosDisparador(definicion);
-    if (!palabraClave && !primerMensaje) return 'Escribe la palabra clave que inicia el flujo';
+    const { palabraClave, primerMensaje, evento } = datosDisparador(definicion);
+    if (!palabraClave && !primerMensaje && !evento) return 'Escribe la palabra clave que inicia el flujo';
     if (!siguiente(definicion, disp.id)) return 'Conecta el disparador con el primer paso';
 
     const alcanzables = new Set([disp.id]);
@@ -155,7 +189,13 @@ function validarParaActivar(definicion) {
         const c = n.config;
         if (['mensaje', 'opciones', 'pregunta'].includes(n.tipo) && !c.texto) return 'Hay un paso sin texto';
         if (n.tipo === 'opciones' && !c.o1) return 'Las opciones necesitan al menos la opción 1';
-        if ((n.tipo === 'etiqueta' || n.tipo === 'condicion') && !(c.nombre || c.valor)) return 'Hay un paso de etiqueta sin nombre';
+        if (n.tipo === 'etiqueta' && !c.nombre) return 'Hay un paso de etiqueta sin nombre';
+        if (n.tipo === 'condicion') {
+            if (c.tipo === 'etiqueta' && !c.valor) return 'Hay una condición de etiqueta sin nombre';
+            if (c.tipo === 'dato' && !(c.campo && c.valor)) return 'Una condición de dato necesita el dato y el valor a comparar';
+            if (c.tipo === 'stock' && !c.producto_id) return 'Una condición de stock necesita elegir el producto';
+        }
+        if (n.tipo === 'saltar' && !c.flujo_id) return 'Elige a qué flujo salta el paso "Pasar a otro flujo"';
         if (n.tipo === 'opciones') {
             for (const i of [1, 2, 3]) {
                 if (c[`o${i}`] && !siguiente(definicion, n.id, String(i))) return `La opción ${i} ("${c[`o${i}`]}") no lleva a ningún paso`;
@@ -184,6 +224,6 @@ function limiteDeFlujos(plan) {
 }
 
 module.exports = {
-    TIPOS, MAX_NODOS, validarDefinicion, validarParaActivar, siguiente, datosDisparador,
+    TIPOS, TIPOS_CONDICION, MODOS_DISPARADOR, EVENTOS, MAX_NODOS, validarDefinicion, validarParaActivar, siguiente, datosDisparador,
     normalizarTexto, normalizarEtiqueta, limiteDeFlujos, hayBucleSinEspera, resumirMetricas,
 };

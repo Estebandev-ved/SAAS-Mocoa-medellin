@@ -391,6 +391,10 @@ Tus datos no serán usados para marketing. ¿En qué puedo ayudarte?`;
                             [negocioId, `+${numero}`, msgExito]
                         );
                         console.log(`[Handler] Pago confirmado: pedido ${pedidos[0].numero_pedido}, monto $${resultado.monto}`);
+                        flujos.dispararEventoPedido({
+                            negocioId, pedidoId: pedidos[0].id, evento: 'pedido_pagado',
+                            enviarA: require('../../api/services/automationsService').enviarWhatsApp,
+                        });
 
                         try {
                             emitPedidoConfirmado(negocioId, {

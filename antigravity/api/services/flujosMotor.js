@@ -37,6 +37,28 @@ function coincidePalabra(palabraClaveNormalizada, texto) {
     return t.includes(` ${palabraClaveNormalizada} `);
 }
 
+/**
+ * ¿Se cumple la condición? Los datos que no se conocen (horario, stock) se toman como "sí":
+ * ante la duda el cliente sigue el camino normal en vez de quedarse sin respuesta.
+ */
+function cumpleCondicion(c, contexto, cliente) {
+    switch (c.tipo) {
+        case 'dato': {
+            const guardado = normalizarTexto((contexto?.campos || {})[String(c.campo || '').toLowerCase()]);
+            const buscado = normalizarTexto(c.valor);
+            return !!buscado && guardado.includes(buscado);
+        }
+        case 'gastado': return Number(cliente.total_gastado || 0) >= Number(c.minimo || 0);
+        case 'pedidos': return Number(cliente.total_pedidos || 0) >= Number(c.minimo || 0);
+        case 'horario': return cliente.dentroHorario !== false;
+        case 'stock': {
+            const disponible = cliente.stock ? cliente.stock[c.producto_id] : undefined;
+            return disponible === undefined || disponible === null || disponible >= Number(c.minimo || 1);
+        }
+        default: return (cliente.etiquetas || []).includes(c.valor);
+    }
+}
+
 function nuevoEstado(parcial) {
     return { nodo_actual: null, estado: 'terminada', contexto: {}, reanudar_en: null, ...parcial };
 }
@@ -76,8 +98,15 @@ function correr(def, desdeId, contexto, cliente, ahora) {
                 actual = siguiente(def, n.id);
                 break;
             case 'condicion':
-                actual = siguiente(def, n.id, (cliente.etiquetas || []).includes(c.valor) ? 'si' : 'no');
+                actual = siguiente(def, n.id, cumpleCondicion(c, contexto, cliente) ? 'si' : 'no');
                 break;
+            case 'info_pago':
+                acciones.push({ tipo: 'info_pago', nota: personalizar(c.nota, contexto, cliente.nombre) });
+                actual = siguiente(def, n.id);
+                break;
+            case 'saltar':
+                // Termina este flujo y le pide al adaptador que arranque el otro (con tope de saltos).
+                return { acciones, ia, fallback: false, saltar: c.flujo_id, ejec: nuevoEstado({ contexto }) };
             case 'ia':
                 ia = c.instruccion || 'Responde con los productos y precios del negocio.';
                 actual = null; // la IA responde al terminar; lo que haya después no se ejecuta
