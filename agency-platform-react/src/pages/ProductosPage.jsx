@@ -20,7 +20,23 @@ import {
   AlertCircle,
   Camera,
   Check,
+  Boxes,
+  History,
+  FileSpreadsheet,
+  Download,
 } from 'lucide-react';
+import { AjustarStock, HistorialStock, ImportarProductos, descargarProductosCsv } from '../components/inventario/InventarioModales';
+
+const FORM_VACIO = { nombre: '', descripcion: '', precio: '', stock: '', categoria: '', imagen_url: '', restaurante_id: '', controla_stock: false, stock_minimo: '', sku: '' };
+
+// Estado de inventario de un producto que lo controla (null si no lo controla)
+function estadoStock(p) {
+  if (!p.controla_stock) return null;
+  const quedan = Number(p.stock) || 0;
+  if (quedan <= 0) return { clase: 'bg-danger/10 text-danger-text', texto: 'Agotado' };
+  if (quedan <= (p.stock_minimo ?? 5)) return { clase: 'bg-warn/15 text-warn-text', texto: `Pocas unidades: ${quedan}` };
+  return { clase: 'bg-success/10 text-success', texto: `${quedan} en stock` };
+}
 
 export default function ProductosPage() {
   const confirmar = useConfirm();
@@ -33,7 +49,10 @@ export default function ProductosPage() {
   const [toast, setToast] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [form, setForm] = useState({ nombre: '', descripcion: '', precio: '', stock: '', categoria: '', imagen_url: '', restaurante_id: '' });
+  const [form, setForm] = useState(FORM_VACIO);
+  const [ajustando, setAjustando] = useState(null);   // producto al que se le ajusta el stock
+  const [verHistorial, setVerHistorial] = useState(null);
+  const [importando, setImportando] = useState(false);
   const [saving, setSaving] = useState(false);
   const [leyendoCarta, setLeyendoCarta] = useState(false);
   const [itemsImportados, setItemsImportados] = useState(null); // null = sin importación en curso
@@ -75,6 +94,9 @@ export default function ProductosPage() {
         descripcion: form.descripcion,
         precio: parseFloat(form.precio),
         stock: parseInt(form.stock) || 0,
+        controla_stock: !!form.controla_stock,
+        stock_minimo: form.stock_minimo === '' ? null : parseInt(form.stock_minimo),
+        sku: form.sku.trim() || null,
         categoria: form.categoria.trim() || null,
         imagen_url: form.imagen_url.trim() || null,
         restaurante_id: form.restaurante_id || null,
@@ -89,12 +111,20 @@ export default function ProductosPage() {
       }
       setShowForm(false);
       setEditando(null);
-      setForm({ nombre: '', descripcion: '', precio: '', stock: '', categoria: '', imagen_url: '', restaurante_id: '' });
+      setForm(FORM_VACIO);
       cargarProductos();
     } catch (err) {
       setToast({ type: 'error', message: err.response?.data?.error || 'Error al guardar' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const exportar = async () => {
+    try {
+      await descargarProductosCsv();
+    } catch {
+      setToast({ type: 'error', message: 'No se pudo descargar el archivo' });
     }
   };
 
@@ -104,10 +134,13 @@ export default function ProductosPage() {
       nombre: p.nombre,
       descripcion: p.descripcion || '',
       precio: p.precio,
-      stock: p.stock || '',
+      stock: p.stock ?? '',
       categoria: p.categoria || '',
       imagen_url: p.imagen_url || '',
       restaurante_id: p.restaurante_id || '',
+      controla_stock: !!p.controla_stock,
+      stock_minimo: p.stock_minimo ?? '',
+      sku: p.sku || '',
     });
     setShowForm(true);
   };
@@ -212,14 +245,20 @@ export default function ProductosPage() {
               <p className="text-xs text-muted">Gestiona lo que vendes. El bot usará esta info para responder.</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button type="button" onClick={() => setImportando(true)} className="min-h-[44px] flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg2 text-text text-sm font-semibold rounded-xl border border-[#C9C9C9] transition-colors cursor-pointer">
+              <FileSpreadsheet className="w-4 h-4" /> Importar Excel
+            </button>
+            <button type="button" onClick={exportar} disabled={productos.length === 0} className="min-h-[44px] flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg2 text-text text-sm font-semibold rounded-xl border border-[#C9C9C9] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+              <Download className="w-4 h-4" /> Exportar
+            </button>
             <label className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-bg2 text-text text-sm font-semibold rounded-xl border border-[#C9C9C9] transition-colors cursor-pointer">
               {leyendoCarta ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
               {leyendoCarta ? 'Leyendo tu carta…' : 'Importar carta con foto'}
               <input type="file" accept="image/*" className="hidden" onChange={handleFotoCarta} disabled={leyendoCarta} />
             </label>
             <button
-              onClick={() => { setEditando(null); setForm({ nombre: '', descripcion: '', precio: '', stock: '', categoria: '', imagen_url: '' }); setShowForm(true); }}
+              onClick={() => { setEditando(null); setForm(FORM_VACIO); setShowForm(true); }}
               className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent/90 text-text text-sm font-semibold rounded-xl transition-colors"
             >
               <Plus className="w-4 h-4" /> Agregar
@@ -397,11 +436,11 @@ export default function ProductosPage() {
                 />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="w-32">
-                  <label className="block text-xs text-muted mb-1">Stock</label>
+                <div>
+                  <label className="block text-xs text-muted mb-1">Código interno (SKU, opcional)</label>
                   <input
-                    type="number" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})}
-                    placeholder="0"
+                    type="text" maxLength={40} value={form.sku} onChange={e => setForm({...form, sku: e.target.value})}
+                    placeholder="Ej: CAM-001"
                     className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm placeholder:text-muted focus:outline-none focus:border-accent/50"
                   />
                 </div>
@@ -416,6 +455,30 @@ export default function ProductosPage() {
                       <option value="">Sin asignar</option>
                       {restaurantes.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
                     </select>
+                  </div>
+                )}
+              </div>
+              <div className="rounded-xl border border-border p-4 space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer min-h-[44px]">
+                  <input type="checkbox" className="mt-1 w-5 h-5" checked={form.controla_stock} onChange={e => setForm({...form, controla_stock: e.target.checked})} />
+                  <span>
+                    <span className="block text-sm font-semibold text-text">Controlar inventario</span>
+                    <span className="block text-xs text-muted">Si lo activas, el bot descuenta cada venta del stock, no vende más de lo que tienes y avisa cuando se agota. Si es un servicio o un plato que preparas al momento, déjalo apagado.</span>
+                  </span>
+                </label>
+                {form.controla_stock && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-muted mb-1" htmlFor="prod-stock">{editando ? 'Stock actual (conteo)' : 'Stock inicial'}</label>
+                      <input id="prod-stock" type="number" min="0" step="1" inputMode="numeric" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} placeholder="0"
+                        className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm placeholder:text-muted focus:outline-none focus:border-accent/50" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted mb-1" htmlFor="prod-min">Avisarme cuando queden</label>
+                      <input id="prod-min" type="number" min="0" step="1" inputMode="numeric" value={form.stock_minimo} onChange={e => setForm({...form, stock_minimo: e.target.value})} placeholder="5"
+                        className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm placeholder:text-muted focus:outline-none focus:border-accent/50" />
+                    </div>
+                    {editando && <p className="col-span-2 text-xs text-muted">Para registrar entradas o salidas usa "Ajustar stock" en la tarjeta del producto: así queda el historial. Cambiar este número directamente se guarda como "corrección manual".</p>}
                   </div>
                 )}
               </div>
@@ -444,7 +507,7 @@ export default function ProductosPage() {
             className="py-16"
             action={
               <button
-                onClick={() => { setEditando(null); setForm({ nombre: '', descripcion: '', precio: '', stock: '', categoria: '', imagen_url: '', restaurante_id: '' }); setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                onClick={() => { setEditando(null); setForm(FORM_VACIO); setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className="h-11 px-5 rounded-xl bg-accent text-white text-sm font-semibold border-none cursor-pointer"
               >
                 Agregar mi primer producto
@@ -479,7 +542,21 @@ export default function ProductosPage() {
                           )}
                         </div>
                         {p.descripcion && <p className="text-sm text-muted mt-1">{p.descripcion}</p>}
-                        <p className="text-accent font-head font-bold mt-2">{formatPrice(p.precio)}</p>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <p className="text-accent font-head font-bold">{formatPrice(p.precio)}</p>
+                          {estadoStock(p) && <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${estadoStock(p).clase}`}>{estadoStock(p).texto}</span>}
+                          {p.sku && <span className="text-[11px] px-2 py-0.5 bg-bg3 text-muted rounded-full">{p.sku}</span>}
+                        </div>
+                        {p.controla_stock && (
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            <button type="button" onClick={() => setAjustando(p)} className="min-h-[44px] px-3 inline-flex items-center gap-2 text-sm text-text rounded-xl border border-border bg-transparent cursor-pointer hover:bg-bg3">
+                              <Boxes className="w-4 h-4" /> Ajustar stock
+                            </button>
+                            <button type="button" onClick={() => setVerHistorial(p)} className="min-h-[44px] px-3 inline-flex items-center gap-2 text-sm text-text rounded-xl border border-border bg-transparent cursor-pointer hover:bg-bg3">
+                              <History className="w-4 h-4" /> Historial
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 ml-4">
                         <button onClick={() => handleEdit(p)} className="p-2 hover:bg-bg3 rounded-lg transition-colors">
@@ -506,6 +583,10 @@ export default function ProductosPage() {
           </div>
         )}
       </main>
+
+      {ajustando && <AjustarStock producto={ajustando} onCerrar={() => setAjustando(null)} onListo={(nuevo) => { setAjustando(null); setToast({ type: 'success', message: `Stock actualizado: ${nuevo} unidades` }); cargarProductos(); }} />}
+      {verHistorial && <HistorialStock producto={verHistorial} onCerrar={() => setVerHistorial(null)} />}
+      {importando && <ImportarProductos onCerrar={() => setImportando(false)} onListo={cargarProductos} />}
     </div>
   );
 }
