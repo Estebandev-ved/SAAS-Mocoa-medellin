@@ -36,6 +36,8 @@ import GuiaPage from './pages/GuiaPage';
 import CuponesPage from './pages/CuponesPage';
 import CampanasPage from './pages/CampanasPage';
 import FlujosPage from './pages/FlujosPage';
+import CanalesPage from './pages/CanalesPage';
+import SeccionLayout from './components/shell/SeccionLayout';
 import SuscripcionPage from './pages/SuscripcionPage';
 import AjustesPage from './pages/AjustesPage';
 import DomiciliosPage from './pages/DomiciliosPage';
@@ -136,6 +138,8 @@ function App() {
               <Route path="/delivery/terminos" element={<Lazy><TerminosDomiciliarioPage /></Lazy>} />
               <Route path="/delivery/track/:token" element={<Lazy><TrackingCliente /></Lazy>} />
               <Route element={<AppShell />}>
+                {/* SeccionLayout dibuja las pestañas de la sección (Ventas, Productos, Marketing…) sobre cada pantalla */}
+                <Route element={<SeccionLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/bienvenida" element={<BienvenidaPage />} />
                 <Route path="/conversaciones" element={<ConversacionesPage />} />
@@ -158,6 +162,8 @@ function App() {
                 <Route path="/voice" element={<VoiceBotPage />} />
                 <Route path="/whatsapp" element={<WhatsAppConnectionPage />} />
                 <Route path="/ajustes" element={<AjustesPage />} />
+                <Route path="/canales" element={<CanalesPage />} />
+                </Route>
               </Route>
               <Route path="/terminos" element={<LegalPage />} />
               <Route path="/privacidad" element={<LegalPage />} />

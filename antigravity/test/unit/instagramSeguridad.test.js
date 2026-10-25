@@ -44,6 +44,8 @@ function montar() {
             consultas.push([q, p]);
             if (q.startsWith('SELECT id FROM negocios WHERE instagram_user_id = ?')) return [p[0] === 'IG_NEGOCIO' ? [{ id: 7 }] : []];
             if (q.startsWith('SELECT id FROM clientes')) return [[]];
+            if (q.startsWith('SELECT id FROM conversaciones')) return [[]];
+            if (q.startsWith('INSERT INTO conversaciones')) return [{ insertId: 90 }];
             if (q.startsWith('INSERT INTO clientes')) return [{ insertId: 55 }];
             if (q.startsWith('SELECT tipo, contenido FROM mensajes')) return [[]];
             if (q.startsWith('SELECT instagram_token FROM negocios')) return [[{ instagram_token: cifrarSecreto('TOKEN-REAL') }]];
@@ -106,6 +108,7 @@ test('mensaje: el negocio se identifica por la cuenta que recibe, responde con e
     assert.strictEqual(enviados.length, 1);
     assert.match(enviados[0].url, /access_token=TOKEN-REAL$/);             // el token cifrado se descifra al usarlo
     assert.deepStrictEqual(enviados[0].cuerpo.recipient, { id: 'CLIENTE_123' });
+    assert.ok(consultas.some(([q]) => q.startsWith('INSERT INTO conversaciones')));   // aparece en la pantalla Mensajes
     const insertCliente = consultas.find(([q]) => q.startsWith('INSERT INTO clientes'));
     assert.ok(insertCliente[1][2].length <= 20, `whatsapp demasiado largo: ${insertCliente[1][2]}`);
 });

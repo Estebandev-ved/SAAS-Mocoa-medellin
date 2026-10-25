@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { sincronizarPreferencias } from '../../utils/preferencias';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ChevronDown, LogOut, Moon, MoreHorizontal, Search, Sun, X, Crown, Star, Shield, Store, Lock } from 'lucide-react';
+import { LogOut, Moon, MoreHorizontal, Search, Sun, X, Crown, Star, Shield, Store, Lock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { usePedidosLive } from '../../context/PedidosLiveContext';
@@ -12,7 +12,7 @@ import CommandPalette from './CommandPalette';
 import AtajosTeclado from './AtajosTeclado';
 import BannersGlobales from '../BannersGlobales';
 import { useNegocio } from '../../hooks/useNegocio';
-import { GRUPOS, ITEM_ADMIN, ITEM_COCINA, BARRA_INFERIOR, estaBloqueado, textoBloqueo, planLabel, insertarDespuesDe } from './navConfig';
+import { ITEM_ADMIN, BARRA_INFERIOR, estaBloqueado, textoBloqueo, planLabel, gruposParaNegocio, seccionDe, rutaDeSeccion } from './navConfig';
 
 const PlanIcon = ({ plan, size = 16 }) => {
   const c = 'text-[#E53935]';
@@ -47,47 +47,23 @@ function NavLink({ item, activo, bloqueado, badge, onIr }) {
   );
 }
 
-function MenuGrupos({ grupos, pathname, plan, pendientes, onIr, cerrados, alternar }) {
+// Menú principal: una entrada por sección (Inicio, Mensajes, Ventas…). Las pantallas de cada sección se ven como
+// pestañas dentro (ver SeccionLayout). La entrada lleva a la primera pestaña que el plan permite.
+function MenuGrupos({ grupos, pathname, plan, pendientes, onIr, admin }) {
+  const actual = seccionDe(grupos, pathname);
   return (
-    <nav aria-label="Principal" className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-      {grupos.map((g) => {
-        // Un grupo de un solo elemento (Inicio, Mensajes, Clientes) es un enlace directo: sin encabezado que desplegar.
-        if (g.items.length === 1) {
-          const item = g.items[0];
-          return (
-            <div key={g.id}>
-              <NavLink item={item} activo={pathname === item.path} bloqueado={estaBloqueado(item, plan)} badge={item.badge === 'pedidos' ? pendientes : 0} onIr={onIr} />
-            </div>
-          );
-        }
-        const cerrado = cerrados.includes(g.id) && !g.items.some((i) => i.path === pathname);
-        return (
-          <div key={g.id}>
-            <button
-              onClick={() => alternar(g.id)}
-              aria-expanded={!cerrado}
-              className="w-full flex items-center justify-between px-2 h-7 bg-transparent border-none cursor-pointer text-[11px] font-semibold tracking-[0.08em] uppercase text-[#8A8A8A] hover:text-inverse-text"
-            >
-              {g.label}
-              <ChevronDown size={14} className={`transition-transform ${cerrado ? '-rotate-90' : ''}`} />
-            </button>
-            {!cerrado && (
-              <div className="space-y-0.5 mt-1">
-                {g.items.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    item={item}
-                    activo={pathname === item.path}
-                    bloqueado={estaBloqueado(item, plan)}
-                    badge={item.badge === 'pedidos' ? pendientes : 0}
-                    onIr={onIr}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
+    <nav aria-label="Principal" className="flex-1 overflow-y-auto px-4 py-3 space-y-0.5">
+      {grupos.map((g) => (
+        <NavLink
+          key={g.id}
+          item={{ icon: g.icon, label: g.label, path: rutaDeSeccion(g, plan) }}
+          activo={actual?.id === g.id}
+          bloqueado={false}
+          badge={g.items.some((i) => i.badge === 'pedidos') ? pendientes : 0}
+          onIr={onIr}
+        />
+      ))}
+      {admin && <NavLink item={ITEM_ADMIN} activo={pathname === ITEM_ADMIN.path} bloqueado={false} badge={0} onIr={onIr} />}
     </nav>
   );
 }
@@ -106,23 +82,18 @@ export default function AppShell() {
   const [pendientes, setPendientes] = useState(0);
   const [cajon, setCajon] = useState(false);
   const [paleta, setPaleta] = useState(false);
-  const [cerrados, setCerrados] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('noma-nav-cerrados') || '[]'); } catch { return []; }
-  });
 
   const plan = planApi || user?.plan || 'starter';
   const { puede } = useNegocio();
   const conCocina = puede('cocina');
-  const grupos = useMemo(() => {
-    let g = GRUPOS;
-    // Herramientas por tipo de negocio (utils/capacidades.js): el modo cocina va justo debajo de Pedidos
-    if (conCocina) g = insertarDespuesDe(g, 'ventas', '/pedidos', ITEM_COCINA);
-    if (user?.rol === 'admin' || user?.rol === 'superadmin') {
-      g = [...g.slice(0, -1), { ...g[g.length - 1], items: [...g[g.length - 1].items, ITEM_ADMIN] }];
-    }
-    return g;
-  }, [user?.rol, conCocina]);
-  const todos = useMemo(() => grupos.flatMap((g) => g.items.map((i) => ({ ...i, grupo: g.label, bloqueado: estaBloqueado(i, plan) }))), [grupos, plan]);
+  // Herramientas por tipo de negocio (utils/capacidades.js): el modo cocina es una pestaña más de Ventas
+  const grupos = useMemo(() => gruposParaNegocio({ conCocina }), [conCocina]);
+  const esAdmin = user?.rol === 'admin' || user?.rol === 'superadmin';
+  // Todas las pantallas (también las que son pestañas) para la paleta Ctrl+K y el título del celular
+  const todos = useMemo(() => {
+    const lista = grupos.flatMap((g) => g.items.map((i) => ({ ...i, grupo: g.label, bloqueado: estaBloqueado(i, plan) })));
+    return esAdmin ? [...lista, { ...ITEM_ADMIN, grupo: 'Administración', bloqueado: false }] : lista;
+  }, [grupos, plan, esAdmin]);
 
   // Preferencias de la cuenta (zona horaria, moneda, fecha): se traen del servidor al entrar.
   useEffect(() => {
@@ -157,13 +128,6 @@ export default function AppShell() {
   }, []);
 
   const ir = useCallback((path) => { setCajon(false); navigate(path); }, [navigate]);
-  const alternar = useCallback((id) => {
-    setCerrados((prev) => {
-      const sig = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      try { localStorage.setItem('noma-nav-cerrados', JSON.stringify(sig)); } catch { /* opcional */ }
-      return sig;
-    });
-  }, []);
 
   const accionesExtra = useMemo(
     () => [{ icon: resolved === 'dark' ? Sun : Moon, label: resolved === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro', grupo: 'Apariencia', accion: toggle }],
@@ -205,7 +169,7 @@ export default function AppShell() {
           <kbd className="ml-auto font-mono text-[10px] border border-white/20 rounded px-1.5 py-0.5">Ctrl K</kbd>
         </button>
 
-        <MenuGrupos grupos={grupos} pathname={pathname} plan={plan} pendientes={pendientes} onIr={ir} cerrados={cerrados} alternar={alternar} />
+        <MenuGrupos grupos={grupos} pathname={pathname} plan={plan} pendientes={pendientes} onIr={ir} admin={esAdmin} />
 
         <div className="p-4 border-t border-white/10 space-y-0.5">
           <button
@@ -321,7 +285,7 @@ export default function AppShell() {
                 </button>
               </div>
               <div className="overflow-y-auto flex-1">
-                <MenuGrupos grupos={grupos} pathname={pathname} plan={plan} pendientes={pendientes} onIr={ir} cerrados={[]} alternar={() => {}} />
+                <MenuGrupos grupos={grupos} pathname={pathname} plan={plan} pendientes={pendientes} onIr={ir} admin={esAdmin} />
                 <div className="px-4 pb-4">
                   <button onClick={logout} className="w-full flex items-center gap-3 px-4 h-11 rounded-xl text-sm font-semibold text-[#A0A0A0] bg-transparent border-none cursor-pointer">
                     <LogOut size={18} /> Cerrar sesión

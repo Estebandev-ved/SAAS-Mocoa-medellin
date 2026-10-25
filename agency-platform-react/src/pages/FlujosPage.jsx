@@ -71,8 +71,10 @@ export default function FlujosPage() {
   const cargarLista = useCallback(async (abrirId) => {
     try {
       const { data } = await api.get('/flujos');
-      setLista(data.flujos); setLimite(data.limite);
-      const f = data.flujos.find((x) => x.id === abrirId) || (abrirId === undefined ? data.flujos[0] : null);
+      // Una respuesta inesperada del servidor no debe tumbar la pantalla: se trata como "sin flujos".
+      const flujos = Array.isArray(data?.flujos) ? data.flujos : [];
+      setLista(flujos); setLimite(data?.limite ?? null);
+      const f = flujos.find((x) => x.id === abrirId) || (abrirId === undefined ? flujos[0] : null);
       if (f) abrir(f);
       else if (abrirId === undefined) { setId(null); setNombre('Mi primer flujo'); setActivo(false); setFlujo(flujoEjemplo()); setBase(''); }
     } catch (e) {

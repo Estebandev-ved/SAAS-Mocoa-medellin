@@ -141,9 +141,16 @@ router.post('/:id/mensaje', async (req, res) => {
         );
         const numeroCliente = cliente[0]?.whatsapp || '';
 
+        // Clientes de Instagram: se responde por Instagram; el resto, por WhatsApp.
+        const ig = require('../services/instagramEnvio');
+        if (ig.esClienteInstagram(numeroCliente)) {
+            const envioIg = await ig.enviarInstagram(db, req.negocioId, ig.idDeInstagram(numeroCliente), contenido.trim());
+            if (!envioIg.ok) return res.status(502).json({ error: ig.explicarErrorInstagram(envioIg), motivo: envioIg.motivo });
+        }
+
         // Antes solo se guardaba en la base y NUNCA llegaba al cliente por WhatsApp.
         const { enviarWhatsAppDetalle } = require('../services/automationsService');
-        const envio = await enviarWhatsAppDetalle(req.negocioId, numeroCliente, contenido.trim());
+        const envio = ig.esClienteInstagram(numeroCliente) ? { ok: true } : await enviarWhatsAppDetalle(req.negocioId, numeroCliente, contenido.trim());
         if (!envio.ok) {
             const explicaciones = {
                 sin_numero: 'Este cliente no tiene un número de WhatsApp guardado, así que no se le puede escribir.',

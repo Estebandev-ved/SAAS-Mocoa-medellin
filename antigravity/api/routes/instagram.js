@@ -3,11 +3,8 @@ const router = express.Router();
 const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
 const { firmaValida } = require('../services/metaWebhook');
-const { cifrarSecreto, descifrarSecreto } = require('../services/secretos');
-
-// Los clientes de Instagram se guardan con este prefijo en `clientes.whatsapp` (VARCHAR(20): el id de Instagram mide
-// hasta 17 dígitos, así que el prefijo debe ser corto).
-const PREFIJO_CLIENTE = 'ig_';
+const { cifrarSecreto } = require('../services/secretos');
+const { PREFIJO_CLIENTE, enviarInstagram } = require('../services/instagramEnvio');   // prefijo corto: `clientes.whatsapp` es VARCHAR(20)
 
 // Instagram webhook verification
 router.get('/webhook', (req, res) => {
@@ -183,6 +180,19 @@ async function handleInstagramMessage(event, entryId) {
             clienteId = clientes[0].id;
         }
 
+        // La conversación (una fila por cliente activo) es lo que lista la pantalla Mensajes.
+        let [convs] = await db.execute(
+            'SELECT id FROM conversaciones WHERE negocio_id = ? AND cliente_id = ? AND activa = 1 ORDER BY id DESC LIMIT 1',
+            [negocioId, clienteId]
+        );
+        let conversacionId;
+        if (convs.length === 0) {
+            const [nueva] = await db.execute('INSERT INTO conversaciones (negocio_id, cliente_id, activa) VALUES (?, ?, 1)', [negocioId, clienteId]);
+            conversacionId = nueva.insertId;
+        } else {
+            conversacionId = convs[0].id;
+        }
+
         // Save incoming message
         await db.execute(
             'INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido) VALUES (?, ?, ?, ?)',
@@ -208,26 +218,11 @@ async function handleInstagramMessage(event, entryId) {
             [negocioId, `${PREFIJO_CLIENTE}${senderId}`, 'salida', respuesta.respuesta, respuesta.agente_usado, respuesta.intencion || '']
         );
 
-        // Send via Instagram Graph API
-        const [negocioData] = await db.execute(
-            'SELECT instagram_token FROM negocios WHERE id = ?',
-            [negocioId]
-        );
-        const accessToken = descifrarSecreto(negocioData[0]?.instagram_token);
+        await db.execute('UPDATE conversaciones SET intencion_detectada = ?, updated_at = NOW() WHERE id = ?', [respuesta.intencion || '', conversacionId]);
 
-        if (accessToken) {
-            await fetch(
-                `https://graph.facebook.com/v18.0/me/messages?access_token=${accessToken}`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        recipient: { id: senderId },
-                        message: { text: respuesta.respuesta }
-                    })
-                }
-            );
-        }
+        // Send via Instagram Graph API
+        const envio = await enviarInstagram(db, negocioId, senderId, respuesta.respuesta);
+        if (!envio.ok) console.error(`[Instagram] No se pudo responder (negocio ${negocioId}): ${envio.motivo} ${envio.detalle || ''}`);
 
     } catch (error) {
         console.error('[Instagram] Error handling message:', error);

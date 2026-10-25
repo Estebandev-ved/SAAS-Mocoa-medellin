@@ -46,6 +46,10 @@ const RESPUESTAS_BASE = [
     'Tu pedido va en camino.',
 ];
 
+// Canal por el que escribe el cliente: los de Instagram se guardan con el prefijo "ig_" (o el viejo "instagram_").
+const canalDe = (c) => (/^(ig_|instagram_)/.test(String(c.cliente_whatsapp || c.numero_cliente || '')) ? 'instagram' : 'whatsapp');
+const NOMBRE_CANAL = { whatsapp: 'WhatsApp', instagram: 'Instagram' };
+
 const ConversacionesPage = () => {
     const prefs = usePreferencias();
     const { user } = useAuth();
@@ -75,6 +79,7 @@ const ConversacionesPage = () => {
     const [leidas, setLeidas] = useState(() => leerLS('noma_conv_leidas', null));
     const [ancladas, setAncladas] = useState(() => leerLS('noma_conv_ancladas', []));
     const [filtro, setFiltro] = useState('todas');
+    const [canal, setCanal] = useState('todos');
     const [pedidosCliente, setPedidosCliente] = useState(null);
     const [verPedidos, setVerPedidos] = useState(false);
     const marcarLeida = (conv) => {
@@ -220,7 +225,11 @@ const ConversacionesPage = () => {
         atencion: conversaciones.filter((c) => c.atencion_humana).length,
         ancladas: conversaciones.filter((c) => ancladas.includes(c.id)).length,
     };
+    // El filtro por canal solo aparece cuando hay más de un canal con conversaciones.
+    const canalesConChats = [...new Set(conversaciones.map(canalDe))];
+    const hayVariosCanales = canalesConChats.length > 1;
     const listaVisible = conversaciones
+        .filter((c) => canal === 'todos' || canalDe(c) === canal)
         .filter((c) => (
             filtro === 'sin_leer' ? sinLeer(c)
             : filtro === 'atencion' ? c.atencion_humana
@@ -240,7 +249,7 @@ const ConversacionesPage = () => {
             <div className={`w-full md:w-96 bg-bg2 border-r border-border flex flex-col ${selectedConv ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-border">
                     <div className="flex items-center gap-3 mb-4">
-                        <h2 className="font-head text-xl font-bold">Conversaciones</h2>
+                        <h2 className="font-head text-xl font-bold">Mensajes</h2>
                     </div>
                     <form onSubmit={handleBuscar} className="flex gap-2">
                         <div className="flex-1 relative">
@@ -271,6 +280,21 @@ const ConversacionesPage = () => {
                         </button>
                     ))}
                 </div>
+                {hayVariosCanales && (
+                    <div className="flex gap-2 overflow-x-auto px-3 py-2 border-b border-border" role="tablist" aria-label="Filtrar por canal">
+                        {[['todos', 'Todos los canales'], ...canalesConChats.map((c) => [c, NOMBRE_CANAL[c]])].map(([id, label]) => (
+                            <button
+                                key={id}
+                                role="tab"
+                                aria-selected={canal === id}
+                                onClick={() => setCanal(id)}
+                                className={`shrink-0 h-9 px-3 rounded-full text-xs font-semibold border-none cursor-pointer ${canal === id ? 'bg-text text-bg' : 'bg-white text-muted border border-border'}`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                )}
                 <TipNova id="conversaciones" className="m-3">Aquí ves todo lo que tu bot conversa con tus clientes, con su historial completo.</TipNova>
 
                 <div className="flex-1 overflow-y-auto">
@@ -327,6 +351,7 @@ const ConversacionesPage = () => {
                                             </span>
                                         </div>
                                         <p className="text-xs text-muted truncate">
+                                            {hayVariosCanales && <span className="mr-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-bg3 text-muted">{NOMBRE_CANAL[canalDe(conv)]}</span>}
                                             {conv.ultimo_mensaje || 'Sin mensajes'}
                                         </p>
                                     </div>
