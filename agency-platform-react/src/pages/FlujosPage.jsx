@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Trash2, Plus, Link2, X, Save, Power, Loader2, FilePlus2, Undo2, Copy } from 'lucide-react';
+import { Trash2, Plus, Link2, X, Save, Power, Loader2, FilePlus2, Undo2, Copy, LayoutTemplate, ZoomIn, ZoomOut } from 'lucide-react';
 import api from '../services/api';
 import Toast from '../components/Toast';
 import SimuladorFlujo from '../components/flujos/SimuladorFlujo';
 import MetricasFlujo from '../components/flujos/MetricasFlujo';
 import { useConfirm } from '../context/ConfirmContext';
 import { mensajeError } from '../utils/errores';
-import { TIPOS, NODO_ANCHO, NODO_ALTO, nuevoNodo, flujoEjemplo } from '../components/flujos/catalogo';
+import { TIPOS, NODO_ANCHO, NODO_ALTO, MODOS_DISPARADOR, TIPOS_CONDICION, esEvento, nuevoNodo, flujoEjemplo } from '../components/flujos/catalogo';
+import PlantillasFlujo from '../components/flujos/PlantillasFlujo';
 
 // Constructor de flujos (diseño y plan en docs/constructor-de-flujos.md). Los flujos se guardan en la API
 // (/api/flujos) y, una vez encendidos, el bot los ejecuta cuando el cliente escribe la palabra clave.
@@ -41,6 +42,8 @@ export default function FlujosPage() {
   const [sel, setSel] = useState(null);
   const [origen, setOrigen] = useState(null); // { id, salida } esperando un destino
   const arrastre = useRef(null);
+  const [zoom, setZoom] = useState(1);
+  const [verPlantillas, setVerPlantillas] = useState(false);
   // Deshacer: pila de estados anteriores del lienzo (se guarda antes de cada cambio; al escribir en un campo, una vez por ráfaga).
   const pasado = useRef([]);
   const ultimoGuardadoMs = useRef(0);
@@ -56,6 +59,8 @@ export default function FlujosPage() {
 
   const foto = (n, f) => JSON.stringify({ n, f });
   const sucio = foto(nombre, flujo) !== base;
+  // Cambios que valen la pena proteger: en un flujo guardado, cualquier diferencia; en uno nuevo, solo si ya se tocó algo.
+  const hayCambios = sucio && (id !== null || puedeDeshacer);
 
   const abrir = useCallback((f) => {
     setId(f.id); setNombre(f.nombre); setActivo(f.activo); setFlujo(f.definicion);
@@ -135,13 +140,24 @@ export default function FlujosPage() {
   };
 
   const nuevoFlujo = async (conEjemplo) => {
-    if (sucio) {
+    if (hayCambios) {
       const ok = await confirmar({ titulo: '¿Descartar los cambios?', mensaje: 'Tienes cambios sin guardar en este flujo.', boton: 'Descartar', peligro: true });
       if (!ok) return;
     }
     setId(null); setActivo(false); setNombre(conEjemplo ? 'Promo por WhatsApp' : 'Flujo nuevo');
     setFlujo(conEjemplo ? flujoEjemplo() : flujoVacio()); setBase(''); setSel(null); setOrigen(null);
     limpiarHistorial();
+  };
+
+  // Arranca desde una plantilla (queda sin guardar: el dueño la ajusta y luego guarda).
+  const usarPlantilla = async (plantilla) => {
+    if (hayCambios) {
+      const ok = await confirmar({ titulo: '¿Descartar los cambios?', mensaje: 'Tienes cambios sin guardar en este flujo.', boton: 'Descartar', peligro: true });
+      if (!ok) return;
+    }
+    setId(null); setActivo(false); setNombre(plantilla.nombre); setFlujo(JSON.parse(JSON.stringify(plantilla.definicion)));
+    setBase(''); setSel(null); setOrigen(null); limpiarHistorial(); setVerPlantillas(false);
+    setAviso({ type: 'success', message: 'Plantilla lista: cambia los textos a tu gusto y pulsa Guardar' });
   };
 
   // Copia el flujo que ves (con sus cambios) como uno nuevo sin guardar: sirve para probar variantes.
@@ -154,7 +170,7 @@ export default function FlujosPage() {
   const cambiarDeFlujo = async (nuevoId) => {
     const f = lista.find((x) => x.id === Number(nuevoId));
     if (!f || f.id === id) return;
-    if (sucio) {
+    if (hayCambios) {
       const ok = await confirmar({ titulo: '¿Descartar los cambios?', mensaje: 'Tienes cambios sin guardar en este flujo.', boton: 'Descartar', peligro: true });
       if (!ok) return;
     }
@@ -169,13 +185,14 @@ export default function FlujosPage() {
   const empezarArrastre = (e, nodo) => {
     if (e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    arrastre.current = { id: nodo.id, dx: e.clientX - nodo.x, dy: e.clientY - nodo.y, antes: flujo };
+    arrastre.current = { id: nodo.id, cx: e.clientX, cy: e.clientY, x0: nodo.x, y0: nodo.y, antes: flujo };
     setSel(nodo.id);
   };
   const moverArrastre = (e) => {
     const a = arrastre.current;
     if (!a) return;
-    actualizarNodo(a.id, { x: Math.max(0, Math.round(e.clientX - a.dx)), y: Math.max(0, Math.round(e.clientY - a.dy)) });
+    // El lienzo puede estar con zoom: el movimiento del puntero se convierte a coordenadas del lienzo.
+    actualizarNodo(a.id, { x: Math.max(0, Math.round(a.x0 + (e.clientX - a.cx) / zoom)), y: Math.max(0, Math.round(a.y0 + (e.clientY - a.cy) / zoom)) });
   };
   const soltar = () => {
     const a = arrastre.current;
@@ -273,6 +290,10 @@ export default function FlujosPage() {
           className="h-11 px-4 rounded-xl border border-[#C9C9C9] bg-white text-sm text-text inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
           <FilePlus2 className="w-4 h-4" /> Nuevo
         </button>
+        <button type="button" onClick={() => setVerPlantillas(true)} disabled={ocupado || (limite !== null && lista.length >= limite)}
+          className="h-11 px-4 rounded-xl border border-accent text-accent bg-white text-sm font-semibold inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          <LayoutTemplate className="w-4 h-4" /> Plantillas
+        </button>
         <button type="button" onClick={() => nuevoFlujo(true)} disabled={ocupado || (limite !== null && lista.length >= limite)}
           className="h-11 px-4 rounded-xl border border-[#C9C9C9] bg-white text-sm text-text cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
           Partir del ejemplo
@@ -317,8 +338,17 @@ export default function FlujosPage() {
       )}
 
       <div className="grid lg:grid-cols-[1fr_300px] gap-4">
+        <div className="relative">
+        <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-xl bg-white/90 border border-[#C9C9C9] p-1" role="group" aria-label="Zoom del lienzo">
+          <button type="button" onClick={() => setZoom((z) => Math.max(0.5, Math.round((z - 0.1) * 10) / 10))} disabled={zoom <= 0.5} aria-label="Alejar"
+            className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-transparent border-none cursor-pointer text-text disabled:opacity-40"><ZoomOut className="w-4 h-4" /></button>
+          <button type="button" onClick={() => setZoom(1)} aria-label="Zoom al 100%" className="h-9 px-2 text-xs rounded-lg bg-transparent border-none cursor-pointer text-text min-w-[3rem]">{Math.round(zoom * 100)}%</button>
+          <button type="button" onClick={() => setZoom((z) => Math.min(1.5, Math.round((z + 0.1) * 10) / 10))} disabled={zoom >= 1.5} aria-label="Acercar"
+            className="h-9 w-9 inline-flex items-center justify-center rounded-lg bg-transparent border-none cursor-pointer text-text disabled:opacity-40"><ZoomIn className="w-4 h-4" /></button>
+        </div>
         <div className="overflow-auto rounded-2xl border border-[#C9C9C9] bg-bg2" style={{ height: 'min(70vh, 640px)' }}>
-          <div className="relative" style={{ width: ancho, height: alto }}
+          <div style={{ width: ancho * zoom, height: alto * zoom }}>
+          <div className="relative" style={{ width: ancho, height: alto, transform: `scale(${zoom})`, transformOrigin: '0 0' }}
             onPointerMove={moverArrastre} onPointerUp={soltar} onClick={() => { setSel(null); setOrigen(null); }}>
             <svg width={ancho} height={alto} className="absolute inset-0" aria-hidden="true">
               {flujo.conexiones.map((c) => {
@@ -367,16 +397,19 @@ export default function FlujosPage() {
               );
             })}
           </div>
+          </div>
+        </div>
         </div>
 
         <aside className="rounded-2xl border border-[#C9C9C9] bg-white p-4 h-fit" aria-label="Propiedades del paso">
           {!seleccionado ? (
             <p className="text-sm text-muted">Toca un paso para editarlo. Arrástralo para moverlo. Para conectar: toca un círculo de salida y luego el de entrada del siguiente paso. Toca una línea para quitarla.</p>
           ) : (
-            <Propiedades nodo={seleccionado} onCambio={(config) => { guardarPaso(flujo, true); actualizarNodo(seleccionado.id, { config }); }} onQuitar={() => quitar(seleccionado.id)} onCerrar={() => setSel(null)} />
+            <Propiedades nodo={seleccionado} otrosFlujos={lista.filter((f) => f.id !== id)} onCambio={(config) => { guardarPaso(flujo, true); actualizarNodo(seleccionado.id, { config }); }} onQuitar={() => quitar(seleccionado.id)} onCerrar={() => setSel(null)} />
           )}
         </aside>
       </div>
+      {verPlantillas && <PlantillasFlujo onElegir={usarPlantilla} onCerrar={() => setVerPlantillas(false)} />}
       <div className="mt-4 grid lg:grid-cols-2 gap-4 items-start">
         <SimuladorFlujo definicion={flujo} />
         <MetricasFlujo flujoId={id} nodos={flujo.nodos} />
@@ -390,7 +423,7 @@ function Campo({ etiqueta, children }) {
   return <label className="block mb-3 text-xs font-semibold text-text">{etiqueta}<div className="mt-1 font-normal">{children}</div></label>;
 }
 
-function Propiedades({ nodo, onCambio, onQuitar, onCerrar }) {
+function Propiedades({ nodo, otrosFlujos = [], onCambio, onQuitar, onCerrar }) {
   const t = TIPOS[nodo.tipo];
   const c = nodo.config;
   const set = (k) => (e) => onCambio({ ...c, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
@@ -409,11 +442,16 @@ function Propiedades({ nodo, onCambio, onQuitar, onCerrar }) {
       {nodo.tipo === 'disparador' && (<>
         <Campo etiqueta="¿Cuándo empieza?">
           <select value={c.modo} onChange={set('modo')} className={CONTROL}>
-            <option value="palabra">Cuando escriben una palabra</option>
-            <option value="primer_mensaje">En el primer mensaje del cliente</option>
+            {MODOS_DISPARADOR.map((m) => <option key={m.valor} value={m.valor}>{m.etiqueta}</option>)}
           </select>
         </Campo>
         {c.modo === 'palabra' && texto('palabra', 'Palabra clave')}
+        {c.modo === 'cliente_inactivo' && (
+          <Campo etiqueta="Días sin comprar"><input type="number" min="1" max="365" value={c.dias ?? 30} onChange={set('dias')} className={CONTROL} /></Campo>
+        )}
+        {esEvento(c.modo) && (
+          <p className="text-xs text-muted mb-3">Este flujo arranca solo, sin que el cliente escriba. Solo le escribe a quien aceptó recibir mensajes de marketing, con un tope diario para cuidar tu número.</p>
+        )}
       </>)}
       {nodo.tipo === 'mensaje' && (<>{texto('texto', 'Mensaje', 4)}<p className="text-xs text-muted">Usa {'{nombre}'} para el primer nombre del cliente.</p></>)}
       {nodo.tipo === 'espera' && (<>
@@ -426,7 +464,33 @@ function Propiedades({ nodo, onCambio, onQuitar, onCerrar }) {
         <Campo etiqueta="Acción"><select value={c.accion} onChange={set('accion')} className={CONTROL}><option value="poner">Poner etiqueta</option><option value="quitar">Quitar etiqueta</option></select></Campo>
         {texto('nombre', 'Etiqueta')}
       </>)}
-      {nodo.tipo === 'condicion' && texto('valor', 'Si el cliente tiene la etiqueta')}
+      {nodo.tipo === 'condicion' && (<>
+        <Campo etiqueta="Pregunta">
+          <select value={c.tipo || 'etiqueta'} onChange={set('tipo')} className={CONTROL}>
+            {TIPOS_CONDICION.map((tc) => <option key={tc.valor} value={tc.valor}>{tc.etiqueta}</option>)}
+          </select>
+        </Campo>
+        {(c.tipo || 'etiqueta') === 'etiqueta' && texto('valor', 'Nombre de la etiqueta')}
+        {c.tipo === 'dato' && (<>{texto('campo', 'Dato (el campo de una pregunta anterior)')}{texto('valor', 'Contiene')}</>)}
+        {c.tipo === 'gastado' && <Campo etiqueta="Total gastado mínimo ($)"><input type="number" min="0" value={c.minimo ?? 0} onChange={set('minimo')} className={CONTROL} /></Campo>}
+        {c.tipo === 'pedidos' && <Campo etiqueta="Pedidos mínimos"><input type="number" min="0" value={c.minimo ?? 1} onChange={set('minimo')} className={CONTROL} /></Campo>}
+        {c.tipo === 'stock' && (<>
+          <SelectorProducto valor={c.producto_id} onCambio={(v) => onCambio({ ...c, producto_id: v })} />
+          <Campo etiqueta="Unidades mínimas"><input type="number" min="1" value={c.minimo ?? 1} onChange={set('minimo')} className={CONTROL} /></Campo>
+          <p className="text-xs text-muted mb-3">Solo cuenta si ese producto tiene activado "Controlar inventario".</p>
+        </>)}
+        <p className="text-xs text-muted mb-3">La salida <b>Sí</b> sigue si se cumple y la salida <b>No</b> si no.</p>
+      </>)}
+      {nodo.tipo === 'info_pago' && (<>{texto('nota', 'Nota después de los métodos de pago', 3)}<p className="text-xs text-muted mb-3">Envía los números de Nequi y Bancolombia que pusiste en Ajustes.</p></>)}
+      {nodo.tipo === 'saltar' && (
+        <Campo etiqueta="Flujo al que continúa">
+          <select value={c.flujo_id || ''} onChange={(e) => onCambio({ ...c, flujo_id: Number(e.target.value) || 0 })} className={CONTROL}>
+            <option value="">Elige un flujo guardado…</option>
+            {otrosFlujos.map((f) => <option key={f.id} value={f.id}>{f.nombre}{f.activo ? '' : ' (apagado)'}</option>)}
+          </select>
+          <p className="text-xs text-muted mt-1">El otro flujo debe estar encendido para que funcione.</p>
+        </Campo>
+      )}
       {nodo.tipo === 'ia' && texto('instruccion', 'Qué debe hacer la IA', 4)}
       {nodo.tipo === 'pedido' && (<>
         <label className="flex items-center gap-2 text-sm mb-3"><input type="checkbox" checked={!!c.cobrar} onChange={set('cobrar')} /> Cobrar al terminar</label>
@@ -439,5 +503,25 @@ function Propiedades({ nodo, onCambio, onQuitar, onCerrar }) {
         </button>
       )}
     </div>
+  );
+}
+
+// Lista de productos del negocio para las condiciones de stock.
+function SelectorProducto({ valor, onCambio }) {
+  const [productos, setProductos] = useState(null);
+  useEffect(() => {
+    let vivo = true;
+    api.get('/productos', { params: { activo: 'true', limit: 200 } })
+      .then((r) => { if (vivo) setProductos(r.data.productos || []); })
+      .catch(() => { if (vivo) setProductos([]); });
+    return () => { vivo = false; };
+  }, []);
+  return (
+    <Campo etiqueta="Producto">
+      <select value={valor || ''} onChange={(e) => onCambio(Number(e.target.value) || 0)} className={CONTROL}>
+        <option value="">{productos === null ? 'Cargando…' : 'Elige un producto…'}</option>
+        {(productos || []).map((p) => <option key={p.id} value={p.id}>{p.nombre}{p.controla_stock ? ` (${p.stock} en stock)` : ''}</option>)}
+      </select>
+    </Campo>
   );
 }

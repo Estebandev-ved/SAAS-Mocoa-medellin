@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, RotateCcw, FastForward, FlaskConical } from 'lucide-react';
+import { Send, RotateCcw, FastForward, FlaskConical, Play } from 'lucide-react';
 import api from '../../services/api';
+import { esEvento } from './catalogo';
 
 // "Probar flujo": conversas como si fueras un cliente con el flujo que estás editando (aunque no esté guardado).
 // No envía nada por WhatsApp ni toca clientes reales: el servidor corre el mismo motor en memoria.
@@ -11,17 +12,21 @@ export default function SimuladorFlujo({ definicion }) {
   const [texto, setTexto] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState('');
+  // Datos del cliente de prueba, para probar las condiciones (gastado, pedidos, horario)
+  const [datos, setDatos] = useState({ total_gastado: 0, total_pedidos: 0, dentroHorario: true });
   const fin = useRef(null);
+  const disparador = definicion?.nodos?.find((n) => n.tipo === 'disparador');
+  const porEvento = !!disparador && esEvento(disparador.config?.modo);
 
   useEffect(() => { fin.current?.scrollIntoView?.({ block: 'nearest' }); }, [mensajes]);
 
   const empezar = () => { setMensajes([]); setEjec(null); setEtiquetas([]); setError(''); setTexto(''); };
 
-  const enviar = async (modo, textoCliente) => {
+  const enviar = async (modo, textoCliente, inicial) => {
     setOcupado(true);
     setError('');
     try {
-      const { data } = await api.post('/flujos/simular', { definicion, modo, texto: textoCliente, ejec, etiquetas, nombre: 'Cliente de prueba' });
+      const { data } = await api.post('/flujos/simular', { definicion, modo, texto: textoCliente, ejec: inicial ? null : ejec, etiquetas: inicial ? [] : etiquetas, datos, nombre: 'Cliente de prueba' });
       setMensajes((m) => [...m, ...(modo === 'mensaje' ? [{ de: 'cliente', texto: textoCliente }] : []), ...data.mensajes]);
       setEjec(data.ejec);
       setEtiquetas(data.etiquetas || []);
@@ -67,12 +72,30 @@ export default function SimuladorFlujo({ definicion }) {
       {etiquetas.length > 0 && <p className="text-xs text-muted mt-2">Etiquetas del cliente de prueba: {etiquetas.join(', ')}</p>}
       {error && <p className="text-xs text-danger mt-2" role="alert">{error}</p>}
 
+      {porEvento && !ejec && (
+        <button type="button" onClick={() => { empezar(); enviar('evento', undefined, true); }} disabled={ocupado}
+          className="mt-2 h-10 px-3 rounded-lg border border-accent text-accent bg-white text-sm inline-flex items-center gap-2 cursor-pointer disabled:opacity-50">
+          <Play className="w-4 h-4" /> Simular: ocurre el evento
+        </button>
+      )}
+
       {ejec?.estado === 'esperando_tiempo' && (
         <button type="button" onClick={() => enviar('saltar_espera')} disabled={ocupado}
           className="mt-2 h-10 px-3 rounded-lg border border-accent text-accent bg-white text-sm inline-flex items-center gap-2 cursor-pointer disabled:opacity-50">
           <FastForward className="w-4 h-4" /> Saltar la espera
         </button>
       )}
+
+      <details className="mt-3 text-xs text-muted">
+        <summary className="cursor-pointer">Datos del cliente de prueba (para las condiciones)</summary>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <label>Total gastado ($)<input type="number" min="0" value={datos.total_gastado} onChange={(e) => setDatos((d) => ({ ...d, total_gastado: Number(e.target.value) || 0 }))}
+            className="w-full min-h-[40px] mt-1 bg-white border border-[#C9C9C9] rounded-lg px-2 text-sm text-text" /></label>
+          <label>Pedidos hechos<input type="number" min="0" value={datos.total_pedidos} onChange={(e) => setDatos((d) => ({ ...d, total_pedidos: Number(e.target.value) || 0 }))}
+            className="w-full min-h-[40px] mt-1 bg-white border border-[#C9C9C9] rounded-lg px-2 text-sm text-text" /></label>
+          <label className="col-span-2 flex items-center gap-2 text-sm text-text"><input type="checkbox" checked={datos.dentroHorario} onChange={(e) => setDatos((d) => ({ ...d, dentroHorario: e.target.checked }))} /> El negocio está dentro del horario</label>
+        </div>
+      </details>
 
       <form onSubmit={mandar} className="flex gap-2 mt-3">
         <input value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={500} placeholder="Escribe como cliente…" aria-label="Mensaje del cliente de prueba"

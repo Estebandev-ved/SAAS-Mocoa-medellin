@@ -1,10 +1,37 @@
-import { Zap, MessageSquare, Clock, ListChecks, HelpCircle, Tag, GitBranch, Sparkles, ShoppingBag, UserRound } from 'lucide-react';
+import { Zap, MessageSquare, Clock, ListChecks, HelpCircle, Tag, GitBranch, Sparkles, ShoppingBag, UserRound, Wallet, CornerUpRight } from 'lucide-react';
+
+// Cómo empieza un flujo: lo que escribe el cliente, o algo que pasa en el negocio (el flujo arranca solo).
+export const MODOS_DISPARADOR = [
+  { valor: 'palabra', etiqueta: 'Cuando escriben una palabra' },
+  { valor: 'primer_mensaje', etiqueta: 'En el primer mensaje del cliente' },
+  { valor: 'pedido_pagado', etiqueta: 'Cuando se confirma el pago de un pedido' },
+  { valor: 'pedido_entregado', etiqueta: 'Cuando se entrega un pedido' },
+  { valor: 'cliente_inactivo', etiqueta: 'Cuando un cliente lleva días sin comprar' },
+];
+export const esEvento = (modo) => ['pedido_pagado', 'pedido_entregado', 'cliente_inactivo'].includes(modo);
+
+// Qué se pregunta en una condición (cada una tiene salida Sí y No)
+export const TIPOS_CONDICION = [
+  { valor: 'etiqueta', etiqueta: 'El cliente tiene una etiqueta' },
+  { valor: 'dato', etiqueta: 'Un dato que respondió contiene…' },
+  { valor: 'gastado', etiqueta: 'Ha gastado al menos…' },
+  { valor: 'pedidos', etiqueta: 'Ha hecho al menos N pedidos' },
+  { valor: 'horario', etiqueta: 'Estamos dentro del horario de atención' },
+  { valor: 'stock', etiqueta: 'Hay stock de un producto' },
+];
 
 // Catálogo cerrado de nodos del constructor de flujos (ver docs/constructor-de-flujos.md).
 // `salidas` son los puntos de salida del nodo; `config` son los campos editables y sus valores iniciales.
 export const TIPOS = {
   disparador: { etiqueta: 'Disparador', icono: Zap, color: '#F59E0B', entrada: false, salidas: ['default'],
-    config: { modo: 'palabra', palabra: 'MENU' }, resumen: (c) => (c.modo === 'primer_mensaje' ? 'Primer mensaje del cliente' : `Palabra: "${c.palabra || '…'}"`) },
+    config: { modo: 'palabra', palabra: 'MENU', dias: 30 },
+    resumen: (c) => {
+      if (c.modo === 'primer_mensaje') return 'Primer mensaje del cliente';
+      if (c.modo === 'pedido_pagado') return 'Cuando se paga un pedido';
+      if (c.modo === 'pedido_entregado') return 'Cuando se entrega un pedido';
+      if (c.modo === 'cliente_inactivo') return `Cliente sin comprar ${c.dias || 30} días`;
+      return `Palabra: "${c.palabra || '…'}"`;
+    } },
   mensaje: { etiqueta: 'Mensaje', icono: MessageSquare, color: '#2563EB', entrada: true, salidas: ['default'],
     config: { texto: 'Hola {nombre}, ¿en qué te ayudo?' }, resumen: (c) => c.texto },
   espera: { etiqueta: 'Espera', icono: Clock, color: '#64748B', entrada: true, salidas: ['default'],
@@ -16,11 +43,25 @@ export const TIPOS = {
   etiqueta: { etiqueta: 'Etiqueta', icono: Tag, color: '#DB2777', entrada: true, salidas: ['default'],
     config: { accion: 'poner', nombre: 'interesado' }, resumen: (c) => `${c.accion === 'quitar' ? 'Quitar' : 'Poner'} "${c.nombre || '…'}"` },
   condicion: { etiqueta: 'Condición', icono: GitBranch, color: '#EA580C', entrada: true, salidas: ['si', 'no'],
-    config: { valor: 'cliente_vip' }, resumen: (c) => `Si tiene etiqueta "${c.valor || '…'}"` },
+    config: { tipo: 'etiqueta', valor: 'cliente_vip', campo: '', minimo: 1, producto_id: 0 },
+    resumen: (c) => {
+      switch (c.tipo) {
+        case 'dato': return `Si "${c.campo || '…'}" contiene "${c.valor || '…'}"`;
+        case 'gastado': return `Si ha gastado ≥ $${Number(c.minimo || 0).toLocaleString('es-CO')}`;
+        case 'pedidos': return `Si tiene ≥ ${c.minimo || 0} pedidos`;
+        case 'horario': return 'Si estamos dentro del horario';
+        case 'stock': return c.producto_id ? `Si hay stock del producto #${c.producto_id}` : 'Si hay stock (elige el producto)';
+        default: return `Si tiene etiqueta "${c.valor || '…'}"`;
+      }
+    } },
   ia: { etiqueta: 'Responde la IA', icono: Sparkles, color: '#16A34A', entrada: true, salidas: ['default'],
     config: { instruccion: 'Responde con los productos y precios del negocio.' }, resumen: (c) => c.instruccion },
   pedido: { etiqueta: 'Tomar pedido', icono: ShoppingBag, color: '#CA8A04', entrada: true, salidas: ['default'],
     config: { cobrar: true, cupon: false }, resumen: (c) => `Pedido${c.cobrar ? ' + cobro' : ''}${c.cupon ? ' + cupón' : ''}` },
+  info_pago: { etiqueta: 'Métodos de pago', icono: Wallet, color: '#0D9488', entrada: true, salidas: ['default'],
+    config: { nota: 'Cuando pagues, envíame la captura del comprobante.' }, resumen: (c) => c.nota || 'Envía tus Nequi / Bancolombia' },
+  saltar: { etiqueta: 'Pasar a otro flujo', icono: CornerUpRight, color: '#6D28D9', entrada: true, salidas: [],
+    config: { flujo_id: 0 }, resumen: (c) => (c.flujo_id ? `Continúa en el flujo #${c.flujo_id}` : 'Elige el flujo') },
   asesor: { etiqueta: 'Pasar a asesor', icono: UserRound, color: '#475569', entrada: true, salidas: [],
     config: { aviso: 'Te paso con una persona del equipo.' }, resumen: (c) => c.aviso },
 };
