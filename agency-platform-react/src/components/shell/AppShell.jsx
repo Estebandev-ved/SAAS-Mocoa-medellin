@@ -12,7 +12,7 @@ import CommandPalette from './CommandPalette';
 import AtajosTeclado from './AtajosTeclado';
 import BannersGlobales from '../BannersGlobales';
 import { useNegocio } from '../../hooks/useNegocio';
-import { GRUPOS, ITEM_ADMIN, ITEM_COCINA, BARRA_INFERIOR, estaBloqueado, textoBloqueo, planLabel } from './navConfig';
+import { GRUPOS, ITEM_ADMIN, ITEM_COCINA, BARRA_INFERIOR, estaBloqueado, textoBloqueo, planLabel, insertarDespuesDe } from './navConfig';
 
 const PlanIcon = ({ plan, size = 16 }) => {
   const c = 'text-[#E53935]';
@@ -51,6 +51,15 @@ function MenuGrupos({ grupos, pathname, plan, pendientes, onIr, cerrados, altern
   return (
     <nav aria-label="Principal" className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
       {grupos.map((g) => {
+        // Un grupo de un solo elemento (Inicio, Mensajes, Clientes) es un enlace directo: sin encabezado que desplegar.
+        if (g.items.length === 1) {
+          const item = g.items[0];
+          return (
+            <div key={g.id}>
+              <NavLink item={item} activo={pathname === item.path} bloqueado={estaBloqueado(item, plan)} badge={item.badge === 'pedidos' ? pendientes : 0} onIr={onIr} />
+            </div>
+          );
+        }
         const cerrado = cerrados.includes(g.id) && !g.items.some((i) => i.path === pathname);
         return (
           <div key={g.id}>
@@ -107,9 +116,7 @@ export default function AppShell() {
   const grupos = useMemo(() => {
     let g = GRUPOS;
     // Herramientas por tipo de negocio (utils/capacidades.js): el modo cocina va justo debajo de Pedidos
-    if (conCocina) {
-      g = g.map((gr, i) => (i === 0 ? { ...gr, items: [gr.items[0], gr.items[1], ITEM_COCINA, ...gr.items.slice(2)] } : gr));
-    }
+    if (conCocina) g = insertarDespuesDe(g, 'ventas', '/pedidos', ITEM_COCINA);
     if (user?.rol === 'admin' || user?.rol === 'superadmin') {
       g = [...g.slice(0, -1), { ...g[g.length - 1], items: [...g[g.length - 1].items, ITEM_ADMIN] }];
     }
@@ -275,7 +282,7 @@ export default function AppShell() {
                       </span>
                     )}
                   </span>
-                  {item.label}
+                  {item.corto || item.label}
                 </button>
               </li>
             );

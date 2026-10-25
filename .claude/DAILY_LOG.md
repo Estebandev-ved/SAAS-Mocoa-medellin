@@ -44,7 +44,8 @@ Diseño completo en `docs/ecosistema-inventario-facturacion.md`. **Hecho (commit
 
 ### 🧭 Organización de la app (propuesta en `docs/organizacion-de-la-app.md`)
 - [ ] Decisiones del socio: menú de 8 entradas (Inicio · Mensajes · Ventas · Productos · Clientes · Marketing · Reportes · Ajustes), nombre de "Flujos", Modo Simple/Avanzado.
-- [ ] Etapa 1: reordenar `navConfig.js` (grupos y nombres) · Etapa 2: Ajustes → Canales y Mensajes con filtro por canal · Etapa 3: pestañas por sección.
+- [x] (25 oct) **Etapa 1 hecha**: `navConfig.js` reorganizado en 8 entradas por tarea (Inicio · Mensajes · Ventas · Productos · Clientes · Marketing · Reportes · Ajustes); los grupos de un solo elemento son enlace directo; "Flujos" se llama **Respuestas automáticas**, "Conversaciones" → **Mensajes**, "Multi-Canal" → **Otros canales**, "Suscripción" → **Mi plan**; modo cocina va dentro de Ventas (`insertarDespuesDe`); barra inferior del celular = Inicio · Mensajes · Pedidos · Productos · Más (`corto` evita nombres de dos líneas). Las rutas no cambiaron. Verificado en el navegador (escritorio y 375 px).
+- [ ] Etapa 2: Ajustes → Canales (tarjetas WhatsApp / Instagram / Llamadas) y Mensajes con filtro por canal · Etapa 3: pestañas por sección (Ventas, Productos, Marketing, Reportes) con redirecciones. Pendiente decidir el nombre final de "Respuestas automáticas" y el Modo Simple/Avanzado.
 
 ### 📸 Instagram: comentarios → respuesta pública + DM (diseño en `docs/instagram-comentarios.md`)
 - [x] (25 oct) Arreglada la verificación del webhook de Instagram (`a && b || 'texto'` era siempre verdadero) + test.
