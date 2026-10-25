@@ -500,6 +500,8 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => {
     console.log(`[API] Servidor corriendo en puerto ${PORT}`);
+    // Railway expone el commit desplegado: así el log dice qué versión está corriendo de verdad.
+    if (process.env.RAILWAY_GIT_COMMIT_SHA) console.log(`[API] Versión desplegada: ${process.env.RAILWAY_GIT_COMMIT_SHA.slice(0, 7)}`);
 });
 
 // Ejecuta recordatorio_pago / stock_bajo / reporte_semanal para los negocios
