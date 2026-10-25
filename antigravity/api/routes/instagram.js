@@ -9,7 +9,9 @@ router.get('/webhook', (req, res) => {
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
-    if (mode === 'subscribe' && token === process.env.INSTAGRAM_VERIFY_TOKEN || 'antigravity_ig_verify') {
+    // Antes: `a && b || 'texto'` era siempre verdadero (cualquiera "verificaba" el webhook). Ahora el token debe coincidir.
+    const esperado = process.env.INSTAGRAM_VERIFY_TOKEN || process.env.META_VERIFY_TOKEN || 'antigravity_ig_verify';
+    if (mode === 'subscribe' && token === esperado) {
         console.log('[Instagram] Webhook verified');
         res.status(200).send(challenge);
     } else {

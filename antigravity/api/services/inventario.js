@@ -175,6 +175,40 @@ async function devolverPedido(pool, { negocioId, pedidoId, numeroPedido }) {
     });
 }
 
+/**
+ * Valida los campos de inventario que llegan al crear/editar un producto.
+ * Solo devuelve los que vinieron (undefined = no tocar). { valores } o { error }.
+ */
+function sanearCamposInventario(body = {}) {
+    const valores = {};
+    if (body.controla_stock !== undefined) {
+        if (typeof body.controla_stock !== 'boolean' && ![0, 1].includes(body.controla_stock)) return { error: 'controla_stock debe ser verdadero o falso' };
+        valores.controla_stock = body.controla_stock ? 1 : 0;
+    }
+    if (body.stock_minimo !== undefined) {
+        if (body.stock_minimo === null || body.stock_minimo === '') valores.stock_minimo = null;
+        else {
+            const n = Number(body.stock_minimo);
+            if (!Number.isInteger(n) || n < 0 || n > MAX_CANTIDAD) return { error: 'El stock mínimo debe ser un número entero de 0 o más' };
+            valores.stock_minimo = n;
+        }
+    }
+    if (body.sku !== undefined) {
+        const sku = body.sku === null ? '' : String(body.sku).trim();
+        if (sku && !/^[\w\-./]{1,40}$/.test(sku)) return { error: 'El código (SKU) solo puede tener letras, números y - _ . / (máx. 40)' };
+        valores.sku = sku || null;
+    }
+    return { valores };
+}
+
+/** Stock que llega en un formulario: entero de 0 o más ({ valor: undefined } si no vino). */
+function sanearStock(v) {
+    if (v === undefined || v === null || v === '') return { valor: undefined };
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 0 || n > MAX_CANTIDAD) return { error: 'El stock debe ser un número entero de 0 o más' };
+    return { valor: n };
+}
+
 /** Frase para el cliente cuando no alcanza el stock. */
 function mensajeSinStock(faltantes) {
     const lineas = faltantes.map((f) => (f.disponible > 0
@@ -185,5 +219,5 @@ function mensajeSinStock(faltantes) {
 
 module.exports = {
     TIPOS, ErrorInventario, calcularNuevoStock, validarDelta, registrarMovimiento, conTransaccion, ajustarStock,
-    agruparItems, verificarDisponibilidad, descontarPedido, devolverPedido, mensajeSinStock,
+    agruparItems, verificarDisponibilidad, descontarPedido, devolverPedido, mensajeSinStock, sanearCamposInventario, sanearStock,
 };
