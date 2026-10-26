@@ -55,31 +55,71 @@ Plataforma SaaS multi-tenant que conecta el WhatsApp de un negocio a un bot con 
 
 ### Landing y acceso
 
+<img src="docs/screenshots/landing-hero.png" alt="Landing" width="100%">
+
+<sub><b>Landing</b> · propuesta principal y chat de demostración.</sub>
+
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/landing-equipo.png" alt="Sección Conoce al equipo"><br><sub><b>Landing</b> · «Conoce al equipo»</sub></td>
+    <td width="50%"><img src="docs/screenshots/landing-funciones.png" alt="Funciones"><br><sub><b>Landing</b> · funciones</sub></td>
+    <td width="50%"><img src="docs/screenshots/landing-ecosistema.png" alt="Ecosistema"><br><sub><b>Landing</b> · ecosistema</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/landing-simulador.png" alt="Simulador de ROI"><br><sub><b>Landing</b> · simulador de ROI</sub></td>
+    <td width="50%"><img src="docs/screenshots/landing-equipo.png" alt="Conoce al equipo"><br><sub><b>Landing</b> · «Conoce al equipo»</sub></td>
+  </tr>
+  <tr>
     <td width="50%"><img src="docs/screenshots/landing-precios.png" alt="Planes y precios"><br><sub><b>Landing</b> · planes y precios</sub></td>
+    <td width="50%"><img src="docs/screenshots/landing-contacto.png" alt="Contacto"><br><sub><b>Landing</b> · contacto</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/login.png" alt="Inicio de sesión"><br><sub><b>Inicio de sesión</b></sub></td>
-    <td width="50%"><img src="docs/screenshots/registro.png" alt="Registro en 3 pasos"><br><sub><b>Registro</b> · 3 pasos, con creación del personaje del dueño</sub></td>
+    <td width="50%"><img src="docs/screenshots/registro.png" alt="Registro"><br><sub><b>Registro</b> · 3 pasos, con creación del personaje del dueño</sub></td>
   </tr>
 </table>
 
 ### Panel del negocio
 
-<img src="docs/screenshots/dashboard.png" alt="Dashboard" width="100%">
+<img src="docs/screenshots/dashboard.png" alt="Inicio" width="100%">
 
-<sub><b>Dashboard</b> · saludo con el avatar del dueño, checklist de activación guiado por Nova, aviso de comprobantes por revisar y métricas del día.</sub>
+<sub><b>Inicio</b> · saludo con el avatar del dueño, checklist de activación guiado por Nova, aviso de comprobantes por revisar y qué hacer ahora.</sub>
 
 <table>
   <tr>
+    <td width="50%"><img src="docs/screenshots/mensajes.png" alt="Mensajes"><br><sub><b>Mensajes</b> · bandeja unificada con filtro por canal</sub></td>
     <td width="50%"><img src="docs/screenshots/pedidos.png" alt="Pedidos"><br><sub><b>Pedidos</b> · estados de pago, filtros y totales</sub></td>
-    <td width="50%"><img src="docs/screenshots/domicilios.png" alt="Domicilios"><br><sub><b>Domicilios</b> · mapa en vivo y centro de despacho</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/productos.png" alt="Productos"><br><sub><b>Productos</b> · el catálogo que el bot usa para cotizar</sub></td>
-    <td width="50%"><img src="docs/screenshots/ajustes-bot.png" alt="Ajustes del bot"><br><sub><b>Ajustes → Bot</b> · nombre, tono y mensajes del bot</sub></td>
+    <td width="50%"><img src="docs/screenshots/domicilios.png" alt="Domicilios"><br><sub><b>Domicilios</b> · mapa en vivo y centro de despacho</sub></td>
+    <td width="50%"><img src="docs/screenshots/productos.png" alt="Productos"><br><sub><b>Productos</b> · catálogo e inventario</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/clientes.png" alt="Clientes"><br><sub><b>Clientes</b></sub></td>
+    <td width="50%"><img src="docs/screenshots/respuestas-automaticas.png" alt="Respuestas automáticas"><br><sub><b>Marketing</b> · respuestas automáticas</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/campanas.png" alt="Campañas"><br><sub><b>Marketing</b> · campañas</sub></td>
+    <td width="50%"><img src="docs/screenshots/estadisticas.png" alt="Estadísticas"><br><sub><b>Reportes</b> · estadísticas</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/ajustes-bot.png" alt="Ajustes"><br><sub><b>Ajustes</b> · mi negocio y bot</sub></td>
+    <td width="50%"><img src="docs/screenshots/canales.png" alt="Canales"><br><sub><b>Ajustes</b> · canales (WhatsApp, Instagram, Telegram, llamadas)</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/mi-plan.png" alt="Mi plan"><br><sub><b>Ajustes</b> · mi plan</sub></td>
+    <td width="50%"><img src="docs/screenshots/guia.png" alt="Guía de uso"><br><sub><b>Ajustes</b> · guía de uso</sub></td>
+  </tr>
+</table>
+
+### En el celular
+
+<table>
+  <tr>
+    <td align="center" width="20%"><img src="docs/screenshots/movil-landing.png" alt="Landing"><br><sub><b>Landing</b></sub></td>
+    <td align="center" width="20%"><img src="docs/screenshots/movil-inicio.png" alt="Inicio"><br><sub><b>Inicio</b></sub></td>
+    <td align="center" width="20%"><img src="docs/screenshots/movil-mensajes.png" alt="Mensajes"><br><sub><b>Mensajes</b></sub></td>
+    <td align="center" width="20%"><img src="docs/screenshots/movil-pedidos.png" alt="Pedidos"><br><sub><b>Pedidos</b></sub></td>
+    <td align="center" width="20%"><img src="docs/screenshots/movil-productos.png" alt="Productos"><br><sub><b>Productos</b></sub></td>
   </tr>
 </table>
 
