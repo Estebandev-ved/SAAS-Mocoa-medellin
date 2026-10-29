@@ -1,6 +1,6 @@
 # Instagram: responder comentarios y escribir por mensaje directo (estilo ManyChat)
 
-Estado: **diseño** (25 oct 2026). Objetivo: que un cliente comente una palabra en una publicación del negocio (por ejemplo "QUIERO") y la app (1) responda públicamente el comentario y (2) le escriba por mensaje directo (DM) para seguir una conversación o un flujo.
+Estado: **comentarios construidos, sin probar contra Meta real** (29 oct 2026): webhook `changes.comments` → disparador de flujos "Comentario en Instagram" (palabra + respuestas públicas que se alternan) → respuesta privada (los primeros mensajes del flujo se juntan en un solo DM) → comentario público solo si el DM salió; mismo tope diario que los demás envíos automáticos; los comentarios propios y repetidos se ignoran; si el cliente contesta el DM, el flujo continúa (los DMs de Instagram ahora pasan por el motor de flujos antes de la IA). Falta: OAuth con botón y renovación de token, columnas `canal`/`ig_id` de clientes, filtrar por publicación concreta y la revisión de Meta. Diseño original (25 oct 2026): Objetivo: que un cliente comente una palabra en una publicación del negocio (por ejemplo "QUIERO") y la app (1) responda públicamente el comentario y (2) le escriba por mensaje directo (DM) para seguir una conversación o un flujo.
 
 > Las reglas de Meta cambian seguido: antes de construir, hay que revisar la documentación vigente de *Instagram Platform* (Webhooks, Comments, Messaging, Private Replies). Lo de abajo es el mapa general, no un contrato.
 

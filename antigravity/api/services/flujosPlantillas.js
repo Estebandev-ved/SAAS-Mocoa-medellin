@@ -126,6 +126,19 @@ const PLANTILLAS = [
         },
     },
     {
+        id: 'catalogo_instagram', nombre: 'Catálogo por comentario en Instagram', familias: ['retail', 'restaurante'],
+        descripcion: 'Quien comenta "CATALOGO" en una publicación recibe un mensaje directo con tu catálogo y tú le respondes el comentario. Requiere Instagram conectado.',
+        definicion: {
+            nodos: [
+                N('d', 'disparador', 0, 0, { modo: 'comentario_instagram', palabra: 'CATALOGO', respuestas: '¡Listo, te lo mandé por mensaje directo! 📩\nRevisa tus mensajes, ya te escribí 👀' }),
+                N('m', 'mensaje', 1, 0, { texto: '¡Hola {nombre}! 👋 Gracias por comentar. Aquí empezamos: cuéntame qué producto te interesa y te paso precio y disponibilidad.' }),
+                N('e', 'etiqueta', 2, 0, { accion: 'poner', nombre: 'pidio_catalogo' }),
+                N('m2', 'mensaje', 3, 0, { texto: 'Respóndeme por aquí y te ayudo a hacer tu pedido. 🛍️' }),
+            ],
+            conexiones: [C('d', 'default', 'm'), C('m', 'default', 'e'), C('e', 'default', 'm2')],
+        },
+    },
+    {
         id: 'reactivacion', nombre: 'Recuperar clientes inactivos', familias: ['restaurante', 'retail', 'servicios'],
         descripcion: 'Si un cliente lleva 30 días sin comprar le escribe con opciones para volver (solo a quien aceptó marketing).',
         definicion: {

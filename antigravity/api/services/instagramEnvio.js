@@ -43,6 +43,41 @@ async function enviarInstagram(db, negocioId, destinatarioId, texto) {
     }
 }
 
+async function tokenDe(db, negocioId) {
+    const [filas] = await db.execute('SELECT instagram_token FROM negocios WHERE id = ?', [negocioId]);
+    return descifrarSecreto(filas[0] && filas[0].instagram_token);
+}
+
+async function llamarGraph(ruta, token, cuerpo) {
+    try {
+        const r = await fetch(`https://graph.facebook.com/${VERSION_GRAPH}/${ruta}?access_token=${encodeURIComponent(token)}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo),
+        });
+        if (r.ok) return { ok: true };
+        let detalle = '';
+        try { detalle = (await r.json())?.error?.message || ''; } catch (_) { /* sin cuerpo */ }
+        return { ok: false, motivo: r.status === 401 || /token|session|expired/i.test(detalle) ? 'token_invalido' : 'error', detalle };
+    } catch (e) {
+        return { ok: false, motivo: 'sin_conexion', detalle: e.message };
+    }
+}
+
+/** Respuesta privada: el DM que Instagram permite mandar UNA vez a quien comentó (sin que haya escrito antes). */
+async function enviarRespuestaPrivada(db, negocioId, comentarioId, texto) {
+    if (!comentarioId || !texto) return { ok: false, motivo: 'sin_destinatario' };
+    const token = await tokenDe(db, negocioId);
+    if (!token) return { ok: false, motivo: 'no_conectado' };
+    return llamarGraph('me/messages', token, { recipient: { comment_id: comentarioId }, message: { text: String(texto).slice(0, 1000) } });
+}
+
+/** Respuesta pública debajo del comentario. */
+async function responderComentario(db, negocioId, comentarioId, texto) {
+    if (!comentarioId || !texto) return { ok: false, motivo: 'sin_destinatario' };
+    const token = await tokenDe(db, negocioId);
+    if (!token) return { ok: false, motivo: 'no_conectado' };
+    return llamarGraph(`${encodeURIComponent(comentarioId)}/replies`, token, { message: String(texto).slice(0, 300) });
+}
+
 const EXPLICACIONES = {
     sin_destinatario: 'Este cliente no tiene un usuario de Instagram guardado.',
     no_conectado: 'Tu Instagram no está conectado. Ve a Ajustes → Canales y conéctalo.',
@@ -53,4 +88,4 @@ const EXPLICACIONES = {
 };
 const explicarErrorInstagram = (envio) => `${EXPLICACIONES[envio.motivo] || EXPLICACIONES.error}${envio.detalle && envio.motivo === 'error' ? ` (${envio.detalle})` : ''}`;
 
-module.exports = { PREFIJO_CLIENTE, esClienteInstagram, idDeInstagram, enviarInstagram, explicarErrorInstagram };
+module.exports = { PREFIJO_CLIENTE, esClienteInstagram, idDeInstagram, enviarInstagram, enviarRespuestaPrivada, responderComentario, explicarErrorInstagram };

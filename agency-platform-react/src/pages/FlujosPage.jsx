@@ -448,6 +448,13 @@ function Propiedades({ nodo, otrosFlujos = [], onCambio, onQuitar, onCerrar }) {
           </select>
         </Campo>
         {c.modo === 'palabra' && texto('palabra', 'Palabra clave')}
+        {c.modo === 'comentario_instagram' && (<>
+          {texto('palabra', 'Palabra que deben comentar')}
+          <Campo etiqueta="Respuesta pública al comentario (una por línea; se alternan)">
+            <textarea rows={3} maxLength={400} value={c.respuestas ?? ''} onChange={set('respuestas')} placeholder={'¡Listo, te escribí por privado! 📩\nRevisa tus mensajes 👀'} className={CONTROL} />
+          </Campo>
+          <p className="text-xs text-muted mb-3">Quien comente la palabra en una publicación de tu Instagram recibe el flujo por mensaje directo y tú respondes su comentario. Instagram permite un solo mensaje por comentario: los primeros mensajes del flujo se envían juntos. Necesitas Instagram conectado y el permiso de comentarios de Meta (ver la guía de configuración).</p>
+        </>)}
         {c.modo === 'cliente_inactivo' && (
           <Campo etiqueta="Días sin comprar"><input type="number" min="1" max="365" value={c.dias ?? 30} onChange={set('dias')} className={CONTROL} /></Campo>
         )}

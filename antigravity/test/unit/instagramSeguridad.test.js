@@ -43,7 +43,8 @@ function montar() {
             const q = sql.replace(/\s+/g, ' ').trim();
             consultas.push([q, p]);
             if (q.startsWith('SELECT id FROM negocios WHERE instagram_user_id = ?')) return [p[0] === 'IG_NEGOCIO' ? [{ id: 7 }] : []];
-            if (q.startsWith('SELECT id FROM clientes')) return [[]];
+            if (q.startsWith('SELECT id, nombre FROM clientes')) return [[]];
+            if (q.startsWith('SELECT etiqueta FROM etiquetas_cliente') || q.startsWith('SELECT e.* FROM flujo_ejecuciones') || q.startsWith('SELECT id, definicion, palabra_clave')) return [[]];
             if (q.startsWith('SELECT id FROM conversaciones')) return [[]];
             if (q.startsWith('INSERT INTO conversaciones')) return [{ insertId: 90 }];
             if (q.startsWith('INSERT INTO clientes')) return [{ insertId: 55 }];

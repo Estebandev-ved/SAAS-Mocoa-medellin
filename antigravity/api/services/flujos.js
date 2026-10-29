@@ -7,8 +7,9 @@ const MAX_TEXTO = 500;
 const MAX_CORTO = 60;
 const LIMITE_FLUJOS_POR_PLAN = { emprendedor: 3, starter: 5, professional: 20, enterprise: Infinity };
 
-const MODOS_DISPARADOR = ['palabra', 'primer_mensaje', 'pedido_pagado', 'pedido_entregado', 'cliente_inactivo'];
+const MODOS_DISPARADOR = ['palabra', 'primer_mensaje', 'pedido_pagado', 'pedido_entregado', 'cliente_inactivo', 'comentario_instagram'];
 const EVENTOS = ['pedido_pagado', 'pedido_entregado', 'cliente_inactivo'];
+const EVENTO_COMENTARIO = 'comentario_instagram'; // se guarda en flujos.evento; la palabra y las respuestas viven en la definición
 const TIPOS_CONDICION = ['etiqueta', 'dato', 'gastado', 'pedidos', 'horario', 'stock'];
 const ID_VALIDO = /^[A-Za-z0-9_-]{1,40}$/;
 const UNIDADES = ['minutos', 'horas', 'días'];
@@ -24,7 +25,8 @@ const TIPOS = {
         limpiar: (c = {}) => {
             const modo = MODOS_DISPARADOR.includes(c.modo) ? c.modo : 'palabra';
             const dias = Math.round(Number(c.dias));
-            return { modo, palabra: texto(c.palabra, MAX_CORTO), dias: Number.isFinite(dias) ? Math.min(Math.max(dias, 1), 365) : 30 };
+            // respuestas: textos de la respuesta pública a un comentario de Instagram, uno por línea (se rota entre ellos).
+            return { modo, palabra: texto(c.palabra, MAX_CORTO), dias: Number.isFinite(dias) ? Math.min(Math.max(dias, 1), 365) : 30, respuestas: texto(c.respuestas, 400) };
         },
     },
     mensaje: { salidas: ['default'], espera: false, limpiar: (c = {}) => ({ texto: texto(c.texto, MAX_TEXTO) }) },
@@ -158,7 +160,7 @@ function hayBucleSinEspera(definicion) {
 /** Datos del disparador para guardarlos aparte (búsqueda rápida). */
 function datosDisparador(definicion) {
     const d = definicion.nodos.find((n) => n.tipo === 'disparador');
-    const evento = EVENTOS.includes(d.config.modo) ? d.config.modo : null;
+    const evento = EVENTOS.includes(d.config.modo) || d.config.modo === EVENTO_COMENTARIO ? d.config.modo : null;
     return {
         palabraClave: d.config.modo === 'palabra' ? normalizarTexto(d.config.palabra).slice(0, 60) || null : null,
         primerMensaje: d.config.modo === 'primer_mensaje',
@@ -172,6 +174,7 @@ function validarParaActivar(definicion) {
     const disp = definicion.nodos.find((n) => n.tipo === 'disparador');
     const { palabraClave, primerMensaje, evento } = datosDisparador(definicion);
     if (!palabraClave && !primerMensaje && !evento) return 'Escribe la palabra clave que inicia el flujo';
+    if (evento === EVENTO_COMENTARIO && !normalizarTexto(disp.config.palabra)) return 'Escribe la palabra que, al comentarla en Instagram, inicia el flujo';
     if (!siguiente(definicion, disp.id)) return 'Conecta el disparador con el primer paso';
 
     const alcanzables = new Set([disp.id]);
@@ -224,6 +227,6 @@ function limiteDeFlujos(plan) {
 }
 
 module.exports = {
-    TIPOS, TIPOS_CONDICION, MODOS_DISPARADOR, EVENTOS, MAX_NODOS, validarDefinicion, validarParaActivar, siguiente, datosDisparador,
+    TIPOS, TIPOS_CONDICION, MODOS_DISPARADOR, EVENTOS, EVENTO_COMENTARIO, MAX_NODOS, validarDefinicion, validarParaActivar, siguiente, datosDisparador,
     normalizarTexto, normalizarEtiqueta, limiteDeFlujos, hayBucleSinEspera, resumirMetricas,
 };

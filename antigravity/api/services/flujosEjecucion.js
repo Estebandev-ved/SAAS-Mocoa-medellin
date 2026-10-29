@@ -8,7 +8,7 @@
 
 const db = require('../../db/config');
 const Motor = require('./flujosMotor');
-const { normalizarEtiqueta } = require('./flujos');
+const { normalizarEtiqueta, normalizarTexto, EVENTO_COMENTARIO } = require('./flujos');
 const { dentroDeHorario } = require('./horario');
 
 // Cuántos flujos puede encadenar un "Pasar a otro flujo" (evita ciclos entre flujos que se llaman entre sí).
@@ -326,7 +326,33 @@ async function revisarInactivos(enviarA) {
     return iniciados;
 }
 
+// ---------- Comentarios de Instagram ----------
+
+/** Primer flujo activo cuyo disparador "Comentario en Instagram" coincide con el texto. Devuelve { flujo, respuestas[] } o null. */
+async function buscarFlujoPorComentario(negocioId, texto) {
+    const [flujos] = await db.execute('SELECT id, definicion FROM flujos WHERE negocio_id = ? AND activo = 1 AND evento = ? ORDER BY id', [negocioId, EVENTO_COMENTARIO]);
+    for (const f of flujos) {
+        const disp = (parsear(f.definicion).nodos || []).find((n) => n.tipo === 'disparador');
+        if (disp && Motor.coincidePalabra(normalizarTexto(disp.config.palabra), texto)) {
+            const respuestas = String(disp.config.respuestas || '').split('\n').map((t) => t.trim()).filter(Boolean);
+            return { flujo: f, respuestas };
+        }
+    }
+    return null;
+}
+
+/** Arranca un flujo para un cliente que acaba de comentar. `enviar(texto)` recoge lo que el flujo quiere decir. */
+async function iniciarParaCliente(flujo, { negocioId, cliente, enviar }) {
+    await db.execute(
+        "UPDATE flujo_ejecuciones SET estado = 'terminada' WHERE negocio_id = ? AND cliente_id = ? AND estado IN ('esperando_respuesta', 'esperando_tiempo')",
+        [negocioId, cliente.id]
+    );
+    const etiquetas = await etiquetasDe(negocioId, cliente.id);
+    return iniciarFlujo(flujo, { negocioId, clienteId: cliente.id, enviar }, { ...cliente, etiquetas }, 0);
+}
+
 module.exports = {
+    buscarFlujoPorComentario, iniciarParaCliente, enviadosHoy,
     manejarMensaje, procesarEsperas, dispararEvento, dispararEventoPedido, revisarInactivos,
     HORAS_VIGENCIA_RESPUESTA, MAX_PROACTIVOS_DIA, MAX_SALTOS,
 };

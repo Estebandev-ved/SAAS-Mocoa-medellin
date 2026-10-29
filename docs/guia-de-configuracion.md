@@ -51,6 +51,7 @@
 1. En **developers.facebook.com** crea una app tipo "Empresa" y agrega los productos *Instagram* y *Webhooks*.
 2. Variables en Railway: **`META_APP_SECRET`** (secreto de la app, **obligatorio**: sin él el webhook rechaza todo), `META_VERIFY_TOKEN` (un texto que tú inventes) y, opcional, `META_GRAPH_VERSION`.
 3. En Webhooks de la app, registra `https://<tu-API>/api/instagram/webhook` con ese mismo `META_VERIFY_TOKEN` y suscribe el campo `messages`.
+   - **Para responder comentarios** (disparador "Cuando comentan una palabra en Instagram"): suscribe también el campo **`comments`** y pide el permiso `instagram_manage_comments` (en modo desarrollo funciona con cuentas que tengan rol en la app). Crea el flujo en Marketing → Respuestas automáticas (plantilla "Catálogo por comentario en Instagram"), enciéndelo y comenta la palabra desde otra cuenta en una publicación tuya.
 4. En la app, **Ajustes → Canales → Instagram**: hoy se conecta pegando el *Page ID* y el *token de acceso* (la conexión con botón y renovación automática del token está en el plan: `docs/instagram-comentarios.md`).
 5. **Modo desarrollo**: solo funciona con cuentas que tengan rol en tu app de Meta. Para clientes reales hay que pasar la **revisión de la app** y la **verificación del negocio** (tarda semanas: empiézala ya, también sirve para WhatsApp Cloud API).
 6. Probar: escribe un DM a la cuenta de Instagram; debe aparecer en **Mensajes** (filtro "Instagram") y el bot responde. Si responder desde el panel dice "pasaron 24 horas", es una regla de Instagram.

@@ -4,7 +4,7 @@ const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
 const { firmaValida } = require('../services/metaWebhook');
 const { cifrarSecreto } = require('../services/secretos');
-const { PREFIJO_CLIENTE, enviarInstagram } = require('../services/instagramEnvio');   // prefijo corto: `clientes.whatsapp` es VARCHAR(20)
+const { PREFIJO_CLIENTE, enviarInstagram, enviarRespuestaPrivada, responderComentario } = require('../services/instagramEnvio');   // prefijo corto: `clientes.whatsapp` es VARCHAR(20)
 
 // Instagram webhook verification
 router.get('/webhook', (req, res) => {
@@ -44,6 +44,9 @@ router.post('/webhook', async (req, res) => {
             for (const entry of body.entry || []) {
                 for (const event of entry.messaging || []) {
                     await handleInstagramMessage(event, entry.id);
+                }
+                for (const change of entry.changes || []) {
+                    if (change.field === 'comments') await handleInstagramComment(change.value, entry.id);
                 }
             }
         }
@@ -165,12 +168,13 @@ async function handleInstagramMessage(event, entryId) {
 
         // Get or create client
         let [clientes] = await db.execute(
-            'SELECT id FROM clientes WHERE negocio_id = ? AND whatsapp = ?',
+            'SELECT id, nombre FROM clientes WHERE negocio_id = ? AND whatsapp = ?',
             [negocioId, `${PREFIJO_CLIENTE}${senderId}`]
         );
 
         let clienteId;
-        if (clientes.length === 0) {
+        const clienteNuevo = clientes.length === 0;
+        if (clienteNuevo) {
             const [result] = await db.execute(
                 'INSERT INTO clientes (negocio_id, nombre, whatsapp) VALUES (?, ?, ?)',
                 [negocioId, 'Instagram User', `${PREFIJO_CLIENTE}${senderId}`]
@@ -198,6 +202,30 @@ async function handleInstagramMessage(event, entryId) {
             'INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido) VALUES (?, ?, ?, ?)',
             [negocioId, `${PREFIJO_CLIENTE}${senderId}`, 'entrada', text]
         );
+
+        // ¿Hay un flujo esperando su respuesta (p. ej. el que empezó con su comentario) o que arranque con este mensaje?
+        try {
+            const flujos = require('../services/flujosEjecucion');
+            const enviarFlujo = async (t) => {
+                await db.execute(
+                    'INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido, agente_proceso, intencion_detectada) VALUES (?, ?, ?, ?, ?, ?)',
+                    [negocioId, `${PREFIJO_CLIENTE}${senderId}`, 'salida', t, 'flujo', 'flujo']
+                );
+                const envio = await enviarInstagram(db, negocioId, senderId, t);
+                if (!envio.ok) console.error(`[Instagram] No se pudo enviar un paso del flujo (negocio ${negocioId}): ${envio.motivo} ${envio.detalle || ''}`);
+            };
+            const r = await flujos.manejarMensaje({
+                negocioId, cliente: { id: clienteId, nombre: clientes[0]?.nombre || 'Instagram User', total_gastado: 0, total_pedidos: 0 },
+                texto: text, esNuevo: clienteNuevo, enviar: enviarFlujo,
+            });
+            if (r && r.manejado) {
+                await db.execute('UPDATE conversaciones SET updated_at = NOW() WHERE id = ?', [conversacionId]);
+                return;
+            }
+        } catch (e) {
+            // Un fallo del motor de flujos nunca deja al cliente sin respuesta: sigue la IA de siempre.
+            console.error('[Instagram] Error en flujos:', e.message);
+        }
 
         // Process with orchestrator
         const orchestrator = require('../../instance-manager/agents/orchestrator');
@@ -229,7 +257,86 @@ async function handleInstagramMessage(event, entryId) {
     }
 }
 
+// Comentarios ya atendidos (Meta reintenta los avisos que no confirmamos a tiempo); solo en memoria, de sobra para los reintentos.
+const comentariosAtendidos = new Map();
+const MAX_COMENTARIOS_RECORDADOS = 2000;
+const variante = (lista) => lista[Math.floor(Math.random() * lista.length)];
+
+// Un comentario nuevo en una publicación de la cuenta conectada: si trae la palabra de un flujo "Comentario en Instagram",
+// el cliente recibe una respuesta privada (DM) con el flujo y, si llegó, un comentario público debajo del suyo.
+async function handleInstagramComment(valor, entryId) {
+    try {
+        const comentarioId = valor?.id;
+        const texto = valor?.text;
+        const autorId = valor?.from?.id;
+        if (!comentarioId || !texto || !autorId || !entryId) return;
+        if (autorId === entryId) return;                       // comentario de la propia cuenta (p. ej. nuestra respuesta)
+        if (comentariosAtendidos.has(comentarioId)) return;
+
+        const [negocios] = await db.execute('SELECT id FROM negocios WHERE instagram_user_id = ?', [entryId]);
+        if (negocios.length === 0) return;
+        const negocioId = negocios[0].id;
+
+        const flujos = require('../services/flujosEjecucion');
+        const coincidencia = await flujos.buscarFlujoPorComentario(negocioId, texto);
+        if (!coincidencia) return;
+        comentariosAtendidos.set(comentarioId, true);
+        if (comentariosAtendidos.size > MAX_COMENTARIOS_RECORDADOS) comentariosAtendidos.delete(comentariosAtendidos.keys().next().value);
+
+        // Mismo tope diario que los demás mensajes que el negocio manda sin que el cliente escriba primero.
+        if ((await flujos.enviadosHoy(negocioId)) >= flujos.MAX_PROACTIVOS_DIA) {
+            console.warn(`[Instagram] Tope diario de mensajes automáticos alcanzado (negocio ${negocioId}): comentario ${comentarioId} sin responder`);
+            return;
+        }
+
+        const identificador = `${PREFIJO_CLIENTE}${autorId}`;
+        const nombre = String(valor.from.username || 'Instagram User').slice(0, 100);
+        const [clientes] = await db.execute('SELECT id, nombre FROM clientes WHERE negocio_id = ? AND whatsapp = ?', [negocioId, identificador]);
+        let clienteId;
+        if (clientes.length === 0) {
+            const [nuevo] = await db.execute('INSERT INTO clientes (negocio_id, nombre, whatsapp) VALUES (?, ?, ?)', [negocioId, nombre, identificador]);
+            clienteId = nuevo.insertId;
+        } else {
+            clienteId = clientes[0].id;
+        }
+
+        // Una respuesta privada admite un solo mensaje: lo que el flujo diga de entrada se junta en uno.
+        const partes = [];
+        const resultado = await flujos.iniciarParaCliente(coincidencia.flujo, {
+            negocioId, cliente: { id: clienteId, nombre: clientes[0]?.nombre || nombre, total_gastado: 0, total_pedidos: 0 },
+            enviar: async (t) => { partes.push(t); },
+        });
+        if (resultado && resultado.sinRespuesta) return;
+        const mensaje = partes.join('\n\n').trim();
+        if (!mensaje) return;
+
+        const privada = await enviarRespuestaPrivada(db, negocioId, comentarioId, mensaje);
+        if (!privada.ok) {
+            console.error(`[Instagram] No se pudo enviar la respuesta privada (negocio ${negocioId}): ${privada.motivo} ${privada.detalle || ''}`);
+            return;   // sin DM no se anuncia "te escribimos por privado"
+        }
+
+        const [convs] = await db.execute('SELECT id FROM conversaciones WHERE negocio_id = ? AND cliente_id = ? AND activa = 1 ORDER BY id DESC LIMIT 1', [negocioId, clienteId]);
+        if (convs.length === 0) await db.execute('INSERT INTO conversaciones (negocio_id, cliente_id, activa) VALUES (?, ?, 1)', [negocioId, clienteId]);
+        await db.execute(
+            'INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido) VALUES (?, ?, ?, ?)',
+            [negocioId, identificador, 'entrada', texto]
+        );
+        await db.execute(
+            'INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido, agente_proceso, intencion_detectada) VALUES (?, ?, ?, ?, ?, ?)',
+            [negocioId, identificador, 'salida', mensaje, 'flujo_proactivo', 'comentario']   // cuenta para el tope diario
+        );
+
+        const publica = variante(coincidencia.respuestas.length ? coincidencia.respuestas : ['¡Te escribimos por privado! 📩']);
+        const pub = await responderComentario(db, negocioId, comentarioId, publica);
+        if (!pub.ok) console.error(`[Instagram] No se pudo responder el comentario en público (negocio ${negocioId}): ${pub.motivo} ${pub.detalle || ''}`);
+    } catch (error) {
+        console.error('[Instagram] Error handling comment:', error);
+    }
+}
+
 // Se expone para las pruebas (sin levantar el servidor).
 router.handleInstagramMessage = handleInstagramMessage;
+router.handleInstagramComment = handleInstagramComment;
 
 module.exports = router;

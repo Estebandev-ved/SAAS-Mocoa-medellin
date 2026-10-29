@@ -7,6 +7,7 @@ export const MODOS_DISPARADOR = [
   { valor: 'pedido_pagado', etiqueta: 'Cuando se confirma el pago de un pedido' },
   { valor: 'pedido_entregado', etiqueta: 'Cuando se entrega un pedido' },
   { valor: 'cliente_inactivo', etiqueta: 'Cuando un cliente lleva días sin comprar' },
+  { valor: 'comentario_instagram', etiqueta: 'Cuando comentan una palabra en Instagram' },
 ];
 export const esEvento = (modo) => ['pedido_pagado', 'pedido_entregado', 'cliente_inactivo'].includes(modo);
 
@@ -24,11 +25,12 @@ export const TIPOS_CONDICION = [
 // `salidas` son los puntos de salida del nodo; `config` son los campos editables y sus valores iniciales.
 export const TIPOS = {
   disparador: { etiqueta: 'Disparador', icono: Zap, color: '#F59E0B', entrada: false, salidas: ['default'],
-    config: { modo: 'palabra', palabra: 'MENU', dias: 30 },
+    config: { modo: 'palabra', palabra: 'MENU', dias: 30, respuestas: '' },
     resumen: (c) => {
       if (c.modo === 'primer_mensaje') return 'Primer mensaje del cliente';
       if (c.modo === 'pedido_pagado') return 'Cuando se paga un pedido';
       if (c.modo === 'pedido_entregado') return 'Cuando se entrega un pedido';
+      if (c.modo === 'comentario_instagram') return `Comentario en Instagram: "${c.palabra || '…'}"`;
       if (c.modo === 'cliente_inactivo') return `Cliente sin comprar ${c.dias || 30} días`;
       return `Palabra: "${c.palabra || '…'}"`;
     } },
