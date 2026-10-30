@@ -94,3 +94,12 @@
 | Instagram no recibe mensajes | `META_APP_SECRET` sin poner, webhook sin suscribir a `messages`, o cuenta sin rol en la app (modo desarrollo). |
 | Los flujos no se disparan | Flujo apagado, palabra clave distinta, o el cliente ya tiene otro flujo esperando respuesta (24 h). |
 | No llegan correos | Variables `SMTP_*`. |
+
+## 10. Regalar un mes de un plan (solo administrador)
+
+Con tu sesión de administrador (token de `/admin`), desde la consola del navegador o una herramienta como Postman:
+
+- Una cuenta: `POST /api/admin/negocios/<id>/regalo` con `{"plan":"starter","dias":30}`.
+- Varias a la vez (hasta 100): `POST /api/admin/regalo` con `{"plan":"starter","dias":30,"correos":["a@x.co","b@x.co"]}`. Responde cuenta por cuenta qué pasó.
+
+Planes válidos: `emprendedor`, `starter`, `professional`, `enterprise`; de 1 a 90 días (30 por defecto). La cuenta queda como "prueba" con ese plan y al terminar queda vencida hasta que pague. Si la cuenta ya tiene un plan pagado vigente no se toca (responde que tiene plan pagado).

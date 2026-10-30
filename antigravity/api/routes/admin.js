@@ -4,6 +4,7 @@ const db = require('../../db/config');
 const { verificarAuth } = require('../middleware/auth');
 const { verificarAdmin } = require('../middleware/admin');
 const { asegurarTablaProspectos } = require('../../db/prospectosTabla');
+const regaloPlan = require('../services/regaloPlan');
 
 const INSTANCE_MANAGER_URL = process.env.INSTANCE_MANAGER_URL || 'http://localhost:3001';
 
@@ -589,6 +590,39 @@ router.put('/suscripciones/:id', async (req, res) => {
     } catch (error) {
         console.error('[Admin] Error update suscripcion:', error);
         res.status(500).json({ error: 'Error al actualizar suscripción' });
+    }
+});
+
+// Regalo de un mes (o N días) de un plan, sin cobro. Una cuenta: { plan, dias }. Varias: { plan, dias, correos: [...] }.
+router.post('/negocios/:id/regalo', async (req, res) => {
+    try {
+        const v = regaloPlan.validarRegalo(req.body || {});
+        if (v.error) return res.status(400).json({ error: v.error });
+        const r = await regaloPlan.regalarPlan(Number(req.params.id), v);
+        if (!r.ok) {
+            return res.status(r.motivo === 'no_existe' ? 404 : 409).json({
+                error: r.motivo === 'no_existe' ? 'Negocio no encontrado' : 'Esta cuenta tiene un plan pagado vigente: no se le cambia el plan con un regalo',
+            });
+        }
+        console.log(`[Admin] Regalo de ${v.dias} días del plan ${v.plan} al negocio ${r.id} (por ${req.negocioId})`);
+        res.json({ success: true, plan: v.plan, dias: v.dias, hasta: r.hasta });
+    } catch (error) {
+        console.error('[Admin] Error regalo:', error);
+        res.status(500).json({ error: 'Error al regalar el plan' });
+    }
+});
+
+router.post('/regalo', async (req, res) => {
+    try {
+        const v = regaloPlan.validarRegalo(req.body || {});
+        if (v.error) return res.status(400).json({ error: v.error });
+        if (!Array.isArray(req.body.correos) || req.body.correos.length === 0) return res.status(400).json({ error: 'Envía la lista de correos' });
+        const resultados = await regaloPlan.regalarPorCorreos(req.body.correos, v);
+        console.log(`[Admin] Regalo de ${v.dias} días del plan ${v.plan}: ${resultados.filter((x) => x.ok).length}/${resultados.length} cuentas (por ${req.negocioId})`);
+        res.json({ success: true, plan: v.plan, dias: v.dias, resultados });
+    } catch (error) {
+        console.error('[Admin] Error regalo en lote:', error);
+        res.status(500).json({ error: 'Error al regalar el plan' });
     }
 });
 
