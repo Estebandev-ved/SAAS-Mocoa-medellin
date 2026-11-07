@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, MessageSquare, ShoppingCart, Package, Activity, Users, Zap, Settings, TrendingUp,
   CreditCard, Truck, Smartphone, Phone, UtensilsCrossed, Store, BookOpen, Tag, Send, Layers, Shield, ChefHat, Workflow,
-  Megaphone, BarChart3, Share2,
+  Megaphone, BarChart3, Share2, Receipt,
 } from 'lucide-react';
 
 // Fuente única de la navegación del panel del dueño: la usan el menú lateral, la barra inferior,
@@ -29,6 +29,7 @@ export const GRUPOS = [
     items: [
       { icon: ShoppingCart, label: 'Pedidos', path: '/pedidos', badge: 'pedidos' },
       { icon: Truck, label: 'Domicilios', path: '/domicilios', lock: 'domicilios' },
+      { icon: Receipt, label: 'Venta rápida', path: '/mostrador', lock: 'mostrador' },
       { icon: Store, label: 'Caja', path: '/caja', lock: 'caja' },
     ],
   },
@@ -119,10 +120,13 @@ export function rutaDeSeccion(grupo, plan) {
 export function estaBloqueado(item, plan) {
   if (item.lock === 'domicilios') return plan === 'starter' || plan === 'emprendedor';
   if (item.lock === 'caja') return plan !== 'emprendedor';
+  if (item.lock === 'mostrador') return plan === 'emprendedor';
   return false;
 }
 export const textoBloqueo = (item) =>
-  item.lock === 'caja' ? 'La caja es del plan Emprendedor' : 'Mejora tu plan para acceder a Domicilios';
+  item.lock === 'caja' ? 'La caja es del plan Emprendedor'
+    : item.lock === 'mostrador' ? 'Tu plan Emprendedor usa la Caja para vender en el local'
+      : 'Mejora tu plan para acceder a Domicilios';
 
 export const planLabel = (p) =>
   ({ enterprise: 'Empresarial', professional: 'Profesional', emprendedor: 'Emprendedor' }[p] || 'Inicial');

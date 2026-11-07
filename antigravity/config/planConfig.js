@@ -22,6 +22,8 @@ const PLANS = {
 
             // Features
             cajaInventario: true,
+            ventaMostrador: false, // la caja aparte ya cubre la venta del local
+            cajaAvanzada: false,
             soporteEmail: true,
 
             // No incluido
@@ -78,6 +80,8 @@ const PLANS = {
 
             // No incluido
             cajaInventario: false,
+            ventaMostrador: true,  // cobrar en el local con el mismo inventario del bot
+            cajaAvanzada: false,
             analyticsAvanzado: false,
             automatizaciones: false,
             personalizacionCompleta: false,
@@ -137,6 +141,8 @@ const PLANS = {
 
             // No incluido
             cajaInventario: false,
+            ventaMostrador: true,
+            cajaAvanzada: true,    // turnos con arqueo, gastos e historial de cierres
             multiSede: false,
             integraciones: false,
             ocrPagos: false,
@@ -166,6 +172,8 @@ const PLANS = {
 
             // Todo incluido (menos la caja: es un producto aparte, plan Emprendedor)
             cajaInventario: false,
+            ventaMostrador: true,
+            cajaAvanzada: true,
             botVentas: true,
             catalogoProductos: true,
             pedidosWhatsApp: true,
@@ -226,6 +234,8 @@ const FEATURE_LABELS = {
     telegramBot: 'Bot en Telegram',
     instagramBot: 'Bot en Instagram',
     cajaInventario: 'Caja: inventario, ventas y plata',
+    ventaMostrador: 'Venta de mostrador (cobrar en el local con tu inventario)',
+    cajaAvanzada: 'Caja avanzada: turnos con arqueo, gastos y cierres',
 };
 
 const LIMIT_LABELS = {

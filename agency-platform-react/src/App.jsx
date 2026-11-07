@@ -50,6 +50,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import MultiChannelPage from './pages/MultiChannelPage';
 import VoiceBotPage from './pages/VoiceBotPage';
 import CajaPage from './pages/CajaPage';
+import MostradorPage from './pages/MostradorPage';
 import CocinaPage from './pages/CocinaPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import FloatingActions from './components/FloatingActions';
@@ -152,6 +153,7 @@ function App() {
                 <Route path="/flujos" element={<FlujosPage />} />
                 <Route path="/suscripcion" element={<SuscripcionPage />} />
                 <Route path="/caja" element={<CajaPage />} />
+                <Route path="/mostrador" element={<MostradorPage />} />
                 <Route path="/cocina" element={<CocinaPage />} />
                 <Route path="/domicilios" element={<DomiciliosPage />} />
                 <Route path="/productos" element={<ProductosPage />} />
