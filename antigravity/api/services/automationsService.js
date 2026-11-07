@@ -72,14 +72,13 @@ async function registrarNotificacion(negocioId, tipo, titulo, mensaje, referenci
 }
 
 // Devuelve { ok, motivo } para que quien llama pueda explicar por qué falló.
-async function enviarWhatsAppDetalle(negocioId, numero, mensaje) {
+async function enviarWhatsAppDetalle(negocioId, numero, mensaje, imagen = null) {
     if (!numero) return { ok: false, motivo: 'sin_numero' };
     try {
-        await axios.post(`${INSTANCE_MANAGER_URL}/internal/message`, {
-            negocio_id: negocioId,
-            numero: numero.startsWith('+') ? numero : `+${numero}`,
-            mensaje
-        }, { timeout: 15000 });
+        const destino = numero.startsWith('+') ? numero : `+${numero}`;
+        // Con imagen, el texto va como pie de foto.
+        if (imagen) await axios.post(`${INSTANCE_MANAGER_URL}/internal/image`, { negocio_id: negocioId, numero: destino, url: imagen, caption: mensaje || '' }, { timeout: 30000 });
+        else await axios.post(`${INSTANCE_MANAGER_URL}/internal/message`, { negocio_id: negocioId, numero: destino, mensaje }, { timeout: 15000 });
         return { ok: true };
     } catch (error) {
         const detalle = error.response?.data?.error || error.message;
@@ -91,8 +90,8 @@ async function enviarWhatsAppDetalle(negocioId, numero, mensaje) {
     }
 }
 
-async function enviarWhatsApp(negocioId, numero, mensaje) {
-    return (await enviarWhatsAppDetalle(negocioId, numero, mensaje)).ok;
+async function enviarWhatsApp(negocioId, numero, mensaje, imagen = null) {
+    return (await enviarWhatsAppDetalle(negocioId, numero, mensaje, imagen)).ok;
 }
 
 // Automatización "encuesta": tras la entrega pide una calificación de 1 a 5.

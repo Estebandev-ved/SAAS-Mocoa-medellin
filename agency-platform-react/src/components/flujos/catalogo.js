@@ -1,4 +1,4 @@
-import { Zap, MessageSquare, Clock, ListChecks, HelpCircle, Tag, GitBranch, Sparkles, ShoppingBag, UserRound, Wallet, CornerUpRight } from 'lucide-react';
+import { Zap, MessageSquare, Clock, ListChecks, HelpCircle, Tag, GitBranch, Sparkles, ShoppingBag, UserRound, Wallet, CornerUpRight, Image } from 'lucide-react';
 
 // Cómo empieza un flujo: lo que escribe el cliente, o algo que pasa en el negocio (el flujo arranca solo).
 export const MODOS_DISPARADOR = [
@@ -60,6 +60,8 @@ export const TIPOS = {
     config: { instruccion: 'Responde con los productos y precios del negocio.' }, resumen: (c) => c.instruccion },
   pedido: { etiqueta: 'Tomar pedido', icono: ShoppingBag, color: '#CA8A04', entrada: true, salidas: ['default'],
     config: { cobrar: true, cupon: false }, resumen: (c) => `Pedido${c.cobrar ? ' + cobro' : ''}${c.cupon ? ' + cupón' : ''}` },
+  imagen: { etiqueta: 'Imagen', icono: Image, color: '#0EA5E9', entrada: true, salidas: ['default'],
+    config: { url: '', texto: '' }, resumen: (c) => (c.url ? `Envía una imagen${c.texto ? `: ${c.texto}` : ''}` : 'Pega la dirección de la imagen') },
   info_pago: { etiqueta: 'Métodos de pago', icono: Wallet, color: '#0D9488', entrada: true, salidas: ['default'],
     config: { nota: 'Cuando pagues, envíame la captura del comprobante.' }, resumen: (c) => c.nota || 'Envía tus Nequi / Bancolombia' },
   saltar: { etiqueta: 'Pasar a otro flujo', icono: CornerUpRight, color: '#6D28D9', entrada: true, salidas: [],

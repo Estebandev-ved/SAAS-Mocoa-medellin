@@ -454,12 +454,13 @@ Tus datos no serán usados para marketing. ¿En qué puedo ayudarte?`;
             try {
                 const resultadoFlujo = await flujos.manejarMensaje({
                     negocioId, cliente, texto, esNuevo,
-                    enviar: async (t) => {
-                        await sock.sendMessage(msg.key.remoteJid, { text: t });
+                    enviar: async (t, imagen) => {
+                        if (imagen) await sock.sendMessage(msg.key.remoteJid, { image: { url: imagen }, caption: t || undefined });
+                        else await sock.sendMessage(msg.key.remoteJid, { text: t });
                         await db.execute(
                             `INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido, agente_proceso, intencion_detectada)
                              VALUES (?, ?, 'salida', ?, 'flujo', 'flujo')`,
-                            [negocioId, `+${numero}`, t]
+                            [negocioId, `+${numero}`, t || '[imagen]']
                         );
                     },
                 });

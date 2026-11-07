@@ -79,6 +79,10 @@ function correr(def, desdeId, contexto, cliente, ahora) {
                 acciones.push({ tipo: 'enviar', texto: personalizar(c.texto, contexto, cliente.nombre) });
                 actual = siguiente(def, n.id);
                 break;
+            case 'imagen':
+                acciones.push({ tipo: 'enviar', texto: personalizar(c.texto, contexto, cliente.nombre), imagen: c.url });
+                actual = siguiente(def, n.id);
+                break;
             case 'opciones':
                 acciones.push({ tipo: 'enviar', texto: personalizar(textoOpciones(c), contexto, cliente.nombre) });
                 return { acciones, ia, fallback: false, ejec: nuevoEstado({ nodo_actual: n.id, estado: 'esperando_respuesta', contexto: { ...contexto, intentos: 0 } }) };

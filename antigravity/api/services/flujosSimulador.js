@@ -28,7 +28,7 @@ function aMensajes(resultado, etiquetas) {
     const mensajes = [];
     let tags = [...etiquetas];
     for (const a of resultado.acciones) {
-        if (a.tipo === 'enviar') mensajes.push({ de: 'bot', texto: a.texto });
+        if (a.tipo === 'enviar') mensajes.push({ de: 'bot', texto: a.imagen ? `🖼️ [Imagen: ${a.imagen}]${a.texto ? `\n${a.texto}` : ''}` : a.texto });
         else if (a.tipo === 'etiqueta') {
             tags = a.accion === 'quitar' ? tags.filter((t) => t !== a.nombre) : [...new Set([...tags, a.nombre])];
             mensajes.push({ de: 'sistema', texto: `🏷️ ${a.accion === 'quitar' ? 'Se quita' : 'Se pone'} la etiqueta "${a.nombre}"` });
@@ -82,7 +82,9 @@ function simular(entrada) {
         if (ejec && ejec.estado === 'esperando_respuesta') {
             resultado = M.continuar(def, ejec, texto, cliente);
         } else {
-            const { palabraClave, primerMensaje } = F.datosDisparador(def);
+            const { palabraClave: palabraDM, primerMensaje, evento } = F.datosDisparador(def);
+            // "Comentario en Instagram": lo que se escribe en la prueba es el comentario.
+            const palabraClave = evento === F.EVENTO_COMENTARIO ? F.normalizarTexto(def.nodos.find((n) => n.tipo === 'disparador').config.palabra) : palabraDM;
             const inicia = (palabraClave && M.coincidePalabra(palabraClave, texto)) || (primerMensaje && !entrada.yaHablo);
             if (!inicia) {
                 return {

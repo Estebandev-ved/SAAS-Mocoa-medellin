@@ -63,6 +63,11 @@ const TIPOS = {
             return { tipo: 'etiqueta', valor: normalizarEtiqueta(c.valor) };
         },
     },
+    // Envía una imagen (por dirección pública https) con un texto opcional debajo.
+    imagen: {
+        salidas: ['default'], espera: false,
+        limpiar: (c = {}) => ({ url: urlPublicaSegura(c.url), texto: texto(c.texto, 300) }),
+    },
     // Envía los métodos de pago del negocio (Nequi / Bancolombia que configuró en Ajustes).
     info_pago: { salidas: ['default'], espera: false, limpiar: (c = {}) => ({ nota: texto(c.nota, 200) }) },
     // Pasa la conversación a otro flujo del mismo negocio y termina este.
@@ -74,6 +79,27 @@ const TIPOS = {
     pedido: { salidas: ['default'], espera: false, limpiar: (c = {}) => ({ cobrar: !!c.cobrar, cupon: !!c.cupon }) },
     asesor: { salidas: [], espera: false, limpiar: (c = {}) => ({ aviso: texto(c.aviso, MAX_TEXTO) }) },
 };
+
+/**
+ * Dirección de una imagen que el servidor va a descargar: solo https y nunca hacia la red interna
+ * (localhost, IP privadas o con letras raras), para que un flujo no sirva de puente hacia servicios internos.
+ * Devuelve la URL limpia o '' si no sirve.
+ */
+function urlPublicaSegura(v) {
+    let u;
+    try { u = new URL(String(v ?? '').trim().slice(0, 500)); } catch (_) { return ''; }
+    if (u.protocol !== 'https:' || u.username || u.password) return '';
+    const h = u.hostname.toLowerCase();
+    if (!h.includes('.') || h.startsWith('[') || h === 'localhost' || /\.(local|internal|localhost|lan|home)$/.test(h)) return '';
+    const ip = h.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+    if (ip) {
+        const [a, b] = [Number(ip[1]), Number(ip[2])];
+        if (a === 10 || a === 127 || a === 0 || a >= 224 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127)) return '';
+    } else if (/^[\d.]+$/.test(h)) {
+        return '';   // formas raras de escribir una IP (decimal, octal…)
+    }
+    return u.toString();
+}
 
 /** Etiquetas en minúsculas, sin espacios raros, hasta 40 caracteres. */
 function normalizarEtiqueta(v) {
@@ -193,6 +219,7 @@ function validarParaActivar(definicion) {
         if (['mensaje', 'opciones', 'pregunta'].includes(n.tipo) && !c.texto) return 'Hay un paso sin texto';
         if (n.tipo === 'opciones' && !c.o1) return 'Las opciones necesitan al menos la opción 1';
         if (n.tipo === 'etiqueta' && !c.nombre) return 'Hay un paso de etiqueta sin nombre';
+        if (n.tipo === 'imagen' && !c.url) return 'Un paso de imagen necesita una dirección https pública válida';
         if (n.tipo === 'condicion') {
             if (c.tipo === 'etiqueta' && !c.valor) return 'Hay una condición de etiqueta sin nombre';
             if (c.tipo === 'dato' && !(c.campo && c.valor)) return 'Una condición de dato necesita el dato y el valor a comparar';
@@ -228,5 +255,5 @@ function limiteDeFlujos(plan) {
 
 module.exports = {
     TIPOS, TIPOS_CONDICION, MODOS_DISPARADOR, EVENTOS, EVENTO_COMENTARIO, MAX_NODOS, validarDefinicion, validarParaActivar, siguiente, datosDisparador,
-    normalizarTexto, normalizarEtiqueta, limiteDeFlujos, hayBucleSinEspera, resumirMetricas,
+    normalizarTexto, normalizarEtiqueta, urlPublicaSegura, limiteDeFlujos, hayBucleSinEspera, resumirMetricas,
 };

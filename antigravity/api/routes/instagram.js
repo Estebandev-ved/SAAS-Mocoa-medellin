@@ -206,7 +206,8 @@ async function handleInstagramMessage(event, entryId) {
         // ¿Hay un flujo esperando su respuesta (p. ej. el que empezó con su comentario) o que arranque con este mensaje?
         try {
             const flujos = require('../services/flujosEjecucion');
-            const enviarFlujo = async (t) => {
+            const enviarFlujo = async (texto, imagen) => {
+                const t = imagen ? `${texto ? `${texto}\n` : ''}${imagen}` : texto;   // por ahora la imagen va como enlace
                 await db.execute(
                     'INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido, agente_proceso, intencion_detectada) VALUES (?, ?, ?, ?, ?, ?)',
                     [negocioId, `${PREFIJO_CLIENTE}${senderId}`, 'salida', t, 'flujo', 'flujo']
@@ -304,7 +305,7 @@ async function handleInstagramComment(valor, entryId) {
         const partes = [];
         const resultado = await flujos.iniciarParaCliente(coincidencia.flujo, {
             negocioId, cliente: { id: clienteId, nombre: clientes[0]?.nombre || nombre, total_gastado: 0, total_pedidos: 0 },
-            enviar: async (t) => { partes.push(t); },
+            enviar: async (t, imagen) => { partes.push(imagen ? `${t ? `${t}\n` : ''}${imagen}` : t); },
         });
         if (resultado && resultado.sinRespuesta) return;
         const mensaje = partes.join('\n\n').trim();

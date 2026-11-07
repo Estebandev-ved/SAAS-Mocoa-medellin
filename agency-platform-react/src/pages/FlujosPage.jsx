@@ -463,6 +463,11 @@ function Propiedades({ nodo, otrosFlujos = [], onCambio, onQuitar, onCerrar }) {
         )}
       </>)}
       {nodo.tipo === 'mensaje' && (<>{texto('texto', 'Mensaje', 4)}<p className="text-xs text-muted">Usa {'{nombre}'} para el primer nombre del cliente.</p></>)}
+      {nodo.tipo === 'imagen' && (<>
+        {texto('url', 'Dirección de la imagen (https://…)')}
+        {texto('texto', 'Texto debajo de la imagen (opcional)', 3)}
+        <p className="text-xs text-muted">Debe ser una dirección pública que empiece por https (por ejemplo, la foto de un producto subida a tu sitio). En Instagram se envía como enlace.</p>
+      </>)}
       {nodo.tipo === 'espera' && (<>
         <Campo etiqueta="Cantidad"><input type="number" min="1" max="1440" value={c.cantidad} onChange={set('cantidad')} className={CONTROL} /></Campo>
         <Campo etiqueta="Unidad"><select value={c.unidad} onChange={set('unidad')} className={CONTROL}><option>minutos</option><option>horas</option><option>días</option></select></Campo>

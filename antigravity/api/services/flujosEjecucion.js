@@ -98,7 +98,7 @@ async function aplicar(resultado, { negocioId, clienteId, enviar }) {
     let asesor = null;
     for (const a of resultado.acciones) {
         if (a.tipo === 'enviar') {
-            if (a.texto) await enviar(a.texto);
+            if (a.texto || a.imagen) await enviar(a.texto, a.imagen);
         } else if (a.tipo === 'info_pago') {
             await enviar(await textoInfoPago(negocioId, a.nota));
         } else if (a.tipo === 'etiqueta' && a.nombre) {
@@ -193,11 +193,11 @@ async function manejarMensaje({ negocioId, cliente, texto, esNuevo, enviar }) {
 
 /** Envío "proactivo" (el cliente no acaba de escribir): lo registra y deja una pausa para no hacer ráfagas. */
 function crearEnviarProactivo(enviarA, negocioId, whatsapp) {
-    return async (t) => {
-        await enviarA(negocioId, whatsapp, t);
+    return async (t, imagen) => {
+        await enviarA(negocioId, whatsapp, t, imagen);
         await db.execute(
             "INSERT INTO mensajes (negocio_id, numero_cliente, tipo, contenido, agente_proceso, intencion_detectada) VALUES (?, ?, 'salida', ?, ?, 'flujo')",
-            [negocioId, whatsapp, t, AGENTE_PROACTIVO]
+            [negocioId, whatsapp, t || '[imagen]', AGENTE_PROACTIVO]
         );
         await pausa(PAUSA_ENTRE_ENVIOS_MS);
     };

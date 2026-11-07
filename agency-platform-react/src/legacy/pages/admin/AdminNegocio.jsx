@@ -15,6 +15,10 @@ export default function AdminNegocio() {
   const [suspenderRazon, setSuspenderRazon] = useState('');
   const [suspendiendo, setSuspendiendo] = useState(false);
   const [toast, setToast] = useState(null);
+  const [showRegalo, setShowRegalo] = useState(false);
+  const [regaloPlan, setRegaloPlan] = useState('starter');
+  const [regaloDias, setRegaloDias] = useState(30);
+  const [regalando, setRegalando] = useState(false);
 
   useEffect(() => {
     loadNegocio();
@@ -54,6 +58,20 @@ export default function AdminNegocio() {
       setToast({ type: 'error', message: 'Error al actualizar negocio' });
     } finally {
       setSuspendiendo(false);
+    }
+  };
+
+  const regalarPlan = async () => {
+    try {
+      setRegalando(true);
+      const r = await apiService.post(`/api/admin/negocios/${id}/regalo`, { plan: regaloPlan, dias: Number(regaloDias) });
+      setToast({ type: 'success', message: `Plan ${regaloPlan} regalado hasta el ${new Date(r.hasta).toLocaleDateString('es-CO')}` });
+      setShowRegalo(false);
+      loadNegocio();
+    } catch (error) {
+      setToast({ type: 'error', message: error?.response?.data?.error || 'No se pudo regalar el plan' });
+    } finally {
+      setRegalando(false);
     }
   };
 
@@ -221,13 +239,39 @@ export default function AdminNegocio() {
         <Button variant="secondary" onClick={() => navigate(`/admin/negocios/${id}/pedidos`)}>
           Ver pedidos
         </Button>
-        <Button 
-          variant={negocio.suspendido ? 'primary' : 'danger'} 
+        <Button variant="primary" onClick={() => setShowRegalo(true)}>
+          Regalar un mes
+        </Button>
+        <Button
+          variant={negocio.suspendido ? 'primary' : 'danger'}
           onClick={() => setShowSuspenderModal(true)}
         >
           {negocio.suspendido ? 'Reactivar negocio' : 'Suspender negocio'}
         </Button>
       </div>
+
+      <Modal isOpen={showRegalo} onClose={() => setShowRegalo(false)} title="Regalar un plan" size="sm">
+        <div className="form-group">
+          <label>Plan</label>
+          <select value={regaloPlan} onChange={(e) => setRegaloPlan(e.target.value)}>
+            <option value="emprendedor">Emprendedor</option>
+            <option value="starter">Starter</option>
+            <option value="professional">Professional</option>
+            <option value="enterprise">Enterprise</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label>Días de regalo (1 a 90)</label>
+          <input type="number" min="1" max="90" value={regaloDias} onChange={(e) => setRegaloDias(e.target.value)} />
+        </div>
+        <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
+          La cuenta queda como prueba con ese plan sin cobro y al terminar queda vencida hasta que pague. Si ya tiene un plan pagado vigente no se cambia.
+        </p>
+        <div className="modal-actions">
+          <Button variant="ghost" onClick={() => setShowRegalo(false)}>Cancelar</Button>
+          <Button variant="primary" onClick={regalarPlan} loading={regalando}>Regalar</Button>
+        </div>
+      </Modal>
 
       <Modal 
         isOpen={showSuspenderModal} 
