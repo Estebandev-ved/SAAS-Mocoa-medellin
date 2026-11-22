@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authService } from '../services/api';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import api, { authService } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -91,8 +91,44 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
+  // El plan que se ve en pantalla se guardaba solo al iniciar sesión: si el plan cambiaba después (un pago,
+  // un regalo del admin, un vencimiento) el menú y los bloqueos seguían con el plan viejo hasta volver a entrar.
+  // Aquí se consulta el plan real al abrir la app, al volver a la pestaña y cada pocos minutos. El servidor ya
+  // aplica el plan correcto en cada petición; esto solo hace que lo que ves coincida con eso.
+  const ultimaRevision = useRef(0);
+  const refrescarPlan = useCallback(async ({ forzar = false } = {}) => {
+    const ahora = Date.now();
+    if (!forzar && ahora - ultimaRevision.current < 20000) return;   // no más de una consulta cada 20 s
+    ultimaRevision.current = ahora;
+    try {
+      const { data } = await api.get('/suscripcion/actual');
+      if (!data?.plan) return;
+      setUser((prev) => {
+        if (!prev || (prev.plan === data.plan && prev.estado_suscripcion === data.estado)) return prev;
+        const updated = { ...prev, plan: data.plan, estado_suscripcion: data.estado };
+        localStorage.setItem('antigravity_user', JSON.stringify(updated));
+        return updated;
+      });
+    } catch { /* sin conexión o sesión vencida: se queda con lo que ya hay */ }
+  }, []);
+
+  useEffect(() => {
+    if (!token) return undefined;
+    const inicial = setTimeout(() => refrescarPlan({ forzar: true }), 0);
+    const alVolver = () => { if (document.visibilityState === 'visible') refrescarPlan(); };
+    document.addEventListener('visibilitychange', alVolver);
+    window.addEventListener('focus', alVolver);
+    const cada = setInterval(() => refrescarPlan(), 2 * 60 * 1000);
+    return () => {
+      clearTimeout(inicial);
+      document.removeEventListener('visibilitychange', alVolver);
+      window.removeEventListener('focus', alVolver);
+      clearInterval(cada);
+    };
+  }, [token, refrescarPlan]);
+
   return (
-    <AuthContext.Provider value={{ user, token, login, login2fa, logout, register, updateUser, loading, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ user, token, login, login2fa, logout, register, updateUser, refrescarPlan, loading, isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
   );

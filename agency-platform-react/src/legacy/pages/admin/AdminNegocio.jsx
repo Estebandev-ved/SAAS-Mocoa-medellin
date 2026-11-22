@@ -16,7 +16,7 @@ export default function AdminNegocio() {
   const [suspendiendo, setSuspendiendo] = useState(false);
   const [toast, setToast] = useState(null);
   const [showRegalo, setShowRegalo] = useState(false);
-  const [regaloPlan, setRegaloPlan] = useState('starter');
+  const [regaloPlan, setRegaloPlan] = useState('emprendedor');
   const [regaloDias, setRegaloDias] = useState(30);
   const [regalando, setRegalando] = useState(false);
 
