@@ -132,6 +132,15 @@ test('mensaje al cliente distingue agotado de pocas unidades', () => {
     assert.match(t, /Camisa: está agotado/);
 });
 
+test('costo del producto: vacío = desconocido, acepta decimales y rechaza negativos o texto', () => {
+    assert.deepStrictEqual(I.sanearCamposInventario({ costo: '1500.456' }).valores, { costo: 1500.46 });
+    assert.deepStrictEqual(I.sanearCamposInventario({ costo: 0 }).valores, { costo: 0 });
+    assert.deepStrictEqual(I.sanearCamposInventario({ costo: '' }).valores, { costo: null });
+    assert.deepStrictEqual(I.sanearCamposInventario({ costo: null }).valores, { costo: null });
+    assert.deepStrictEqual(I.sanearCamposInventario({ nombre: 'x' }).valores, {});   // si no viene, no se toca
+    for (const mal of [-1, 'abc', 1e12]) assert.ok(I.sanearCamposInventario({ costo: mal }).error, String(mal));
+});
+
 test('pedidosConStockReservado: marca los pedidos con stock descontado y deja de marcar los devueltos', async () => {
     const { pool } = crearBd([camisa, gorra, servicio]);
     await I.descontarPedido(pool, { negocioId: 1, pedidoId: 60, items: [{ producto_id: 1, cantidad: 2 }] });

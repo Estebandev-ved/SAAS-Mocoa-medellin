@@ -198,6 +198,15 @@ function sanearCamposInventario(body = {}) {
         if (sku && !/^[\w\-./]{1,40}$/.test(sku)) return { error: 'El código (SKU) solo puede tener letras, números y - _ . / (máx. 40)' };
         valores.sku = sku || null;
     }
+    // Costo por unidad (lo que le cuesta al dueño). Vacío = desconocido; sirve para calcular cuánto ganó.
+    if (body.costo !== undefined) {
+        if (body.costo === null || body.costo === '') valores.costo = null;
+        else {
+            const n = Number(body.costo);
+            if (!Number.isFinite(n) || n < 0 || n > 1000000000) return { error: 'El costo debe ser un valor en pesos de 0 o más' };
+            valores.costo = Math.round(n * 100) / 100;
+        }
+    }
     return { valores };
 }
 

@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { AjustarStock, HistorialStock, ImportarProductos, descargarProductosCsv } from '../components/inventario/InventarioModales';
 
-const FORM_VACIO = { nombre: '', descripcion: '', precio: '', stock: '', categoria: '', imagen_url: '', restaurante_id: '', controla_stock: false, stock_minimo: '', sku: '' };
+const FORM_VACIO = { nombre: '', descripcion: '', precio: '', costo: '', stock: '', categoria: '', imagen_url: '', restaurante_id: '', controla_stock: false, stock_minimo: '', sku: '' };
 
 // Estado de inventario de un producto que lo controla (null si no lo controla)
 function estadoStock(p) {
@@ -93,6 +93,7 @@ export default function ProductosPage() {
         nombre: form.nombre,
         descripcion: form.descripcion,
         precio: parseFloat(form.precio),
+        costo: form.costo === '' ? null : parseFloat(form.costo),
         stock: parseInt(form.stock) || 0,
         controla_stock: !!form.controla_stock,
         stock_minimo: form.stock_minimo === '' ? null : parseInt(form.stock_minimo),
@@ -134,6 +135,7 @@ export default function ProductosPage() {
       nombre: p.nombre,
       descripcion: p.descripcion || '',
       precio: p.precio,
+      costo: p.costo ?? '',
       stock: p.stock ?? '',
       categoria: p.categoria || '',
       imagen_url: p.imagen_url || '',
@@ -401,6 +403,23 @@ export default function ProductosPage() {
                     className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm placeholder:text-muted focus:outline-none focus:border-accent/50"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs text-muted mb-1" htmlFor="prod-costo">¿Cuánto te cuesta cada uno? (COP, opcional)</label>
+                <input
+                  id="prod-costo" type="number" min="0" inputMode="decimal" value={form.costo} onChange={e => setForm({...form, costo: e.target.value})}
+                  placeholder="Ej: 3500"
+                  className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text text-sm placeholder:text-muted focus:outline-none focus:border-accent/50"
+                />
+                {form.costo !== '' && form.precio !== '' && Number(form.precio) > 0 ? (
+                  <p className={`text-xs mt-1 ${Number(form.precio) - Number(form.costo) < 0 ? 'text-danger-text' : 'text-success'}`}>
+                    {Number(form.precio) - Number(form.costo) < 0
+                      ? `Estás perdiendo $${Math.round(Number(form.costo) - Number(form.precio)).toLocaleString('es-CO')} por cada uno`
+                      : `Ganas $${Math.round(Number(form.precio) - Number(form.costo)).toLocaleString('es-CO')} por cada uno (${Math.round(((Number(form.precio) - Number(form.costo)) / Number(form.precio)) * 100)}%)`}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted mt-1">Con esto la caja te dice cuánto ganaste de verdad, no solo cuánto vendiste.</p>
+                )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

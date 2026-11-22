@@ -2,8 +2,10 @@
 // Los precios SIEMPRE salen de la base (nunca del navegador) y el stock se mueve solo con `inventario.registrarMovimiento`.
 
 const inventario = require('./inventario');
+const fiado = require('./fiado');
 
-const METODOS = ['efectivo', 'nequi', 'tarjeta', 'transferencia', 'otro'];
+// 'fiado' = se lleva el producto y paga después: no entra plata hoy, queda como deuda del cliente (ver fiado.js).
+const METODOS = ['efectivo', 'nequi', 'tarjeta', 'transferencia', 'otro', 'fiado'];
 const MAX_ITEMS = 60;
 const MAX_CANTIDAD = 10000;
 const MAX_MONTO = 1000000000;
@@ -35,8 +37,13 @@ function validarVenta(body = {}) {
         recibido = dinero(body.recibido);
         if (!Number.isFinite(recibido) || recibido < 0 || recibido > MAX_MONTO) return { error: 'El monto recibido no es válido' };
     }
+    let clienteId = null;
+    if (metodo === 'fiado') {
+        clienteId = Number(body.cliente_id);
+        if (!Number.isInteger(clienteId) || clienteId <= 0) return { error: 'Elige a quién le fías' };
+    }
     const nota = typeof body.nota === 'string' ? body.nota.trim().slice(0, 200) : null;
-    return { datos: { items: [...items].map(([producto_id, cantidad]) => ({ producto_id, cantidad })), metodo_pago: metodo, recibido, nota: nota || null } };
+    return { datos: { items: [...items].map(([producto_id, cantidad]) => ({ producto_id, cantidad })), metodo_pago: metodo, recibido, cliente_id: clienteId, nota: nota || null } };
 }
 
 /** Número legible de la venta: M-AAAAMMDD-000123 */
@@ -55,7 +62,7 @@ async function crearVenta(pool, negocioId, datos) {
     return inventario.conTransaccion(pool, async (con) => {
         const ids = datos.items.map((i) => i.producto_id).sort((a, b) => a - b);
         const [prods] = await con.execute(
-            `SELECT id, nombre, precio, controla_stock FROM productos WHERE negocio_id = ? AND activo = 1 AND id IN (${ids.map(() => '?').join(',')}) ORDER BY id`,
+            `SELECT id, nombre, precio, costo, controla_stock FROM productos WHERE negocio_id = ? AND activo = 1 AND id IN (${ids.map(() => '?').join(',')}) ORDER BY id`,
             [negocioId, ...ids]
         );
         const porId = new Map(prods.map((p) => [p.id, p]));
@@ -66,7 +73,9 @@ async function crearVenta(pool, negocioId, datos) {
             if (!p) throw new ErrorVenta('PRODUCTO_NO_ENCONTRADO', 'Un producto ya no existe o está desactivado', 404);
             const precio = dinero(p.precio);
             total = dinero(total + precio * it.cantidad);
-            lineas.push({ p, cantidad: it.cantidad, precio });
+            // El costo se copia a la venta: si el dueño lo cambia después, lo ya vendido no se recalcula.
+            const costo = p.costo === null || p.costo === undefined ? null : dinero(p.costo);
+            lineas.push({ p, cantidad: it.cantidad, precio, costo });
         }
         if (total <= 0) throw new ErrorVenta('TOTAL_INVALIDO', 'El total de la venta debe ser mayor a cero');
         if (total > MAX_MONTO) throw new ErrorVenta('TOTAL_INVALIDO', 'El total es demasiado grande');
@@ -88,8 +97,8 @@ async function crearVenta(pool, negocioId, datos) {
 
         for (const l of lineas) {
             await con.execute(
-                'INSERT INTO ventas_mostrador_items (venta_id, producto_id, nombre, cantidad, precio_unitario) VALUES (?, ?, ?, ?, ?)',
-                [ventaId, l.p.id, l.p.nombre, l.cantidad, l.precio]
+                'INSERT INTO ventas_mostrador_items (venta_id, producto_id, nombre, cantidad, precio_unitario, costo_unitario) VALUES (?, ?, ?, ?, ?, ?)',
+                [ventaId, l.p.id, l.p.nombre, l.cantidad, l.precio, l.costo]
             );
             if (l.p.controla_stock) {
                 await inventario.registrarMovimiento(con, {
@@ -97,6 +106,9 @@ async function crearVenta(pool, negocioId, datos) {
                     motivo: `Venta de mostrador ${numero}`, referenciaTipo: 'mostrador', referenciaId: ventaId,
                 });
             }
+        }
+        if (datos.metodo_pago === 'fiado') {
+            await fiado.registrarCargoDeVenta(con, { negocioId, clienteId: datos.cliente_id, ventaId, monto: total, turnoId: turno, nota: datos.nota });
         }
         const cambio = datos.metodo_pago === 'efectivo' && datos.recibido !== null ? dinero(datos.recibido - total) : null;
         return { id: ventaId, numero, total, metodo_pago: datos.metodo_pago, cambio, turno_id: turno };
@@ -121,6 +133,7 @@ async function anularVenta(pool, negocioId, ventaId) {
             });
         }
         await con.execute("UPDATE ventas_mostrador SET estado = 'anulada', anulada_en = NOW() WHERE id = ?", [ventaId]);
+        await fiado.anularCargosDeVenta(con, negocioId, ventaId);   // si se había fiado, esa deuda deja de contar
         return { id: ventaId, numero: v[0].numero, stock_devuelto: items.length };
     });
 }
@@ -151,12 +164,70 @@ async function resumenTurno(db, negocioId, turno) {
     }
     const totalGastos = dinero(gastos[0] && gastos[0].total ? gastos[0].total : 0);
     const efectivo = metodos.efectivo ? metodos.efectivo.total : 0;
+    // Lo que un cliente abonó en efectivo durante el turno también entró a la caja.
+    const abonosEfectivo = await fiado.abonosEfectivoDelTurno(db, negocioId, turno.id);
     return {
         turno_id: turno.id, abierto_en: turno.abierto_en, monto_inicial: dinero(turno.monto_inicial),
         ventas: cantidadVentas, total_ventas: totalVentas, por_metodo: metodos,
         gastos: totalGastos, cantidad_gastos: Number(gastos[0] ? gastos[0].cantidad : 0),
-        efectivo_esperado: dinero(Number(turno.monto_inicial) + efectivo - totalGastos),
+        abonos_fiado_efectivo: abonosEfectivo,
+        efectivo_esperado: dinero(Number(turno.monto_inicial) + efectivo + abonosEfectivo - totalGastos),
     };
 }
 
-module.exports = { METODOS, ErrorVenta, validarVenta, numeroVenta, turnoAbierto, crearVenta, anularVenta, validarMonto, resumenTurno, dinero };
+// Rangos del "¿Cuánto gané?". Son constantes (nunca vienen del navegador), por eso se pueden poner en el SQL.
+const PERIODOS = {
+    hoy: { etiqueta: 'Hoy', desde: 'CURDATE()' },
+    semana: { etiqueta: 'Últimos 7 días', desde: 'DATE_SUB(CURDATE(), INTERVAL 6 DAY)' },
+    mes: { etiqueta: 'Este mes', desde: "DATE_FORMAT(CURDATE(), '%Y-%m-01')" },
+};
+
+/**
+ * ¿Cuánto gané? Ventas pagadas del período menos lo que costaron los productos y los gastos anotados.
+ * Solo se descuenta el costo de lo que tiene costo: lo que no lo tiene se cuenta aparte (`ventas_sin_costo`)
+ * para no inflar la ganancia con un costo de cero.
+ *   ganancia_bruta = ingresos de lo que tiene costo − su costo      ganancia_neta = ganancia_bruta − gastos
+ */
+async function resumenGanancia(db, negocioId, periodo = 'hoy') {
+    const rango = PERIODOS[periodo] || PERIODOS.hoy;
+    const clave = PERIODOS[periodo] ? periodo : 'hoy';
+    const desde = rango.desde;
+    const [tot] = await db.execute(
+        `SELECT COUNT(DISTINCT v.id) AS ventas,
+                SUM(i.cantidad * i.precio_unitario) AS ingresos,
+                SUM(CASE WHEN i.costo_unitario IS NULL THEN 0 ELSE i.cantidad * i.costo_unitario END) AS costo,
+                SUM(CASE WHEN i.costo_unitario IS NULL THEN 0 ELSE i.cantidad * i.precio_unitario END) AS ingresos_con_costo,
+                SUM(CASE WHEN i.costo_unitario IS NULL THEN i.cantidad * i.precio_unitario ELSE 0 END) AS ventas_sin_costo
+         FROM ventas_mostrador v JOIN ventas_mostrador_items i ON i.venta_id = v.id
+         WHERE v.negocio_id = ? AND v.estado = 'pagada' AND v.created_at >= ${desde}`,
+        [negocioId]
+    );
+    const [gas] = await db.execute(
+        `SELECT SUM(monto) AS total FROM caja_gastos WHERE negocio_id = ? AND created_at >= ${desde}`,
+        [negocioId]
+    );
+    const [top] = await db.execute(
+        `SELECT i.nombre, SUM(i.cantidad) AS unidades, SUM(i.cantidad * (i.precio_unitario - i.costo_unitario)) AS ganancia
+         FROM ventas_mostrador v JOIN ventas_mostrador_items i ON i.venta_id = v.id
+         WHERE v.negocio_id = ? AND v.estado = 'pagada' AND v.created_at >= ${desde} AND i.costo_unitario IS NOT NULL
+         GROUP BY i.nombre ORDER BY ganancia DESC LIMIT 5`,
+        [negocioId]
+    );
+    const t = tot[0] || {};
+    const ingresos = dinero(t.ingresos || 0);
+    const costo = dinero(t.costo || 0);
+    const gananciaBruta = dinero(Number(t.ingresos_con_costo || 0) - costo);
+    const gastos = dinero((gas[0] && gas[0].total) || 0);
+    const sinCosto = dinero(t.ventas_sin_costo || 0);
+    return {
+        periodo: clave, etiqueta: rango.etiqueta,
+        ventas: Number(t.ventas || 0), ingresos, costo, ganancia_bruta: gananciaBruta,
+        gastos, ganancia_neta: dinero(gananciaBruta - gastos),
+        ventas_sin_costo: sinCosto,                       // plata vendida de productos sin costo anotado
+        completo: sinCosto === 0,                         // true = la ganancia cubre todo lo vendido
+        margen: Number(t.ingresos_con_costo || 0) > 0 ? Math.round((gananciaBruta / Number(t.ingresos_con_costo)) * 1000) / 10 : null,
+        mejores: top.map((x) => ({ nombre: x.nombre, unidades: Number(x.unidades), ganancia: dinero(x.ganancia) })),
+    };
+}
+
+module.exports = { METODOS, PERIODOS, ErrorVenta, validarVenta, numeroVenta, turnoAbierto, crearVenta, anularVenta, validarMonto, resumenTurno, resumenGanancia, dinero };

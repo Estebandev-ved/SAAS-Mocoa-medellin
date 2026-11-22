@@ -7,13 +7,14 @@ const { verificarAuth } = require('../middleware/auth');
 const { injectTenantId, checkFeature } = require('../middleware/tenant');
 const inventario = require('../services/inventario');
 const V = require('../services/ventasMostrador');
+const F = require('../services/fiado');
 
 router.use(verificarAuth, injectTenantId, checkFeature('ventaMostrador'));
 const avanzada = checkFeature('cajaAvanzada');
 
 // Errores conocidos con un mensaje claro; lo demás es un 500 genérico.
 function responderError(res, e, etiqueta) {
-    if (e instanceof V.ErrorVenta) return res.status(e.estado).json({ error: e.message, codigo: e.codigo, ...e.detalle });
+    if (e instanceof V.ErrorVenta || e instanceof F.ErrorFiado) return res.status(e.estado).json({ error: e.message, codigo: e.codigo, ...e.detalle });
     if (e instanceof inventario.ErrorInventario) {
         const mensaje = e.codigo === 'STOCK_INSUFICIENTE' ? `No alcanza el stock de "${e.detalle.nombre}": solo hay ${e.detalle.disponible}` : e.message;
         return res.status(e.codigo === 'PRODUCTO_NO_ENCONTRADO' ? 404 : 409).json({ error: mensaje, codigo: e.codigo, ...e.detalle });
@@ -26,10 +27,10 @@ function responderError(res, e, etiqueta) {
 router.get('/productos', async (req, res) => {
     try {
         const [filas] = await db.execute(
-            'SELECT id, nombre, precio, stock, controla_stock, sku, imagen_url FROM productos WHERE negocio_id = ? AND activo = 1 ORDER BY nombre LIMIT 500',
+            'SELECT id, nombre, precio, costo, stock, controla_stock, sku, imagen_url FROM productos WHERE negocio_id = ? AND activo = 1 ORDER BY nombre LIMIT 500',
             [req.negocioId]
         );
-        res.json({ productos: filas.map((p) => ({ ...p, precio: Number(p.precio), controla_stock: !!p.controla_stock })) });
+        res.json({ productos: filas.map((p) => ({ ...p, precio: Number(p.precio), costo: p.costo === null ? null : Number(p.costo), controla_stock: !!p.controla_stock })) });
     } catch (e) { responderError(res, e, 'productos'); }
 });
 
@@ -80,6 +81,30 @@ router.get('/resumen-dia', async (req, res) => {
         for (const f of filas) { por_metodo[f.metodo_pago] = { ventas: Number(f.ventas), total: V.dinero(f.total) }; total = V.dinero(total + Number(f.total)); ventas += Number(f.ventas); }
         res.json({ ventas, total, por_metodo });
     } catch (e) { responderError(res, e, 'resumen del día'); }
+});
+
+// ¿Cuánto gané? ?periodo=hoy|semana|mes. Usa el costo anotado en cada producto.
+router.get('/ganancia', async (req, res) => {
+    try {
+        res.json(await V.resumenGanancia(db, req.negocioId, String(req.query.periodo || 'hoy')));
+    } catch (e) { responderError(res, e, 'ganancia'); }
+});
+
+// ---- Fiado: quién te debe y cuánto ----
+router.get('/fiado', async (req, res) => {
+    try { res.json(await F.listarClientes(db, req.negocioId)); } catch (e) { responderError(res, e, 'listar fiado'); }
+});
+
+router.post('/fiado/clientes', async (req, res) => {
+    try { res.status(201).json({ cliente: await F.crearCliente(db, req.negocioId, req.body) }); } catch (e) { responderError(res, e, 'crear cliente de fiado'); }
+});
+
+router.get('/fiado/clientes/:id', async (req, res) => {
+    try { res.json(await F.detalleCliente(db, req.negocioId, Number(req.params.id))); } catch (e) { responderError(res, e, 'detalle de fiado'); }
+});
+
+router.post('/fiado/clientes/:id/abonos', async (req, res) => {
+    try { res.status(201).json(await F.registrarAbono(db, req.negocioId, Number(req.params.id), req.body)); } catch (e) { responderError(res, e, 'registrar abono'); }
 });
 
 // ---- Turnos de caja (plan Professional en adelante) ----
