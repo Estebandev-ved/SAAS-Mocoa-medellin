@@ -422,8 +422,10 @@ router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
+        // Se desactiva (no se borra, para conservar ventas e historial de inventario) y se libera el SKU:
+        // es único por negocio, y si no, el código quedaría ocupado por un producto que ya no se ve.
         const [result] = await db.execute(
-            'UPDATE productos SET activo = 0 WHERE id = ? AND negocio_id = ?',
+            'UPDATE productos SET activo = 0, sku = NULL WHERE id = ? AND negocio_id = ?',
             [id, req.negocioId]
         );
 

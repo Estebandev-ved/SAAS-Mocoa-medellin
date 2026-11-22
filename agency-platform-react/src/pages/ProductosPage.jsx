@@ -61,7 +61,8 @@ export default function ProductosPage() {
 
   const cargarProductos = async () => {
     try {
-      const res = await api.get('/productos');
+      // Eliminar marca el producto como inactivo (queda su historial): la lista solo muestra los activos.
+      const res = await api.get('/productos', { params: { activo: true } });
       setProductos(res.data.productos || res.data.data || []);
     } catch {
       setToast({ type: 'error', message: 'Error al cargar productos' });

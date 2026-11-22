@@ -29,6 +29,15 @@ function crearBd(productos) {
             return [f && f.negocio_id === p[1] ? [{ id: f.id, nombre: f.nombre, stock: f.stock }] : []];
         }
         if (q.startsWith('SELECT * FROM productos WHERE id = ?')) return [[estado.productos.get(Number(p[0]))].filter(Boolean)];
+        // Listado de la pantalla (con y sin ?activo=) y eliminar (desactiva y libera el SKU).
+        if (q.startsWith('SELECT * FROM productos WHERE negocio_id = ? AND activo = ? ORDER BY created_at DESC')) return [[...estado.productos.values()].filter((x) => x.negocio_id === p[0] && !!x.activo === !!p[1])];
+        if (q.startsWith('SELECT * FROM productos WHERE negocio_id = ? ORDER BY created_at DESC')) return [[...estado.productos.values()].filter((x) => x.negocio_id === p[0])];
+        if (q.startsWith('UPDATE productos SET activo = 0, sku = NULL WHERE id = ? AND negocio_id = ?')) {
+            const f = estado.productos.get(Number(p[0]));
+            if (!f || f.negocio_id !== p[1]) return [{ affectedRows: 0 }];
+            f.activo = 0; f.sku = null;
+            return [{ affectedRows: 1 }];
+        }
         if (q.startsWith('UPDATE productos SET stock = ?')) { estado.productos.get(Number(p[1])).stock = p[0]; return [{ affectedRows: 1 }]; }
         if (q.startsWith('UPDATE productos SET ') && q.endsWith('WHERE id = ? AND negocio_id = ?')) {
             const cols = q.slice('UPDATE productos SET '.length, q.indexOf(' WHERE')).split(', ').map((c) => c.replace(' = ?', ''));
@@ -151,6 +160,23 @@ test('POST: crea con inventario controlado y deja el stock inicial en el histori
         assert.deepStrictEqual([p.stock, p.controla_stock, p.stock_minimo, p.sku], [7, 1, 2, 'ZAP-1']);
         assert.deepStrictEqual(s.estado.movs.map((m) => [m.tipo, m.cantidad, m.motivo]), [['entrada', 7, 'Inventario inicial']]);
         assert.strictEqual((await s.pedir('POST', '/', { nombre: 'Otro', precio: 1, stock: -4 })).estado, 400);
+    } finally { await s.cerrar(); }
+});
+
+test('eliminar: el producto sale de la lista de activos, su historial se conserva y su SKU queda libre para otro', async () => {
+    const s = await levantar([camisa, gorra]);
+    try {
+        const del = await s.pedir('DELETE', '/1');
+        assert.strictEqual(del.estado, 200);
+        const lista = await s.pedir('GET', '/?activo=true');
+        assert.deepStrictEqual(lista.json.productos.map((p) => p.nombre), ['Gorra']);   // la pantalla pide solo activos
+        assert.ok(s.estado.productos.has(1), 'no se borra de la base: se desactiva');
+        assert.strictEqual(s.estado.productos.get(1).sku, null);
+        // Crear otro producto con el mismo código ya no choca con el eliminado.
+        const csv = ['nombre;sku;precio;stock', 'Camisa nueva;CAM-1;40000;3'].join('\n');
+        const r = await s.pedir('POST', '/importar', { csv, aplicar: true });
+        assert.deepStrictEqual([r.json.creados, r.json.errores.length], [1, 0]);
+        assert.strictEqual((await s.pedir('DELETE', '/999')).estado, 404);
     } finally { await s.cerrar(); }
 });
 
