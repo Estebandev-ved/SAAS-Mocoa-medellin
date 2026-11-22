@@ -38,6 +38,29 @@ function estadoParaCaja(negocio, ahora = new Date()) {
     };
 }
 
+// Enlaces: cuentas de Antigravity que usan un negocio que YA existe en la caja (p. ej. el dueño, cuyos datos de
+// siempre están como negocio 1). Sin mover ningún dato: el token le dice a la caja "este es el negocio N".
+//   CAJA_ENLACES="dueno@correo.co:1,42:5"   → la clave es el correo o el id de Antigravity; el valor, el negocio de la caja.
+// Cualquier otra cuenta entra a su propio negocio, que es el número de su cuenta en Antigravity.
+function parsearEnlaces(texto) {
+    const porEmail = new Map();
+    const porId = new Map();
+    for (const par of String(texto || '').split(',')) {
+        const corte = par.lastIndexOf(':');
+        if (corte < 1) continue;
+        const clave = par.slice(0, corte).trim();
+        const destino = Number(par.slice(corte + 1).trim());
+        if (!clave || !Number.isInteger(destino) || destino <= 0) continue;
+        if (clave.includes('@')) porEmail.set(clave.toLowerCase(), destino);
+        else if (/^\d+$/.test(clave)) porId.set(Number(clave), destino);
+    }
+    return { porEmail, porId };
+}
+
+// El negocio 1 de la caja es el del dueño (el del PIN). Si una cuenta de Antigravity cualquiera tuviera el id 1,
+// entraría a esos datos: por eso nadie llega al negocio reservado si no está enlazado a propósito.
+const NEGOCIO_RESERVADO_POR_DEFECTO = 1;
+
 // Fábrica para poder probar el handler sin base de datos ni servidor.
 function crearTokenHandler({ pool = db, env = process.env, ahora = () => new Date() } = {}) {
     return async function emitirTokenCaja(req, res) {
@@ -74,8 +97,23 @@ function crearTokenHandler({ pool = db, env = process.env, ahora = () => new Dat
 
             const { estado, vigente_hasta } = estadoParaCaja(rows[0], ahora());
 
+            const enlaces = parsearEnlaces(env.CAJA_ENLACES);
+            const correo = String(req.negocio.email || '').trim().toLowerCase();
+            const enlazado = enlaces.porEmail.get(correo) ?? enlaces.porId.get(id);
+            const negocioCaja = enlazado ?? id;
+            const crudo = String(env.CAJA_NEGOCIO_RESERVADO ?? '').trim();
+            const reservado = /^\d+$/.test(crudo) ? Number(crudo) : NEGOCIO_RESERVADO_POR_DEFECTO;   // 0 lo apaga
+            if (enlazado === undefined && negocioCaja === reservado) {
+                console.error(`[Caja] La cuenta ${id} coincide con el negocio reservado ${reservado} de la caja y no está enlazada: no se emite token`);
+                return res.status(403).json({
+                    error: 'Esta cuenta todavía no se puede conectar a la caja. Escríbenos y la activamos.',
+                    codigo: 'CAJA_NEGOCIO_RESERVADO'
+                });
+            }
+            if (enlazado !== undefined) console.log(`[Caja] Cuenta ${id} enlazada al negocio ${negocioCaja} de la caja`);
+
             const token = jwt.sign(
-                { negocio_id: id, nombre, plan, estado, vigente_hasta },
+                { negocio_id: negocioCaja, nombre, plan, estado, vigente_hasta },
                 secreto,
                 { algorithm: 'HS256', issuer: ISSUER, audience: AUDIENCE, expiresIn: EXPIRA_EN }
             );
@@ -95,3 +133,4 @@ router.post('/token', verificarAuth, injectTenantId, crearTokenHandler());
 module.exports = router;
 module.exports.crearTokenHandler = crearTokenHandler;
 module.exports.estadoParaCaja = estadoParaCaja;
+module.exports.parsearEnlaces = parsearEnlaces;
