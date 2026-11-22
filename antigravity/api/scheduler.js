@@ -2,6 +2,8 @@ const db = require('../db/config');
 const { procesarCampanasPendientes, cerrarCampanasHuerfanas } = require('./services/campaignSender');
 const { procesarEsperas, revisarInactivos } = require('./services/flujosEjecucion');
 const { isAutomationActive, yaSeNotifico, registrarNotificacion, enviarWhatsApp } = require('./services/automationsService');
+const renovacion = require('./services/renovacion');
+const { enviarCorreo } = require('./services/correo');
 
 // Scheduler liviano en proceso (mismo patrón que el setInterval de stats de
 // agentes que ya existía en index.js) — sin dependencias nuevas ni un
@@ -189,30 +191,16 @@ async function revisarRecuperacionPedidos() {
     }
 }
 
-// Avisa al dueño (WhatsApp + notificación del panel) 3 días y 1 día antes de que
-// venza su plan o su prueba, ya que el pago es único por ciclo (sin cobro recurrente).
+// Avisa al dueño (correo + WhatsApp si el negocio lo tiene + notificación del panel) 3 días y 1 día
+// antes de que venza su plan o su prueba, el día que vence y como último aviso unos días después.
+// El pago es único por ciclo (sin cobro recurrente), así que esto es lo que automatiza la renovación.
+// La lógica vive en services/renovacion.js (probada en test/unit/renovacion.test.js).
 async function revisarRenovaciones() {
     try {
-        const [negocios] = await db.execute(
-            `SELECT id, nombre, whatsapp, plan, suscripcion_activa, suscripcion_inicio, suscripcion_fin, trial_hasta
-             FROM negocios WHERE activo = 1 AND rol = 'negocio'`
-        );
-        for (const n of negocios) {
-            const enTrial = !!n.trial_hasta && !n.suscripcion_inicio;
-            const fin = enTrial ? n.trial_hasta : (n.suscripcion_activa ? n.suscripcion_fin : null);
-            if (!fin) continue;
-            const dias = Math.ceil((new Date(fin).getTime() - Date.now()) / 86400000);
-            if (dias < 1 || dias > 3) continue;
-            const umbral = dias === 1 ? 1 : 3;
-            const ref = `${n.id}-${new Date(fin).toISOString().slice(0, 10)}-${umbral}`;
-            if (await yaSeNotifico(n.id, 'renovacion_plan', ref)) continue;
-
-            const que = enTrial ? 'tu prueba gratuita' : 'tu plan';
-            const mensaje = `⏰ ${que} de ${n.nombre} vence en ${dias} día${dias === 1 ? '' : 's'}. Renuévalo desde Suscripción para que tu bot no se detenga.`;
-            const enviado = n.whatsapp ? await enviarWhatsApp(n.id, n.whatsapp, mensaje) : false;
-            await registrarNotificacion(n.id, 'renovacion_plan', 'Tu plan está por vencer', mensaje, ref, { dias, enviado_whatsapp: enviado });
-            console.log(`[Scheduler] Aviso de renovación: negocio ${n.id}, vence en ${dias} día(s)`);
-        }
+        await renovacion.revisarRenovaciones({
+            db, yaSeNotifico, registrarNotificacion, enviarWhatsApp, enviarCorreo,
+            urlApp: `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '')}/suscripcion`,
+        });
     } catch (error) {
         console.error('[Scheduler] Error en revisarRenovaciones:', error.code || error.message);
     }
