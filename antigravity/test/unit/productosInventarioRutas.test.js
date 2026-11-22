@@ -168,8 +168,10 @@ test('eliminar: el producto sale de la lista de activos, su historial se conserv
     try {
         const del = await s.pedir('DELETE', '/1');
         assert.strictEqual(del.estado, 200);
-        const lista = await s.pedir('GET', '/?activo=true');
-        assert.deepStrictEqual(lista.json.productos.map((p) => p.nombre), ['Gorra']);   // la pantalla pide solo activos
+        const lista = await s.pedir('GET', '/');
+        assert.deepStrictEqual(lista.json.productos.map((p) => p.nombre), ['Gorra']);   // sin filtro: solo activos (así lo ven todas las pantallas)
+        assert.deepStrictEqual((await s.pedir('GET', '/?activo=true')).json.productos.map((p) => p.nombre), ['Gorra']);
+        assert.deepStrictEqual((await s.pedir('GET', '/?activo=false')).json.productos.map((p) => p.nombre), ['Camisa']);   // los eliminados, si se piden
         assert.ok(s.estado.productos.has(1), 'no se borra de la base: se desactiva');
         assert.strictEqual(s.estado.productos.get(1).sku, null);
         // Crear otro producto con el mismo código ya no choca con el eliminado.

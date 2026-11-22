@@ -120,10 +120,10 @@ router.get('/', async (req, res) => {
         let whereClause = 'WHERE negocio_id = ?';
         const params = [req.negocioId];
 
-        if (activo !== undefined) {
-            whereClause += ' AND activo = ?';
-            params.push(activo === 'true');
-        }
+        // Eliminar solo desactiva el producto: por defecto el listado trae únicamente los activos, así ninguna
+        // pantalla (lista, checklist, acciones sugeridas) cuenta ni muestra los eliminados. ?activo=false los pide.
+        whereClause += ' AND activo = ?';
+        params.push(activo === undefined ? true : activo === 'true');
         if (restaurante_id !== undefined) {
             whereClause += restaurante_id === '' || restaurante_id === 'sin_restaurante'
                 ? ' AND restaurante_id IS NULL'
