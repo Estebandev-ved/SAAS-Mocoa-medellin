@@ -16,7 +16,9 @@ export default function CajaPage() {
   // El plan del usuario viene del login; el servidor es quien decide de verdad
   // (responde 403 si el plan no incluye la caja), así que aquí solo se usa para
   // mostrar el mensaje correcto desde el principio.
-  const incluida = hasFeature('caja') && !sinPlan;
+  // La marca de la caja está dentro de `features` en planFeatures.js: con 'caja' a secas la respuesta era siempre
+  // "no" y ni el plan Emprendedor podía abrir la caja desde esta pantalla.
+  const incluida = hasFeature('features.caja') && !sinPlan;
 
   async function abrirCaja() {
     // La pestaña se abre ANTES de pedir el token, dentro del clic del usuario:
