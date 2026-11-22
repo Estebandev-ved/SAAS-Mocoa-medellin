@@ -51,8 +51,9 @@ router.get('/negocios', async (req, res) => {
         const plan = req.query.plan;
         const estado = req.query.estado;
 
-        let whereClause = "n.rol = 'negocio'";
-        let params = [];
+        // También aparece tu propia cuenta de admin: tu negocio vive en esa misma cuenta y así puedes darle plan.
+        let whereClause = "(n.rol = 'negocio' OR n.id = ?)";
+        let params = [req.negocioId];
 
         if (buscar) {
             whereClause += ' AND (n.nombre LIKE ? OR n.email_dueno LIKE ?)';
@@ -123,8 +124,8 @@ router.get('/negocios/:id', async (req, res) => {
                     (SELECT COALESCE(SUM(total), 0) FROM pedidos WHERE negocio_id = n.id) as total_ventas,
                     (SELECT COUNT(*) FROM agente_logs WHERE negocio_id = n.id) as total_interacciones_ia
              FROM negocios n
-             WHERE n.id = ? AND n.rol = 'negocio'`,
-            [id]
+             WHERE n.id = ? AND (n.rol = 'negocio' OR n.id = ?)`,
+            [id, req.negocioId]
         );
 
         if (negocio.length === 0) {
@@ -598,7 +599,7 @@ router.post('/negocios/:id/regalo', async (req, res) => {
     try {
         const v = regaloPlan.validarRegalo(req.body || {});
         if (v.error) return res.status(400).json({ error: v.error });
-        const r = await regaloPlan.regalarPlan(Number(req.params.id), v);
+        const r = await regaloPlan.regalarPlan(Number(req.params.id), v, req.negocioId);
         if (!r.ok) {
             return res.status(r.motivo === 'no_existe' ? 404 : 409).json({
                 error: r.motivo === 'no_existe' ? 'Negocio no encontrado' : 'Esta cuenta tiene un plan pagado vigente: no se le cambia el plan con un regalo',

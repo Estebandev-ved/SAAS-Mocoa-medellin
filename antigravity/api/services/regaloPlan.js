@@ -20,11 +20,13 @@ function validarRegalo({ plan, dias }) {
 /**
  * Regala el plan a una cuenta (por id). No toca cuentas con un ciclo pagado vigente: se les extendería
  * a mano para no pisar lo que ya pagaron. Devuelve { ok, id, hasta } o { ok:false, id, motivo }.
+ * Las cuentas de admin no reciben regalos, salvo la propia (`propioId`): el dueño de la plataforma suele
+ * tener su negocio en la misma cuenta que usa para administrar.
  */
-async function regalarPlan(negocioId, { plan, dias }) {
+async function regalarPlan(negocioId, { plan, dias }, propioId = null) {
     const [filas] = await db.execute(
-        "SELECT id, suscripcion_inicio, suscripcion_fin, suscripcion_activa FROM negocios WHERE id = ? AND (rol IS NULL OR rol = 'negocio')",
-        [negocioId]
+        "SELECT id, suscripcion_inicio, suscripcion_fin, suscripcion_activa FROM negocios WHERE id = ? AND (rol IS NULL OR rol = 'negocio' OR id = ?)",
+        [negocioId, propioId === null || propioId === undefined ? -1 : propioId]
     );
     if (filas.length === 0) return { ok: false, id: negocioId, motivo: 'no_existe' };
     const n = filas[0];

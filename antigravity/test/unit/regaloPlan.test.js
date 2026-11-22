@@ -7,7 +7,8 @@ const actualizaciones = [];
 const db = {
     async execute(sql, p = []) {
         const q = sql.replace(/\s+/g, ' ').trim();
-        if (q.startsWith('SELECT id, suscripcion_inicio')) { const c = cuentas.get(p[0]); return [c && c.rol !== 'admin' ? [c] : []]; }
+        // p[1] = id de la cuenta de admin que regala; solo a esa cuenta se le permite aunque sea admin.
+        if (q.startsWith('SELECT id, suscripcion_inicio')) { const c = cuentas.get(p[0]); return [c && (!c.rol || c.rol === 'negocio' || c.id === p[1]) ? [c] : []]; }
         if (q.startsWith('SELECT id FROM negocios WHERE LOWER(email_dueno)')) { const c = [...cuentas.values()].find((x) => x.email === p[0] && x.rol !== 'admin'); return [c ? [{ id: c.id }] : []]; }
         if (q.startsWith('UPDATE negocios SET plan = ?')) { actualizaciones.push(p); const c = cuentas.get(p[3]); c.plan = p[0]; return [{ affectedRows: 1 }]; }
         if (q.startsWith('SELECT trial_hasta')) return [[{ trial_hasta: '2026-12-01' }]];
@@ -43,6 +44,15 @@ test('regala el plan a una cuenta nueva y a una con plan vencido; no pisa un pla
     assert.strictEqual(cuentas.get(1).plan, 'professional');
     assert.strictEqual(cuentas.get(3).plan, 'starter');
     assert.deepStrictEqual(actualizaciones[0], ['professional', 30, 30, 1]);
+});
+
+test('un admin puede regalarse plan a su propia cuenta (su negocio vive ahí), pero no a la de otro admin', async () => {
+    cuentas.set(5, { id: 5, email: 'dueno@x.co', plan: 'starter', rol: 'admin', suscripcion_inicio: null, suscripcion_fin: null, suscripcion_activa: 0 });
+    cuentas.set(6, { id: 6, email: 'otro-admin@x.co', plan: 'starter', rol: 'superadmin', suscripcion_inicio: null, suscripcion_fin: null, suscripcion_activa: 0 });
+    assert.strictEqual((await regalo.regalarPlan(5, { plan: 'professional', dias: 30 }, 5)).ok, true);   // la propia: sí
+    assert.strictEqual(cuentas.get(5).plan, 'professional');
+    assert.strictEqual((await regalo.regalarPlan(6, { plan: 'professional', dias: 30 }, 5)).motivo, 'no_existe');   // la de otro admin: no
+    assert.strictEqual((await regalo.regalarPlan(5, { plan: 'professional', dias: 30 })).motivo, 'no_existe');      // sin indicar quién regala: no
 });
 
 test('por correos: informa cuenta por cuenta, ignora repetidos y mayúsculas', async () => {
