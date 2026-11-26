@@ -211,7 +211,7 @@ const MODULOS = [
   {
     id: 'caja',
     icon: Store,
-    titulo: 'Caja (plan Emprendedor)',
+    titulo: 'Caja (planes Emprendedor y Universitario)',
     resumen: 'Inventario, ventas y plata de tu emprendimiento.',
     que: 'Una caja sencilla para llevar tu inventario y tus ventas sin necesitar el bot de WhatsApp.',
     como: ['Carga tu inventario.', 'Registra cada venta apenas ocurra.', 'Revisa el resumen para saber cómo va tu plata.'],

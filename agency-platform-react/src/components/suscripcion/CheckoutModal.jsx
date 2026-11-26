@@ -2,6 +2,7 @@ import { Check, Loader2, Lock, AlertTriangle } from 'lucide-react';
 import Modal from './Modal';
 import Illustration, { Character } from '../Illustration';
 import { formatPrice } from './format';
+import VerificarUniversitario from './VerificarUniversitario';
 
 const BTN_PRIMARIO =
   'h-12 px-6 rounded-xl bg-accent hover:bg-accent2 text-white text-base font-semibold inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed';
@@ -40,7 +41,7 @@ function NotaDePago({ modo, reiniciaCiclo }) {
   return null;
 }
 
-export default function CheckoutModal({ info, cargando, error, modo, enviando, onConfirm, onClose }) {
+export default function CheckoutModal({ info, cargando, error, modo, enviando, onConfirm, onClose, onVerificado }) {
   const destino = info?.plan_destino;
   const sinPagos = info && modo === 'no_disponible';
   const hayBloqueo = !!(info && (info.bloqueos?.length || info.motivo_bloqueo));
@@ -79,7 +80,11 @@ export default function CheckoutModal({ info, cargando, error, modo, enviando, o
                   <p className="font-head text-lg font-bold text-text leading-6">
                     ¡Estás a un paso de activar {destino.nombre}!
                   </p>
-                  <p className="text-sm text-muted mt-0.5">Revisa tu pedido y listo: tu bot sigue vendiendo por ti.</p>
+                  <p className="text-sm text-muted mt-0.5">
+                    {info.plan_destino.id === 'universitario' || info.plan_destino.id === 'emprendedor'
+                      ? 'Revisa tu pedido y listo: tu caja te dice cuánto vendes y cuánto ganas.'
+                      : 'Revisa tu pedido y listo: tu bot sigue vendiendo por ti.'}
+                  </p>
                 </div>
               </div>
 
@@ -115,7 +120,9 @@ export default function CheckoutModal({ info, cargando, error, modo, enviando, o
 
               <NotaDePago modo={modo} reiniciaCiclo={info.reinicia_ciclo} />
 
-              {(hayBloqueo || sinPagos) && (
+              {info.requiere_verificacion_universitaria && <VerificarUniversitario onVerificado={onVerificado} />}
+
+              {(hayBloqueo || sinPagos) && !info.requiere_verificacion_universitaria && (
                 <div className="flex items-start gap-3 rounded-xl border border-danger/40 bg-danger/5 px-4 py-3" role="alert">
                   <AlertTriangle size={18} className="text-danger-text mt-0.5 shrink-0" aria-hidden="true" />
                   <div className="text-sm text-danger-text space-y-1">

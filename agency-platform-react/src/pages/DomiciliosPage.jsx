@@ -36,6 +36,7 @@ import { useHitos } from '../context/HitosContext';
 import Illustration from '../components/Illustration';
 
 import { useConfirm } from '../context/ConfirmContext';
+import { esPlanCaja } from '../utils/planFeatures';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3002';
 
 // Mismas categorías que el domiciliario elige al reportar un problema
@@ -116,7 +117,7 @@ export default function DomiciliosPage() {
   }, []);
 
   const effectivePlan = apiPlan || 'starter';
-  const domiciliosAllowed = effectivePlan !== 'starter' && effectivePlan !== 'emprendedor';
+  const domiciliosAllowed = effectivePlan !== 'starter' && !esPlanCaja(effectivePlan);
 
   const [activeTab, setActiveTab] = useState('pendientes');
   const [pendientes, setPendientes] = useState([]);

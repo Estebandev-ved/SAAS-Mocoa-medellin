@@ -26,7 +26,8 @@ Estado: **borrador v1** (22 nov 2026). Sale de la conversación con el fundador.
 - **Segunda venta (más adelante, mismo cliente):** si además venden por WhatsApp, se les ofrece el bot (Starter en adelante).
 - **Caso de éxito #0:** el negocio de granizados del fundador. Documentar con números reales (ventas, merma, tiempo ahorrado) para usarlo en la landing.
 - **Cómo se llega:** conversaciones directas de 15 minutos con emprendedores de universidades; mes de regalo con el botón **Regalar un mes** del admin; que el primer día ya registren 5 productos y 1 venta (importar Excel/plantilla).
-- **Precio (decisión tomada por ahora):** no bajar de $25.000 todavía. Primero **regalar el primer mes** y medir. Si en 10 conversaciones el precio es el motivo principal del «no», se crea un plan universitario ($15.000 a $19.000 o anual con descuento). Bajar el precio sin datos regala margen.
+- **Plan Universitario creado (25 nov 2026, a pedido del fundador):** la misma Caja por **$15.000/mes** para estudiantes que verifican el correo de su universidad (vale un semestre). Emprendedor sigue en $25.000 para el resto. Medir cuántos de los primeros clientes entran por Universitario y cuántos renuevan al vencer la verificación.
+- **Precio (decisión anterior, 22 nov):** no bajar de $25.000 todavía. Primero **regalar el primer mes** y medir. Si en 10 conversaciones el precio es el motivo principal del «no», se crea un plan universitario ($15.000 a $19.000 o anual con descuento). Bajar el precio sin datos regala margen.
 
 ### Etapa 2: Mocoa · negocios de domicilio con bot
 

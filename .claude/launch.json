@@ -7,6 +7,27 @@
       "runtimeArgs": ["run", "dev"],
       "port": 5173,
       "cwd": "agency-platform-react"
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start"],
+      "port": 3002,
+      "cwd": "antigravity"
+    },
+    {
+      "name": "api-sin-correo",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start"],
+      "port": 3002,
+      "cwd": "antigravity",
+      "env": { "SMTP_USER": "", "SMTP_PASS": "" }
+    },
+    {
+      "name": "caja-demo",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [".claude/caja-demo.mjs"],
+      "port": 5180
     }
   ]
 }

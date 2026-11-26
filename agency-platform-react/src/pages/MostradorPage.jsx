@@ -127,7 +127,7 @@ export default function MostradorPage() {
       <div className="max-w-xl mx-auto p-6 text-center">
         <Lock className="w-8 h-8 mx-auto text-muted mb-3" />
         <h1 className="font-head text-xl text-text mb-2">Venta de mostrador</h1>
-        <p className="text-sm text-muted">Cobrar en el local con tu inventario viene en los planes Inicial, Profesional y Empresarial. El plan Emprendedor usa la Caja.</p>
+        <p className="text-sm text-muted">Cobrar en el local con tu inventario viene en los planes Inicial, Profesional y Empresarial. Los planes Emprendedor y Universitario usan la Caja.</p>
       </div>
     );
   }

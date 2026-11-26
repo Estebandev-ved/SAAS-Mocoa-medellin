@@ -1,6 +1,7 @@
 import { Check, Loader2, Minus, AlertTriangle } from 'lucide-react';
 import Modal from './Modal';
 import { formatDate, formatLimite, formatPrice } from './format';
+import VerificarUniversitario from './VerificarUniversitario';
 
 const BTN_PRIMARIO =
   'h-11 px-5 rounded-xl bg-accent hover:bg-accent2 text-white text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed';
@@ -60,7 +61,7 @@ function Lista({ titulo, items, icono, color }) {
 
 const TITULO = { activar: 'Elegir plan', upgrade: 'Mejorar tu plan', downgrade: 'Cambiar a un plan menor' };
 
-export default function CambioPlanModal({ info, cargando, error, modo, enviando, onConfirm, onClose }) {
+export default function CambioPlanModal({ info, cargando, error, modo, enviando, onConfirm, onClose, onVerificado }) {
   const titulo = info ? TITULO[info.tipo] || 'Cambiar de plan' : 'Cambiar de plan';
   const sinPagos = info && info.tipo !== 'downgrade' && modo === 'no_disponible';
   const hayBloqueo = !!(info && (info.bloqueos?.length || info.motivo_bloqueo));
@@ -90,7 +91,9 @@ export default function CambioPlanModal({ info, cargando, error, modo, enviando,
 
           <Resumen info={info} modo={modo} />
 
-          {(info.bloqueos?.length > 0 || info.motivo_bloqueo || sinPagos) && (
+          {info.requiere_verificacion_universitaria && <VerificarUniversitario onVerificado={onVerificado} />}
+
+          {(info.bloqueos?.length > 0 || (info.motivo_bloqueo && !info.requiere_verificacion_universitaria) || sinPagos) && (
             <div className="flex items-start gap-3 rounded-xl border border-danger/40 bg-danger/5 px-4 py-3" role="alert">
               <AlertTriangle size={18} className="text-danger-text mt-0.5 shrink-0" aria-hidden="true" />
               <div className="text-sm text-danger-text space-y-1">

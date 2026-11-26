@@ -8,7 +8,8 @@ const regaloPlan = require('../services/regaloPlan');
 
 const INSTANCE_MANAGER_URL = process.env.INSTANCE_MANAGER_URL || 'http://localhost:3001';
 
-const PRECIOS_PLAN = { starter: 89000, professional: 189000, enterprise: 449000 };
+// Precios desde la fuente única (antes estaban copiados aquí y faltaban Emprendedor y Universitario en el MRR).
+const PRECIOS_PLAN = Object.fromEntries(Object.values(require('../../config/planConfig').PLANS).map((p) => [p.id, p.price]));
 
 const DEFAULT_CONFIG = {
     plataforma: {

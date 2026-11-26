@@ -18,7 +18,7 @@ const PlanIcon = ({ plan, size = 16 }) => {
   const c = 'text-[#E53935]';
   if (plan === 'enterprise') return <Crown size={size} className={c} />;
   if (plan === 'professional') return <Star size={size} className={c} />;
-  if (plan === 'emprendedor') return <Store size={size} className={c} />;
+  if (plan === 'emprendedor' || plan === 'universitario') return <Store size={size} className={c} />;
   return <Shield size={size} className="text-[#A0A0A0]" />;
 };
 

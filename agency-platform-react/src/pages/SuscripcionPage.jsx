@@ -17,7 +17,7 @@ import PagoResultado from '../components/suscripcion/PagoResultado';
 import CancelarModal from '../components/suscripcion/CancelarModal';
 import { mensajeDeError } from '../components/suscripcion/format';
 
-const ORDEN = ['emprendedor', 'starter', 'professional', 'enterprise'];
+const ORDEN = ['universitario', 'emprendedor', 'starter', 'professional', 'enterprise'];
 
 // Cómo se relaciona cada plan con el que tiene el negocio. Mientras no haya un
 // ciclo pagado (prueba, vencida, sin activar) ningún plan es "el actual":
@@ -321,6 +321,7 @@ export default function SuscripcionPage() {
             enviando={ocupado}
             onConfirm={confirmarCambio}
             onClose={() => setCambio(null)}
+            onVerificado={() => abrirCambio(cambio.planId)}
           />
         );
       })()}

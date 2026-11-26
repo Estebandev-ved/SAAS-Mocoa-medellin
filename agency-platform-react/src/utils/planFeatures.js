@@ -138,6 +138,13 @@ const planFeatures = {
   },
 };
 
+// Universitario es la misma Caja que Emprendedor, más barata, para estudiantes con correo de la universidad.
+planFeatures.universitario = { ...planFeatures.emprendedor, nombre: 'Universitario', precio: 15000 };
+
+// Planes que solo venden la Caja (app aparte), sin bot de WhatsApp.
+export const PLANES_CAJA = ['universitario', 'emprendedor'];
+export const esPlanCaja = (plan) => PLANES_CAJA.includes(plan);
+
 export function getPlanFeatures(plan) {
   return planFeatures[plan] || planFeatures.starter;
 }
@@ -171,7 +178,7 @@ export function getLimit(plan, limitKey) {
 }
 
 export function getPlanUpgradeMessage(plan, feature) {
-  const plans = ['emprendedor', 'starter', 'professional', 'enterprise'];
+  const plans = ['universitario', 'emprendedor', 'starter', 'professional', 'enterprise'];
   const currentIndex = plans.indexOf(plan);
 
   for (let i = currentIndex + 1; i < plans.length; i++) {

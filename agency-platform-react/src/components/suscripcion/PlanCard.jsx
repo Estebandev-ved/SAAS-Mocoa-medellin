@@ -1,4 +1,4 @@
-import { Check, Star } from 'lucide-react';
+import { Check, GraduationCap, Star } from 'lucide-react';
 import { formatLimite, formatPrice } from './format';
 
 // relacion: 'actual' | 'sube' | 'baja' | 'elegir' (prueba, vencida o sin activar: cualquier plan se paga completo)
@@ -26,6 +26,11 @@ export default function PlanCard({ plan, relacion, onSelect, bloqueado }) {
       )}
 
       <h3 className="font-head text-xl font-bold text-text">{plan.nombre}</h3>
+      {plan.requiere_correo_universitario && (
+        <p className="mt-1 text-xs font-semibold text-accent inline-flex items-center gap-1">
+          <GraduationCap size={14} aria-hidden="true" /> Para estudiantes, con tu correo de la universidad
+        </p>
+      )}
       <p className="mt-3">
         <span className="font-head text-3xl font-bold text-text">{formatPrice(plan.precio)}</span>
         <span className="text-muted text-sm"> /mes</span>

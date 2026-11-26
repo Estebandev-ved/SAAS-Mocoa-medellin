@@ -6,6 +6,7 @@ const {
     PLAN_ORDER, FEATURE_LABELS, LIMIT_LABELS, getPlan, getAllPlans, getIncludedFeatureLabels, checkLimit,
 } = require('../../config/planConfig');
 const billing = require('../services/billing');
+const universitario = require('../services/universitario');
 
 router.use(verificarAuth);
 
@@ -45,8 +46,10 @@ router.get('/planes', (req, res) => {
             }));
         // "Todo lo de X, más:" solo si este plan realmente incluye todo lo de X.
         // Emprendedor (la caja) es un producto aparte: Starter no lo incluye.
+        // Universitario y Emprendedor traen lo mismo (cambia quién puede comprarlo): ahí no hay "más".
         const previo = i > 0 ? PLAN_ORDER[i - 1] : null;
-        const anterior = previo && billing.compararPlanes(previo, p.id).pierdes.length === 0 ? previo : null;
+        const cmp = previo ? billing.compararPlanes(previo, p.id) : null;
+        const anterior = cmp && cmp.pierdes.length === 0 && cmp.ganas.length > 0 ? previo : null;
         const nuevas = anterior
             ? billing.compararPlanes(anterior, p.id).ganas
             : getIncludedFeatureLabels(p.id);
@@ -59,6 +62,7 @@ router.get('/planes', (req, res) => {
             limites,
             incluye_todo_de: anterior ? getPlan(anterior).nameEs : null,
             caracteristicas: nuevas,
+            requiere_correo_universitario: p.requiereCorreoUniversitario === true,
         };
     });
     res.json(planes);
@@ -136,7 +140,8 @@ router.get('/cambio/:plan', async (req, res) => {
 
         const { ganas, pierdes, limites } = billing.compararPlanes(n.plan, destino);
         const bloqueos = baja ? await billing.bloqueosDowngrade(req.negocioId, destino) : [];
-        const motivoBloqueo = tipo === 'downgrade' ? null : billing.validarCompra(n, destino);
+        const requisito = tipo === 'mismo' ? null : await universitario.motivoBloqueoPlan(req.negocioId, destino);
+        const motivoBloqueo = (tipo === 'downgrade' ? null : billing.validarCompra(n, destino)) || requisito;
 
         res.json({
             tipo,
@@ -145,6 +150,8 @@ router.get('/cambio/:plan', async (req, res) => {
             plan_destino: resumenPlan(destino),
             ganas, pierdes, limites, bloqueos,
             motivo_bloqueo: motivoBloqueo,
+            // El modal muestra el paso "verifica tu correo" en vez de solo el aviso.
+            requiere_verificacion_universitaria: !!requisito,
             se_cobra_ahora: tipo === 'activar' || tipo === 'upgrade',
             reinicia_ciclo: tipo === 'upgrade',
             efectivo: tipo === 'downgrade' && hayCicloPagado ? 'fin_de_ciclo' : 'inmediato',
@@ -154,6 +161,43 @@ router.get('/cambio/:plan', async (req, res) => {
     } catch (error) {
         console.error('[Suscripcion] Error cambio:', error.message);
         res.status(500).json({ error: 'Error calculando el cambio de plan' });
+    }
+});
+
+// ===== PLAN UNIVERSITARIO: verificar el correo de la universidad =====
+
+// GET /api/suscripcion/universitario - ¿Ya verificó su correo? ¿Hasta cuándo vale?
+router.get('/universitario', async (req, res) => {
+    try {
+        res.json(await universitario.estado(req.negocioId));
+    } catch (error) {
+        console.error('[Suscripcion] Error estado universitario:', error.message);
+        res.status(500).json({ error: 'No pudimos revisar tu verificación' });
+    }
+});
+
+// POST /api/suscripcion/universitario/codigo { correo } - Manda un código de 6 dígitos a ese correo
+router.post('/universitario/codigo', async (req, res) => {
+    try {
+        const r = await universitario.solicitarCodigo(req.negocioId, req.body?.correo, { nombreNegocio: req.negocio?.nombre });
+        if (!r.ok) return res.status(r.status).json({ error: r.error, codigo: r.codigo });
+        const { ok, ...resto } = r;
+        res.json({ success: ok, ...resto });
+    } catch (error) {
+        console.error('[Suscripcion] Error enviando código universitario:', error.message);
+        res.status(500).json({ error: 'No pudimos enviar el código' });
+    }
+});
+
+// POST /api/suscripcion/universitario/verificar { codigo } - Confirma el código y deja el correo verificado
+router.post('/universitario/verificar', async (req, res) => {
+    try {
+        const r = await universitario.verificarCodigo(req.negocioId, req.body?.codigo);
+        if (!r.ok) return res.status(r.status).json({ error: r.error, codigo: r.codigo, intentos_restantes: r.intentos_restantes });
+        res.json({ success: true, correo: r.correo, valido_hasta: r.valido_hasta, mensaje: '¡Listo! Ya puedes activar el plan Universitario.' });
+    } catch (error) {
+        console.error('[Suscripcion] Error verificando código universitario:', error.message);
+        res.status(500).json({ error: 'No pudimos verificar el código' });
     }
 });
 
@@ -171,6 +215,9 @@ router.post('/downgrade', async (req, res) => {
         if (PLAN_ORDER.indexOf(plan) >= PLAN_ORDER.indexOf(n.plan)) {
             return res.status(400).json({ error: 'Ese no es un plan inferior al tuyo' });
         }
+
+        const requisito = await universitario.motivoBloqueoPlan(req.negocioId, plan);
+        if (requisito) return res.status(403).json({ error: requisito, codigo: 'VERIFICAR_CORREO_UNIVERSITARIO' });
 
         const bloqueos = await billing.bloqueosDowngrade(req.negocioId, plan);
         if (bloqueos.length) {

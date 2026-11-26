@@ -89,9 +89,9 @@ export default function CajaPage() {
             </>
           ) : (
             <>
-              <h2 className="font-head text-2xl font-bold text-text">La caja es del plan Emprendedor</h2>
+              <h2 className="font-head text-2xl font-bold text-text">La caja es de los planes Emprendedor y Universitario</h2>
               <p className="text-muted text-sm mt-3">
-                Controla tu inventario, tus ventas y tu plata desde un solo lugar por $25.000 al mes.
+                Controla tu inventario, tus ventas y tu plata desde un solo lugar por $25.000 al mes, o $15.000 si eres estudiante (con tu correo de la universidad).
               </p>
               <button
                 onClick={() => navigate('/suscripcion')}

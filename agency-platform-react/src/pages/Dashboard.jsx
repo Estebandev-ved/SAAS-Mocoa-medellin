@@ -58,6 +58,7 @@ import { planLabel } from '../components/shell/navConfig'
 import EstadoNegocio from '../components/EstadoNegocio'
 import usePreferencias from '../hooks/usePreferencias'
 import { formatearMoneda } from '../utils/preferencias'
+import { esPlanCaja } from '../utils/planFeatures'
 
 const StatCard = ({ title, value, trend, sub, spark, icon: Icon, variants, inverse = false }) => (
   <motion.div
@@ -130,7 +131,7 @@ export default function Dashboard() {
   const [activando, setActivando] = useState(false)
 
   const effectivePlan = apiPlan || plan
-  const domiciliosLocked = effectivePlan === 'starter' || effectivePlan === 'emprendedor'
+  const domiciliosLocked = effectivePlan === 'starter' || esPlanCaja(effectivePlan)
 
   useEffect(() => {
     const fetchAnalytics = async () => {

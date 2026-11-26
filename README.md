@@ -333,7 +333,7 @@ Plantilla completa en [`antigravity/.env.example`](antigravity/.env.example). Nu
 | **MySQL** | `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE` |
 | **Redis** (opcional) | `REDIS_HOST`, `REDIS_PORT` |
 | **Seguridad** | `JWT_SECRET`, `SOCKET_SECRET` — sin valor por defecto, defínelos siempre |
-| **Caja** (plan Emprendedor) | `CAJA_JWT_SECRET` (secreto con el que se firma el token que la caja valida; distinto de `JWT_SECRET`, sin valor por defecto) y `CAJA_URL` (URL pública de la caja, sin barra final). Sin ellas, `POST /api/caja/token` responde 503 |
+| **Caja** (planes Universitario y Emprendedor) | `CAJA_JWT_SECRET` (secreto con el que se firma el token que la caja valida; distinto de `JWT_SECRET`, sin valor por defecto) y `CAJA_URL` (URL pública de la caja, sin barra final). Sin ellas, `POST /api/caja/token` responde 503 |
 | **Pagos** (opcional) | Efipay (pasarela real): `EFIPAY_ACCESS_TOKEN`, `EFIPAY_OFFICE_ID`, `EFIPAY_WEBHOOK_TOKEN`, `API_PUBLIC_URL`, `FRONTEND_URL` (+ `node db/migrate_efipay.js` una vez; webhook en `/api/webhook/efipay`). Alternativa: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`. Sin ninguna pasarela, los pagos son **de prueba** y solo funcionan fuera de producción; `PAGOS_EMULADOS=true` los habilita a propósito (nunca en un despliegue real) |
 | **Correo** | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `OWNER_EMAIL` |
 | **Puertos / URLs** | `PORT_API` (3002), `PORT_INSTANCE_MANAGER` / `PORT_BOT` (3001), `FRONTEND_URL`, `FRONTEND_API_URL`, `FRONTEND_SOCKET_URL`, `NODE_ENV` |
@@ -346,18 +346,20 @@ Plantilla completa en [`antigravity/.env.example`](antigravity/.env.example). Nu
 
 Definidos en un solo lugar: [`antigravity/config/planConfig.js`](antigravity/config/planConfig.js). Precios en COP por mes.
 
-| | **Emprendedor** | **Starter** | **Professional** | **Enterprise** |
-|---|---|---|---|---|
-| Precio | $25.000 | $89.000 | $189.000 | $449.000 |
-| Números de WhatsApp | — | 1 | 3 | Ilimitados |
-| Clientes | — | 100 | 500 | Ilimitados |
-| Productos | — | 20 | Ilimitados | Ilimitados |
-| Mensajes / mes | — | 1.000 | 5.000 | Ilimitados |
-| Analytics avanzado y automatizaciones | — | — | ✅ | ✅ |
-| Domicilios | — | — | ✅ | ✅ |
-| Multi-sede, integraciones, OCR de pagos | — | — | — | ✅ |
-| Bot de llamadas | — | — | — | ✅ |
-| Caja (inventario, ventas y plata) | ✅ | — | — | — |
+| | **Universitario** | **Emprendedor** | **Starter** | **Professional** | **Enterprise** |
+|---|---|---|---|---|---|
+| Precio | $15.000 | $25.000 | $89.000 | $189.000 | $449.000 |
+| Números de WhatsApp | — | — | 1 | 3 | Ilimitados |
+| Clientes | — | — | 100 | 500 | Ilimitados |
+| Productos | — | — | 20 | Ilimitados | Ilimitados |
+| Mensajes / mes | — | — | 1.000 | 5.000 | Ilimitados |
+| Analytics avanzado y automatizaciones | — | — | — | ✅ | ✅ |
+| Domicilios | — | — | — | ✅ | ✅ |
+| Multi-sede, integraciones, OCR de pagos | — | — | — | — | ✅ |
+| Bot de llamadas | — | — | — | — | ✅ |
+| Caja (inventario, ventas y plata) | ✅ | ✅ | — | — | — |
+
+**Universitario** es la misma Caja que Emprendedor para estudiantes: antes de pagar se verifica el correo de la universidad (`.edu.co`, `.edu`, `.ac.xx` o los dominios de `UNIVERSITARIO_DOMINIOS_EXTRA`) con un código de 6 dígitos que llega por correo (`api/services/universitario.js`, rutas `/api/suscripcion/universitario*`). La verificación vale 6 meses; un correo sirve a un solo negocio. Sin SMTP, en desarrollo el código se devuelve en la respuesta (`codigo_dev`).
 
 ---
 
@@ -377,7 +379,7 @@ Todas las rutas cuelgan de `/api` y, salvo `auth` y el tracking público, requie
 | `/api/automations`, `/api/campanas`, `/api/horarios` | Automatizaciones, campañas masivas y horarios |
 | `/api/analytics`, `/api/agentes` | Métricas y uso del cerebro IA |
 | `/api/suscripcion`, `/api/stripe` | Suscripción, upgrade/downgrade, facturas y pagos |
-| `/api/caja` | `POST /token`: JWT de 12 h para entrar a la caja (solo plan Emprendedor) |
+| `/api/caja` | `POST /token`: JWT de 12 h para entrar a la caja (planes Universitario y Emprendedor) |
 | `/api/voice`, `/api/telegram`, `/api/instagram` | Bot de llamadas y canales adicionales |
 | `/api/admin`, `/api/usuarios`, `/api/backup` | Superadmin, usuarios del negocio y respaldos |
 

@@ -3,6 +3,7 @@ import {
   CreditCard, Truck, Smartphone, Phone, UtensilsCrossed, Store, BookOpen, Tag, Send, Layers, Shield, ChefHat, Workflow,
   Megaphone, BarChart3, Share2, Receipt,
 } from 'lucide-react';
+import { esPlanCaja } from '../../utils/planFeatures';
 
 // Fuente única de la navegación del panel del dueño: la usan el menú lateral, la barra inferior,
 // el cajón "Más", las pestañas de cada sección y la paleta de comandos (Ctrl+K).
@@ -118,15 +119,15 @@ export function rutaDeSeccion(grupo, plan) {
 }
 
 export function estaBloqueado(item, plan) {
-  if (item.lock === 'domicilios') return plan === 'starter' || plan === 'emprendedor';
-  if (item.lock === 'caja') return plan !== 'emprendedor';
-  if (item.lock === 'mostrador') return plan === 'emprendedor';
+  if (item.lock === 'domicilios') return plan === 'starter' || esPlanCaja(plan);
+  if (item.lock === 'caja') return !esPlanCaja(plan);
+  if (item.lock === 'mostrador') return esPlanCaja(plan);
   return false;
 }
 export const textoBloqueo = (item) =>
-  item.lock === 'caja' ? 'La caja es del plan Emprendedor'
-    : item.lock === 'mostrador' ? 'Tu plan Emprendedor usa la Caja para vender en el local'
+  item.lock === 'caja' ? 'La caja es de los planes Emprendedor y Universitario'
+    : item.lock === 'mostrador' ? 'Tu plan usa la Caja para vender en el local'
       : 'Mejora tu plan para acceder a Domicilios';
 
 export const planLabel = (p) =>
-  ({ enterprise: 'Empresarial', professional: 'Profesional', emprendedor: 'Emprendedor' }[p] || 'Inicial');
+  ({ enterprise: 'Empresarial', professional: 'Profesional', emprendedor: 'Emprendedor', universitario: 'Universitario' }[p] || 'Inicial');

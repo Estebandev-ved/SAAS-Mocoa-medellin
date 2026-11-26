@@ -1,0 +1,239 @@
+<title>Antigravity por plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+  /* Layout: una columna de lectura; tabla de planes arriba, luego galerías por producto (celular en tira, escritorio en rejilla). */
+  :root {
+    --bg: #FAFAF9;
+    --surface: #FFFFFF;
+    --fg: #1A1A1A;
+    --muted: #5E5A58;
+    --line: #E7E2E0;
+    --accent: #E53935;
+    --accent-strong: #C62828;
+    --accent-soft: #FDECEA;
+    --ok: #2E7D32;
+    --font-head: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+    --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F0E0E; --surface: #1A1818; --fg: #F2EFEE; --muted: #A9A3A1; --line: #2E2A29;
+      --accent: #EF5350; --accent-strong: #E53935; --accent-soft: #3A1E1D; --ok: #66BB6A; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F0E0E; --surface: #1A1818; --fg: #F2EFEE; --muted: #A9A3A1; --line: #2E2A29;
+    --accent: #EF5350; --accent-strong: #E53935; --accent-soft: #3A1E1D; --ok: #66BB6A; color-scheme: dark;
+  }
+
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+  .pagina {
+    max-width: 1080px; margin: 0 auto;
+    padding-block: 40px 72px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; gap: 56px;
+  }
+  h1, h2, h3 { font-family: var(--font-head); text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+  h2 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; }
+  h3 { font-size: 1.05rem; font-weight: 700; }
+  p { margin: 0; max-width: 65ch; }
+  .muted { color: var(--muted); }
+  .eyebrow { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+  section { display: grid; gap: 20px; min-width: 0; }
+  .cabeza { display: grid; gap: 10px; }
+
+  /* Tabla de planes */
+  .tabla-envoltura { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; min-width: 720px; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 14px 16px; vertical-align: top; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: none; }
+  th { font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  td.plan { font-family: var(--font-head); font-weight: 700; white-space: nowrap; }
+  td.precio { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .chip { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); white-space: nowrap; }
+  .chip.app { background: transparent; border: 1px solid var(--line); color: var(--fg); }
+  tr.nuevo td { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+
+  /* Galerías */
+  .tira { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(190px, 220px); gap: 16px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+  .rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 20px; }
+  figure { margin: 0; display: grid; gap: 8px; align-content: start; scroll-snap-align: start; min-width: 0; }
+  figure button { all: unset; cursor: zoom-in; display: block; border-radius: 14px; }
+  figure button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  figure img { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
+  .tira figure img { border-radius: 22px; }
+  figcaption { font-size: 0.86rem; color: var(--muted); }
+  figcaption strong { color: var(--fg); font-weight: 600; display: block; }
+
+  .nota { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; color: var(--muted); font-size: 0.92rem; }
+  ul.hallazgos { margin: 0; padding-left: 1.1rem; display: grid; gap: 8px; max-width: 70ch; }
+
+  dialog { border: none; padding: 0; background: transparent; max-width: min(96vw, 1200px); max-height: 94vh; }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.78); }
+  dialog img { display: block; max-width: 100%; max-height: 90vh; border-radius: 12px; }
+  dialog button { position: absolute; top: 8px; right: 8px; font: 600 0.9rem var(--font-body); padding: 8px 12px; border-radius: 10px; border: none; background: var(--surface); color: var(--fg); cursor: pointer; }
+</style>
+
+<main class="pagina">
+  <header class="cabeza">
+    <span class="eyebrow">Demo · 25 nov 2026</span>
+    <h1>Antigravity por plan</h1>
+    <p class="muted">Qué app usa cada suscripción y cómo se ve por dentro. La Caja (planes Universitario y Emprendedor) es una aplicación aparte; los planes con bot usan el panel de Antigravity.</p>
+  </header>
+
+  <section aria-labelledby="t-planes">
+    <h2 id="t-planes">Los cinco planes</h2>
+    <div class="tabla-envoltura">
+      <table>
+        <thead>
+          <tr><th scope="col">Plan</th><th scope="col">Precio al mes</th><th scope="col">App</th><th scope="col">Qué trae</th><th scope="col">Para quién</th></tr>
+        </thead>
+        <tbody>
+          <tr class="nuevo">
+            <td class="plan">Universitario <span class="chip">Nuevo</span></td>
+            <td class="precio">$15.000</td>
+            <td><span class="chip app">Caja</span></td>
+            <td>La misma Caja que Emprendedor. Hay que verificar el correo de la universidad con un código; vale un semestre.</td>
+            <td>Estudiantes que venden en la U</td>
+          </tr>
+          <tr>
+            <td class="plan">Emprendedor</td>
+            <td class="precio">$25.000</td>
+            <td><span class="chip app">Caja</span></td>
+            <td>Venta en 2 toques sin señal, inventario, ganancia real, fiado, cierre del mes. Sin bot.</td>
+            <td>Negocios que llevan cuaderno</td>
+          </tr>
+          <tr>
+            <td class="plan">Inicial</td>
+            <td class="precio">$89.000</td>
+            <td><span class="chip app">Panel + bot</span></td>
+            <td>Bot de WhatsApp, catálogo de 20 productos, pedidos, 1.000 mensajes de IA, venta de mostrador.</td>
+            <td>Quien ya vende por WhatsApp</td>
+          </tr>
+          <tr>
+            <td class="plan">Profesional</td>
+            <td class="precio">$189.000</td>
+            <td><span class="chip app">Panel + bot</span></td>
+            <td>Todo lo de Inicial más domicilios, campañas, Instagram y Telegram, 5 usuarios, caja con turnos y arqueo.</td>
+            <td>Restaurantes y tiendas con domicilios</td>
+          </tr>
+          <tr>
+            <td class="plan">Empresarial</td>
+            <td class="precio">$449.000</td>
+            <td><span class="chip app">Panel + bot</span></td>
+            <td>Todo ilimitado, varias sedes, bot de llamadas y revisión de comprobantes con OCR.</td>
+            <td>Negocios con varias sedes</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-caja">
+    <div class="cabeza">
+      <span class="eyebrow">Universitario y Emprendedor</span>
+      <h2 id="t-caja">La Caja, en el celular</h2>
+      <p class="muted">Capturas de una Caja de prueba con un negocio inventado (Postres de Ana): 6 productos, 13 ventas, un fiado y un gasto. Se instala en el celular como app.</p>
+    </div>
+    <div class="tira" role="list">
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/caja/01-entrar-con-pin.jpg" alt="Pantalla de entrada con PIN de la Caja" loading="lazy" width="750" height="1624"></button><figcaption><strong>Entrar</strong>PIN de 4 números (o Face ID).</figcaption></figure>
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/caja/02-arranque-guiado.jpg" alt="Arranque guiado: nombre y tipo de negocio" loading="lazy" width="750" height="1624"></button><figcaption><strong>Primer día</strong>Tres preguntas y queda lista.</figcaption></figure>
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/caja/03-vender.jpg" alt="Pantalla Vender con productos, precios y unidades" loading="lazy" width="750" height="1624"></button><figcaption><strong>Vender</strong>Toca el producto; ves cuántos quedan.</figcaption></figure>
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/caja/08-cobrar.jpg" alt="Panel de cobro con Nequi, efectivo, mitad y mitad y fiado" loading="lazy" width="750" height="1624"></button><figcaption><strong>Cobrar</strong>Nequi, efectivo, mitad y mitad o fiado.</figcaption></figure>
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/caja/04-hoy-ganancia.jpg" alt="Resumen de hoy con vendido, ganancia y ticket promedio" loading="lazy" width="750" height="1624"></button><figcaption><strong>Hoy</strong>Vendido $107.500, ganancia $50.200.</figcaption></figure>
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/caja/07-mas-vendidos-y-fiado.jpg" alt="Productos más vendidos y lista de quién debe" loading="lazy" width="750" height="1624"></button><figcaption><strong>Me deben</strong>Lo más vendido y el fiado pendiente.</figcaption></figure>
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/caja/06-inventario.jpg" alt="Inventario con días que alcanza cada producto" loading="lazy" width="750" height="1624"></button><figcaption><strong>Inventario</strong>Calcula para cuántos días alcanza.</figcaption></figure>
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/caja/05-mi-plata-y-cierre.jpg" alt="Mi plata y cierre del mes" loading="lazy" width="750" height="1624"></button><figcaption><strong>Mi plata</strong>Caja, casa, Nequi y cierre del mes.</figcaption></figure>
+    </div>
+    <p class="nota">Desliza la tira para ver todas. Toca una captura para verla grande.</p>
+  </section>
+
+  <section aria-labelledby="t-entrada">
+    <div class="cabeza">
+      <span class="eyebrow">Plan Universitario</span>
+      <h2 id="t-entrada">Cómo se activa desde Antigravity</h2>
+      <p class="muted">El estudiante crea su cuenta en Antigravity, elige Universitario en Mi plan y verifica su correo de la universidad. Después abre la Caja desde Ventas → Caja, sin volver a iniciar sesión.</p>
+    </div>
+    <div class="rejilla">
+      <figure><button type="button" data-ampliar><img src="screenshots/mi-plan-universitario.jpg" alt="Mi plan con la tarjeta del plan Universitario" loading="lazy" width="800" height="564"></button><figcaption><strong>Mi plan</strong>Universitario aparece primero, marcado para estudiantes.</figcaption></figure>
+      <figure><button type="button" data-ampliar><img src="screenshots/panel-universitario-caja.jpg" alt="Panel con plan Universitario y la Caja disponible" loading="lazy" width="800" height="564"></button><figcaption><strong>Panel con plan Universitario</strong>Caja abierta; Domicilios y Venta rápida bloqueados.</figcaption></figure>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-bot">
+    <div class="cabeza">
+      <span class="eyebrow">Inicial · Profesional · Empresarial</span>
+      <h2 id="t-bot">El panel con bot de WhatsApp</h2>
+      <p class="muted">Capturas del 26 de octubre con una cuenta en plan Profesional. Inicial no trae Domicilios ni Campañas (Domicilios aparece con candado); Empresarial suma sedes, bot de llamadas y OCR.</p>
+    </div>
+    <div class="rejilla">
+      <figure><button type="button" data-ampliar><img src="screenshots/dashboard.png" alt="Inicio del panel" loading="lazy" width="1440" height="900"></button><figcaption><strong>Inicio</strong>Activación del bot y lo que falta por hacer. Todos los planes con bot.</figcaption></figure>
+      <figure><button type="button" data-ampliar><img src="screenshots/mensajes.png" alt="Bandeja de mensajes" loading="lazy" width="1440" height="900"></button><figcaption><strong>Mensajes</strong>Bandeja única de WhatsApp e Instagram.</figcaption></figure>
+      <figure><button type="button" data-ampliar><img src="screenshots/pedidos.png" alt="Pedidos" loading="lazy" width="1440" height="900"></button><figcaption><strong>Pedidos</strong>Lo que el bot vendió, con su comprobante.</figcaption></figure>
+      <figure><button type="button" data-ampliar><img src="screenshots/productos.png" alt="Productos e inventario" loading="lazy" width="1440" height="900"></button><figcaption><strong>Productos</strong>Catálogo del bot e inventario. Inicial: hasta 20.</figcaption></figure>
+      <figure><button type="button" data-ampliar><img src="screenshots/domicilios.png" alt="Domicilios con mapa" loading="lazy" width="1440" height="900"></button><figcaption><strong>Domicilios</strong>Mapa y domiciliarios. Desde Profesional.</figcaption></figure>
+      <figure><button type="button" data-ampliar><img src="screenshots/campanas.png" alt="Campañas" loading="lazy" width="1440" height="900"></button><figcaption><strong>Campañas</strong>Mensajes masivos a clientes. Desde Profesional.</figcaption></figure>
+      <figure><button type="button" data-ampliar><img src="screenshots/estadisticas.png" alt="Estadísticas" loading="lazy" width="1440" height="900"></button><figcaption><strong>Reportes</strong>Ventas y clientes.</figcaption></figure>
+      <figure><button type="button" data-ampliar><img src="screenshots/canales.png" alt="Canales conectados" loading="lazy" width="1440" height="900"></button><figcaption><strong>Canales</strong>WhatsApp en todos; Instagram y Telegram desde Profesional.</figcaption></figure>
+    </div>
+    <div class="tira" role="list" aria-label="Panel en el celular">
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/movil-inicio.png" alt="Inicio en el celular" loading="lazy" width="390" height="844"></button><figcaption><strong>Inicio en el celular</strong></figcaption></figure>
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/movil-mensajes.png" alt="Mensajes en el celular" loading="lazy" width="390" height="844"></button><figcaption><strong>Mensajes</strong></figcaption></figure>
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/movil-pedidos.png" alt="Pedidos en el celular" loading="lazy" width="390" height="844"></button><figcaption><strong>Pedidos</strong></figcaption></figure>
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/movil-productos.png" alt="Productos en el celular" loading="lazy" width="390" height="844"></button><figcaption><strong>Productos</strong></figcaption></figure>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-info">
+    <div class="cabeza">
+      <span class="eyebrow">Lo que ve el prospecto</span>
+      <h2 id="t-info">La página /info, con dos caminos</h2>
+      <p class="muted">Abre en «Anoto en cuaderno» (la Caja). Con <code>/info?p=bot</code> abre en el bot. Quien marca «Soy estudiante» llega a Admin → Prospectos con la etiqueta [Universitario].</p>
+    </div>
+    <div class="tira" role="list">
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/info-caja-movil-1.jpg" alt="Página info en el celular, camino Caja" loading="lazy" width="750" height="1624"></button><figcaption><strong>Celular</strong>Promesa y ejemplo de ganancia.</figcaption></figure>
+      <figure role="listitem"><button type="button" data-ampliar><img src="screenshots/info-caja-movil-2.jpg" alt="Beneficios y precios de la Caja en el celular" loading="lazy" width="750" height="1624"></button><figcaption><strong>Celular</strong>Beneficios y los dos precios.</figcaption></figure>
+    </div>
+    <div class="rejilla">
+      <figure><button type="button" data-ampliar><img src="screenshots/info-caja-escritorio.jpg" alt="Página info en escritorio, camino Caja" loading="lazy" width="800" height="564"></button><figcaption><strong>Escritorio · Caja</strong></figcaption></figure>
+      <figure><button type="button" data-ampliar><img src="screenshots/info-bot-escritorio.jpg" alt="Página info en escritorio, camino bot" loading="lazy" width="800" height="564"></button><figcaption><strong>Escritorio · Bot</strong>Ahora dice «Bot desde $89.000».</figcaption></figure>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-falta">
+    <div class="cabeza">
+      <span class="eyebrow">Visto al armar la demo</span>
+      <h2 id="t-falta">Lo que delata que la Caja nació para granizados</h2>
+    </div>
+    <ul class="hallazgos">
+      <li>Elegí la plantilla «Café y panadería» y la Caja siguió mostrando los cócteles iniciales (Smirnoff, Piña colada…). Los postres de la demo se cargaron a mano.</li>
+      <li>En Hoy dice «Granizados 20» y «Sabores más pedidos»; en Inventario, «Buscar sabor».</li>
+      <li>Aparecen promos de «refrescantes» que un negocio nuevo no creó.</li>
+    </ul>
+    <p class="nota">Arreglar esto es lo primero antes de ofrecer la Caja a estudiantes que no venden bebidas.</p>
+  </section>
+</main>
+
+<dialog id="visor" aria-label="Captura ampliada">
+  <button type="button" id="cerrar-visor">Cerrar</button>
+  <img id="visor-img" alt="">
+</dialog>
+
+<script>
+  const visor = document.getElementById('visor');
+  const visorImg = document.getElementById('visor-img');
+  document.querySelectorAll('[data-ampliar]').forEach((boton) => {
+    boton.addEventListener('click', () => {
+      const img = boton.querySelector('img');
+      visorImg.src = img.src;
+      visorImg.alt = img.alt;
+      if (typeof visor.showModal === 'function') visor.showModal();
+    });
+  });
+  document.getElementById('cerrar-visor').addEventListener('click', () => visor.close());
+  visor.addEventListener('click', (e) => { if (e.target === visor) visor.close(); });
+</script>

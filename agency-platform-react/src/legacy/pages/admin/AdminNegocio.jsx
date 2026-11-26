@@ -254,6 +254,7 @@ export default function AdminNegocio() {
         <div className="form-group">
           <label>Plan</label>
           <select value={regaloPlan} onChange={(e) => setRegaloPlan(e.target.value)}>
+            <option value="universitario">Universitario (Caja)</option>
             <option value="emprendedor">Emprendedor</option>
             <option value="starter">Starter</option>
             <option value="professional">Professional</option>

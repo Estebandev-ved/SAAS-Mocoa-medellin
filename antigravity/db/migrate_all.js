@@ -35,6 +35,7 @@ const MIGRACIONES = [
     'migrate_geocoding.js',
     'migrate_categoria_productos.js',
     'migrate_plan_emprendedor.js',
+    'migrate_plan_universitario.js',
     'migrate_plan_pendiente.js',
     'migrate_efipay.js',
     'migrate_marketplace.js',
@@ -136,6 +137,7 @@ const VERIFICACIONES = [
     { archivo: 'migrate_flujos.js', tabla: 'flujo_ejecuciones' },
     { archivo: 'migrate_inventario.js', tabla: 'inventario_movimientos' },
     { archivo: 'migrate_mostrador.js', tabla: 'ventas_mostrador' },
+    { archivo: 'migrate_plan_universitario.js', tabla: 'verificaciones_universitarias' },
 ];
 
 async function existe(con, { tabla, columna }) {

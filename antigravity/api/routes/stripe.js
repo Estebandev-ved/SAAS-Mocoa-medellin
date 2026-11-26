@@ -5,6 +5,7 @@ const { verificarAuth } = require('../middleware/auth');
 const { getPlan, PLAN_ORDER } = require('../../config/planConfig');
 const billing = require('../services/billing');
 const efipay = require('../services/efipay');
+const universitario = require('../services/universitario');
 const { verificarAdmin } = require('../middleware/admin');
 
 // El webhook de Stripe vive en api/index.js: necesita el body crudo, así que se
@@ -27,6 +28,10 @@ async function errorDeCompra(negocioId, plan) {
 
     const motivo = billing.validarCompra(n, plan);
     if (motivo) return { status: 400, body: { error: motivo } };
+
+    // Plan Universitario: sin correo de la universidad verificado no se cobra.
+    const requisito = await universitario.motivoBloqueoPlan(negocioId, plan);
+    if (requisito) return { status: 403, body: { error: requisito, codigo: 'VERIFICAR_CORREO_UNIVERSITARIO' } };
 
     // Bajar de plan pagando uno menor no puede dejar el catálogo por encima del límite.
     if (PLAN_ORDER.indexOf(plan) < PLAN_ORDER.indexOf(n.plan)) {

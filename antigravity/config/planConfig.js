@@ -1,7 +1,60 @@
 // planConfig.js - FUENTE ÚNICA DE VERDAD para planes, precios y features
 // Todo el sistema debe importar de aquí, NUNCA hardcodear precios o features
 
+// Lo que la Caja trae en los dos planes que la venden (Universitario y Emprendedor). El bot no va en ninguno.
+const FEATURES_SOLO_CAJA = {
+    maxMessages: 0,
+    maxProducts: 0,
+    maxClients: 0,
+    maxAgents: 0,
+    maxUsers: 1,
+    maxWhatsAppNumbers: 0,
+    maxCampaigns: 0,
+    maxCalls: 0,
+
+    cajaInventario: true,
+    ventaMostrador: false, // la caja aparte ya cubre la venta del local
+    cajaAvanzada: false,
+    soporteEmail: true,
+
+    botVentas: false,
+    catalogoProductos: false,
+    pedidosWhatsApp: false,
+    reportesBasicos: false,
+    analyticsBasico: false,
+    analyticsAvanzado: false,
+    automatizaciones: false,
+    personalizacionCompleta: false,
+    multiplesMetodosPago: false,
+    soportePrioritario: false,
+    apiAccess: false,
+    multiSede: false,
+    integraciones: false,
+    ocrPagos: false,
+    campañasMasivas: false,
+    domicilios: false,
+    multiUsuario: false,
+    voiceBot: false,
+    telegramBot: false,
+    instagramBot: false,
+};
+
 const PLANS = {
+    // La misma Caja que Emprendedor, más barata, para estudiantes que demuestran serlo con su correo de la
+    // universidad (api/services/universitario.js). La verificación vale un semestre y se renueva igual.
+    universitario: {
+        id: 'universitario',
+        name: 'Universitario',
+        nameEs: 'Universitario',
+        price: 15000,
+        priceUSD: 4,
+        trialDays: 7,
+        requiereCorreoUniversitario: true,
+        features: { ...FEATURES_SOLO_CAJA },
+        automations: [],
+        color: '#8b5cf6',
+        popular: false,
+    },
     emprendedor: {
         id: 'emprendedor',
         name: 'Emprendedor',
@@ -9,45 +62,8 @@ const PLANS = {
         price: 25000,
         priceUSD: 6,
         trialDays: 7,
-        features: {
-            // Límites: este plan vende solo la "caja" (app aparte), no el bot de WhatsApp.
-            maxMessages: 0,
-            maxProducts: 0,
-            maxClients: 0,
-            maxAgents: 0,
-            maxUsers: 1,
-            maxWhatsAppNumbers: 0,
-            maxCampaigns: 0,
-            maxCalls: 0,
-
-            // Features
-            cajaInventario: true,
-            ventaMostrador: false, // la caja aparte ya cubre la venta del local
-            cajaAvanzada: false,
-            soporteEmail: true,
-
-            // No incluido
-            botVentas: false,
-            catalogoProductos: false,
-            pedidosWhatsApp: false,
-            reportesBasicos: false,
-            analyticsBasico: false,
-            analyticsAvanzado: false,
-            automatizaciones: false,
-            personalizacionCompleta: false,
-            multiplesMetodosPago: false,
-            soportePrioritario: false,
-            apiAccess: false,
-            multiSede: false,
-            integraciones: false,
-            ocrPagos: false,
-            campañasMasivas: false,
-            domicilios: false,
-            multiUsuario: false,
-            voiceBot: false,
-            telegramBot: false,
-            instagramBot: false,
-        },
+        // Este plan vende solo la "caja" (app aparte), no el bot de WhatsApp.
+        features: { ...FEATURES_SOLO_CAJA },
         automations: [],
         color: '#f97316',
         popular: false,
@@ -202,7 +218,12 @@ const PLANS = {
     },
 };
 
-const PLAN_ORDER = ['emprendedor', 'starter', 'professional', 'enterprise'];
+const PLAN_ORDER = ['universitario', 'emprendedor', 'starter', 'professional', 'enterprise'];
+
+// Planes que exigen algo más que pagar (hoy: el correo de la universidad verificado).
+function requiereCorreoUniversitario(planId) {
+    return PLANS[planId]?.requiereCorreoUniversitario === true;
+}
 
 // Etiquetas en español para mostrarle al negocio qué gana si sube de plan.
 // Única fuente de verdad para esto también — si se agrega una feature nueva
@@ -354,4 +375,5 @@ module.exports = {
     getAllPlans,
     getIncludedFeatureLabels,
     getUpgradeBenefits,
+    requiereCorreoUniversitario,
 };

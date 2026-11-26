@@ -96,7 +96,7 @@ router.get('/automatizaciones', async (req, res) => {
 
     const automatizaciones = Object.entries(AUTOMATION_TYPES).map(([tipo, info]) => {
       const configExistente = configs.find(c => c.tipo === tipo);
-      const planOrden = { emprendedor: 0, starter: 1, professional: 2, enterprise: 3 };
+      const planOrden = { universitario: 0, emprendedor: 0, starter: 1, professional: 2, enterprise: 3 };
       const tienePlan = planOrden[req.negocio.plan] >= planOrden[info.plan_requerido];
 
       return {
@@ -128,7 +128,7 @@ router.patch('/automatizaciones/:tipo/toggle', async (req, res) => {
     }
 
     const info = AUTOMATION_TYPES[tipo];
-    const planOrden = { emprendedor: 0, starter: 1, professional: 2, enterprise: 3 };
+    const planOrden = { universitario: 0, emprendedor: 0, starter: 1, professional: 2, enterprise: 3 };
 
     if (planOrden[req.negocio.plan] < planOrden[info.plan_requerido]) {
       return res.status(403).json({

@@ -5,7 +5,7 @@
 const MAX_NODOS = 30;
 const MAX_TEXTO = 500;
 const MAX_CORTO = 60;
-const LIMITE_FLUJOS_POR_PLAN = { emprendedor: 3, starter: 5, professional: 20, enterprise: Infinity };
+const LIMITE_FLUJOS_POR_PLAN = { universitario: 3, emprendedor: 3, starter: 5, professional: 20, enterprise: Infinity };
 
 const MODOS_DISPARADOR = ['palabra', 'primer_mensaje', 'pedido_pagado', 'pedido_entregado', 'cliente_inactivo', 'comentario_instagram'];
 const EVENTOS = ['pedido_pagado', 'pedido_entregado', 'cliente_inactivo'];

@@ -5,7 +5,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import AyudaRapida from '../components/AyudaRapida';
 
-const ORDEN_PLANES = ['emprendedor', 'starter', 'professional', 'enterprise'];
+const ORDEN_PLANES = ['universitario', 'emprendedor', 'starter', 'professional', 'enterprise'];
 const NOMBRE_PLAN = { starter: 'Inicial', professional: 'Profesional', enterprise: 'Empresarial' };
 const alcanza = (plan, minimo) => ORDEN_PLANES.indexOf(plan) >= ORDEN_PLANES.indexOf(minimo);
 

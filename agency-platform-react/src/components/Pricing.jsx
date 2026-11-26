@@ -69,6 +69,7 @@ const Pricing = () => {
       features: [
         { text: "Caja: inventario, ventas y plata" },
         { text: "Acceso con tu cuenta Antigravity" },
+        { text: "¿Estudiante? $15.000 con tu correo de la universidad" },
         { text: "Soporte por email" },
         { text: "Bot de WhatsApp con IA", disabled: true },
         { text: "Domicilios", disabled: true }
